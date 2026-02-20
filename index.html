@@ -512,10 +512,10 @@ function populateTracker(repIdx) {
       <td>${m.month} 2026</td>
       <td class="target-cell">${fmt(tgt)}</td>
       <td class="prev-cell">${fmt(m.prev)}</td>
-      <td><input class="actual-input" type="number" placeholder="0"
+      <td><input class="actual-input" type="text" inputmode="numeric" placeholder="0"
         value="${act > 0 ? act : ''}"
-        oninput="setActual(${repIdx},${mi},+this.value)"
-        onchange="setActual(${repIdx},${mi},+this.value)"></td>
+        oninput="setActual(${repIdx},${mi},parseFloat(this.value.replace(/[^0-9.]/g,''))||0)"
+        onchange="setActual(${repIdx},${mi},parseFloat(this.value.replace(/[^0-9.]/g,''))||0)"></td>
       <td>${varCell}</td>
       <td>${pctCell}</td>
       <td>${status}</td>
@@ -560,10 +560,10 @@ function populateClassTrackers(repIdx) {
         <td>${m.month} 2026</td>
         <td class="target-cell">${fmt(tgt)}</td>
         <td class="prev-cell">${fmt(m.prev)}</td>
-        <td><input class="actual-input" type="number" placeholder="0"
+        <td><input class="actual-input" type="text" inputmode="numeric" placeholder="0"
           value="${act > 0 ? act : ''}"
-          oninput="setClassActual(${repIdx},${ci},${mi},+this.value)"
-          onchange="setClassActual(${repIdx},${ci},${mi},+this.value)"></td>
+          oninput="setClassActual(${repIdx},${ci},${mi},parseFloat(this.value.replace(/[^0-9.]/g,''))||0)"
+          onchange="setClassActual(${repIdx},${ci},${mi},parseFloat(this.value.replace(/[^0-9.]/g,''))||0)"></td>
         <td>${varCell}</td><td>${pctCell}</td><td>${status}</td>
       </tr>`;
     });
