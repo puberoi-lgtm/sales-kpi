@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Serveredge — FY2026 Sales Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #0d0d0d;
+    --surface:   #141414;
+    --surface2:  #1a1a1a;
+    --surface3:  #222222;
+    --border:    #2a2a2a;
+    --green:     #6bbf33;
+    --green-dk:  #4a8a1f;
+    --green-dim: #1e3a0a;
+    --amber:     #f5a623;
+    --blue:      #4472c4;
+    --text:      #e8e8e8;
+    --muted:     #888;
+    --faint:     #444;
+    --cls1:      #4472c4;
+    --cls2:      #6bbf33;
+    --cls3:      #ed7d31;
+    --cls4:      #9e480e;
+    --font-head: 'Syne', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.4;
+    min-height: 100vh;
+  }
+
+  /* ── TOP NAV ── */
+  .topbar {
+    position: sticky; top: 0; z-index: 100;
+    background: #0a0a0a;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 24px; height: 52px;
+  }
+  .topbar-logo {
+    font-family: var(--font-head); font-weight: 800; font-size: 17px;
+    color: var(--green); letter-spacing: -0.5px; display: flex; align-items: center; gap: 10px;
+  }
+  .topbar-logo span { color: var(--muted); font-weight: 400; font-size: 12px; margin-left: 4px; }
+  .topbar-tabs { display: flex; gap: 2px; }
+  .tab-btn {
+    background: none; border: none; cursor: pointer;
+    padding: 6px 14px; border-radius: 6px;
+    font-family: var(--font-mono); font-size: 12px; color: var(--muted);
+    transition: all .15s; white-space: nowrap;
+  }
+  .tab-btn:hover { color: var(--text); background: var(--surface2); }
+  .tab-btn.active { color: var(--green); background: var(--green-dim); border: 1px solid var(--green-dk); }
+  .tab-btn .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+
+  /* ── VIEWS ── */
+  .view { display: none; padding: 20px 24px 40px; max-width: 1400px; margin: 0 auto; }
+  .view.active { display: block; }
+
+  /* ── REP HEADER ── */
+  .rep-header {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 24px;
+    margin-bottom: 18px;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  }
+  .rep-title { font-family: var(--font-head); font-size: 22px; font-weight: 800; }
+  .rep-subtitle { color: var(--muted); font-size: 11px; margin-top: 2px; }
+  .rep-accent-bar { height: 3px; border-radius: 2px; width: 40px; margin-top: 6px; }
+
+  /* ── KPI CARDS ── */
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    position: relative; overflow: hidden;
+  }
+  .kpi-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: var(--accent-color, var(--green));
+  }
+  .kpi-label { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 6px; }
+  .kpi-value { font-family: var(--font-head); font-size: 24px; font-weight: 800; line-height: 1; }
+  .kpi-sub { font-size: 10px; color: var(--muted); margin-top: 4px; }
+
+  /* ── SECTION HEADERS ── */
+  .section-hdr {
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--font-head); font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .12em; color: var(--muted);
+    margin: 20px 0 10px;
+  }
+  .section-hdr::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* ── GROWTH SLIDERS ── */
+  .growth-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 18px;
+  }
+  .growth-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 12px; }
+  .growth-item label {
+    display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .08em;
+    color: var(--muted); margin-bottom: 6px;
+  }
+  .growth-item .growth-val {
+    font-family: var(--font-head); font-size: 20px; font-weight: 800;
+    margin-bottom: 6px;
+  }
+  .growth-item input[type=range] {
+    width: 100%; height: 4px; appearance: none; background: var(--surface3);
+    border-radius: 2px; outline: none; cursor: pointer;
+  }
+  .growth-item input[type=range]::-webkit-slider-thumb {
+    appearance: none; width: 14px; height: 14px; border-radius: 50%;
+    background: var(--green); cursor: pointer; border: 2px solid var(--bg);
+  }
+
+  /* ── CHARTS ROW ── */
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; }
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .chart-card.wide { grid-column: 1 / -1; }
+  .chart-title {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .08em;
+    color: var(--muted); margin-bottom: 12px;
+  }
+  .chart-wrap { position: relative; height: 200px; }
+  .chart-wrap.tall { height: 240px; }
+
+  /* ── TRACKER TABLE ── */
+  .tracker-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 18px;
+  }
+  .tracker-wrap table { width: 100%; border-collapse: collapse; }
+  .tracker-wrap th {
+    background: var(--green-dk); color: #fff;
+    font-size: 10px; text-transform: uppercase; letter-spacing: .08em;
+    padding: 9px 12px; text-align: right; font-family: var(--font-mono); font-weight: 500;
+  }
+  .tracker-wrap th:first-child { text-align: left; }
+  .tracker-wrap td {
+    padding: 8px 12px; font-family: var(--font-mono); font-size: 12px;
+    border-bottom: 1px solid var(--border); text-align: right;
+  }
+  .tracker-wrap td:first-child { text-align: left; font-weight: 500; color: var(--text); }
+  .tracker-wrap tr:nth-child(even) td { background: rgba(255,255,255,.018); }
+  .tracker-wrap tr:hover td { background: rgba(107,191,51,.06); }
+  .tracker-wrap .total-row td {
+    background: var(--green-dim) !important;
+    color: var(--green); font-weight: 700; border-bottom: none;
+  }
+  .target-cell { color: var(--green); }
+  .prev-cell   { color: #6699cc; }
+  .actual-input {
+    background: rgba(255,240,0,.08); border: 1px solid rgba(255,240,0,.25);
+    color: #ffe566; border-radius: 4px; padding: 3px 6px;
+    width: 110px; font-family: var(--font-mono); font-size: 12px; text-align: right;
+    outline: none; transition: border-color .15s;
+  }
+  .actual-input:focus { border-color: rgba(255,240,0,.7); background: rgba(255,240,0,.14); }
+  .variance-pos { color: var(--green); }
+  .variance-neg { color: #e05252; }
+  .status-on  { color: var(--green); font-size: 11px; }
+  .status-off { color: #e05252; font-size: 11px; }
+  .status-pend { color: var(--muted); font-size: 11px; }
+
+  /* ── CLASS BREAKDOWN TABS ── */
+  .class-tabs { display: flex; gap: 4px; margin-bottom: 12px; flex-wrap: wrap; }
+  .class-tab {
+    padding: 5px 12px; border-radius: 5px; font-size: 11px;
+    cursor: pointer; border: 1px solid transparent;
+    font-family: var(--font-mono); transition: all .15s;
+    color: var(--muted); background: var(--surface2);
+  }
+  .class-tab:hover { color: var(--text); }
+  .class-tab.active { color: #fff; border-color: transparent; }
+
+  /* ── TEAM SUMMARY ── */
+  .team-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 18px; }
+  .rep-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    position: relative; overflow: hidden;
+  }
+  .rep-card-name { font-family: var(--font-head); font-size: 15px; font-weight: 700; margin-bottom: 2px; }
+  .rep-card-region { font-size: 10px; color: var(--muted); margin-bottom: 12px; }
+  .rep-card-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .rep-stat-label { font-size: 10px; color: var(--muted); margin-bottom: 2px; }
+  .rep-stat-val { font-family: var(--font-head); font-size: 14px; font-weight: 700; }
+  .progress-bar-wrap { margin-top: 10px; }
+  .progress-bar-bg { height: 4px; background: var(--surface3); border-radius: 2px; overflow: hidden; }
+  .progress-bar-fill { height: 100%; border-radius: 2px; transition: width .4s ease; }
+  .progress-label { font-size: 10px; color: var(--muted); margin-top: 4px; display: flex; justify-content: space-between; }
+
+  /* ── PLANNER ── */
+  .planner-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .planner-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px; padding: 14px 16px;
+  }
+  .planner-card .planner-label { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 6px; }
+  .planner-card .planner-val { font-family: var(--font-head); font-size: 20px; font-weight: 800; }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .growth-grid { grid-template-columns: repeat(2, 1fr); }
+    .charts-row { grid-template-columns: 1fr; }
+    .team-grid { grid-template-columns: 1fr; }
+    .planner-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 560px) {
+    .topbar { flex-direction: column; height: auto; padding: 10px; gap: 8px; }
+    .topbar-tabs { flex-wrap: wrap; justify-content: center; }
+    .kpi-row { grid-template-columns: 1fr 1fr; }
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--surface); }
+  ::-webkit-scrollbar-thumb { background: var(--faint); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+</style>
+</head>
+<body>
+
+<!-- ── TOP NAV ─────────────────────────────────────────────── -->
+<div class="topbar">
+  <div class="topbar-logo">
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <rect width="28" height="28" rx="6" fill="#6bbf33"/>
+      <text x="14" y="20" text-anchor="middle" font-family="Syne,sans-serif" font-weight="800" font-size="14" fill="white">SE</text>
+    </svg>
+    SERVEREDGE
+    <span>FY2026 Sales Dashboard</span>
+  </div>
+  <div class="topbar-tabs" id="mainTabs">
+    <button class="tab-btn active" onclick="showView('team')" id="tab-team">
+      <span class="dot" style="background:#6bbf33"></span>Team Overview
+    </button>
+    <button class="tab-btn" onclick="showView('rep-0')" id="tab-rep-0">
+      <span class="dot" style="background:#4472c4"></span>Robert Schaffer
+    </button>
+    <button class="tab-btn" onclick="showView('rep-1')" id="tab-rep-1">
+      <span class="dot" style="background:#70ad47"></span>Andrew Mobilia
+    </button>
+    <button class="tab-btn" onclick="showView('rep-2')" id="tab-rep-2">
+      <span class="dot" style="background:#ed7d31"></span>Alexander Poll
+    </button>
+    <button class="tab-btn" onclick="showView('rep-3')" id="tab-rep-3">
+      <span class="dot" style="background:#9e480e"></span>Stivi Maticevski
+    </button>
+  </div>
+</div>
+
+<!-- ── VIEWS ──────────────────────────────────────────────── -->
+<div id="views-container">
+  <!-- Team view and rep views are injected by JS -->
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// DATA
+// ══════════════════════════════════════════════════════════════
+const REPS_DATA = [{"name":"Robert Schaffer","region":"QLD","color":"#4472C4","monthly":[{"month":"Jan","target":242199.0,"prev":201833.0},{"month":"Feb","target":281046.0,"prev":234205.0},{"month":"Mar","target":283538.0,"prev":236282.0},{"month":"Apr","target":270528.0,"prev":225440.0},{"month":"May","target":356245.0,"prev":296871.0},{"month":"Jun","target":359078.0,"prev":299232.0},{"month":"Jul","target":363360.0,"prev":302800.0},{"month":"Aug","target":355187.0,"prev":295989.0},{"month":"Sep","target":311193.0,"prev":259327.0},{"month":"Oct","target":396274.0,"prev":330229.0},{"month":"Nov","target":368121.0,"prev":306767.0},{"month":"Dec","target":244305.0,"prev":203588.0}],"classes":[{"name":"Server Racks & Accessories","color":"#4472C4","monthly":[{"month":"Jan","target":104394.0,"prev":86995.0},{"month":"Feb","target":135713.0,"prev":113094.0},{"month":"Mar","target":136824.0,"prev":114020.0},{"month":"Apr","target":137114.0,"prev":114262.0},{"month":"May","target":179651.0,"prev":149709.0},{"month":"Jun","target":173649.0,"prev":144708.0},{"month":"Jul","target":130406.0,"prev":108672.0},{"month":"Aug","target":181263.0,"prev":151052.0},{"month":"Sep","target":121993.0,"prev":101661.0},{"month":"Oct","target":192590.0,"prev":160491.0},{"month":"Nov","target":156902.0,"prev":130752.0},{"month":"Dec","target":98439.0,"prev":82032.0}]},{"name":"Data Products","color":"#70AD47","monthly":[{"month":"Jan","target":39525.0,"prev":32938.0},{"month":"Feb","target":57540.0,"prev":47950.0},{"month":"Mar","target":48780.0,"prev":40650.0},{"month":"Apr","target":53752.0,"prev":44793.0},{"month":"May","target":45664.0,"prev":38053.0},{"month":"Jun","target":60170.0,"prev":50141.0},{"month":"Jul","target":74173.0,"prev":61810.0},{"month":"Aug","target":52449.0,"prev":43707.0},{"month":"Sep","target":83532.0,"prev":69610.0},{"month":"Oct","target":48783.0,"prev":40652.0},{"month":"Nov","target":62912.0,"prev":52427.0},{"month":"Dec","target":40369.0,"prev":33640.0}]},{"name":"Cabling & Adapters","color":"#ED7D31","monthly":[{"month":"Jan","target":93687.0,"prev":78073.0},{"month":"Feb","target":87629.0,"prev":73024.0},{"month":"Mar","target":93806.0,"prev":78172.0},{"month":"Apr","target":78055.0,"prev":65045.0},{"month":"May","target":120817.0,"prev":100681.0},{"month":"Jun","target":124805.0,"prev":104004.0},{"month":"Jul","target":146835.0,"prev":122363.0},{"month":"Aug","target":139019.0,"prev":115849.0},{"month":"Sep","target":93498.0,"prev":77915.0},{"month":"Oct","target":137601.0,"prev":114667.0},{"month":"Nov","target":130545.0,"prev":108788.0},{"month":"Dec","target":95056.0,"prev":79213.0}]},{"name":"Others","color":"#9E480E","monthly":[{"month":"Jan","target":4594.0,"prev":3828.0},{"month":"Feb","target":163.0,"prev":136.0},{"month":"Mar","target":4129.0,"prev":3440.0},{"month":"Apr","target":1607.0,"prev":1339.0},{"month":"May","target":10113.0,"prev":8427.0},{"month":"Jun","target":455.0,"prev":379.0},{"month":"Jul","target":11946.0,"prev":9955.0},{"month":"Aug","target":-17543.0,"prev":-14619.0},{"month":"Sep","target":12169.0,"prev":10140.0},{"month":"Oct","target":17301.0,"prev":14418.0},{"month":"Nov","target":17761.0,"prev":14801.0},{"month":"Dec","target":10442.0,"prev":8702.0}]}],"growthRates":[20,20,20,20]},{"name":"Andrew Mobilia","region":"NSW · NT · QLD · SA · VIC · WA","color":"#70AD47","monthly":[{"month":"Jan","target":280863.0,"prev":234053.0},{"month":"Feb","target":310113.0,"prev":258428.0},{"month":"Mar","target":314945.0,"prev":262454.0},{"month":"Apr","target":252459.0,"prev":210383.0},{"month":"May","target":300914.0,"prev":250762.0},{"month":"Jun","target":254833.0,"prev":212360.0},{"month":"Jul","target":605780.0,"prev":504817.0},{"month":"Aug","target":445496.0,"prev":371247.0},{"month":"Sep","target":481246.0,"prev":401039.0},{"month":"Oct","target":509776.0,"prev":424814.0},{"month":"Nov","target":462433.0,"prev":385361.0},{"month":"Dec","target":295537.0,"prev":246281.0}],"classes":[{"name":"Server Racks & Accessories","color":"#4472C4","monthly":[{"month":"Jan","target":167472.0,"prev":139560.0},{"month":"Feb","target":138903.0,"prev":115752.0},{"month":"Mar","target":190966.0,"prev":159139.0},{"month":"Apr","target":150350.0,"prev":125292.0},{"month":"May","target":222249.0,"prev":185208.0},{"month":"Jun","target":163059.0,"prev":135883.0},{"month":"Jul","target":253014.0,"prev":210845.0},{"month":"Aug","target":301330.0,"prev":251108.0},{"month":"Sep","target":336099.0,"prev":280083.0},{"month":"Oct","target":288294.0,"prev":240245.0},{"month":"Nov","target":274837.0,"prev":229031.0},{"month":"Dec","target":167942.0,"prev":139952.0}]},{"name":"Data Products","color":"#70AD47","monthly":[{"month":"Jan","target":31849.0,"prev":26541.0},{"month":"Feb","target":37340.0,"prev":31117.0},{"month":"Mar","target":25321.0,"prev":21101.0},{"month":"Apr","target":28617.0,"prev":23847.0},{"month":"May","target":32836.0,"prev":27364.0},{"month":"Jun","target":41334.0,"prev":34445.0},{"month":"Jul","target":142985.0,"prev":119154.0},{"month":"Aug","target":51101.0,"prev":42584.0},{"month":"Sep","target":44360.0,"prev":36967.0},{"month":"Oct","target":100144.0,"prev":83453.0},{"month":"Nov","target":54506.0,"prev":45422.0},{"month":"Dec","target":33940.0,"prev":28284.0}]},{"name":"Cabling & Adapters","color":"#ED7D31","monthly":[{"month":"Jan","target":77275.0,"prev":64396.0},{"month":"Feb","target":115022.0,"prev":95852.0},{"month":"Mar","target":77660.0,"prev":64717.0},{"month":"Apr","target":66297.0,"prev":55248.0},{"month":"May","target":118422.0,"prev":98685.0},{"month":"Jun","target":85928.0,"prev":71607.0},{"month":"Jul","target":191476.0,"prev":159563.0},{"month":"Aug","target":161244.0,"prev":134370.0},{"month":"Sep","target":124363.0,"prev":103636.0},{"month":"Oct","target":142632.0,"prev":118860.0},{"month":"Nov","target":143542.0,"prev":119618.0},{"month":"Dec","target":88349.0,"prev":73624.0}]},{"name":"Others","color":"#9E480E","monthly":[{"month":"Jan","target":4268.0,"prev":3557.0},{"month":"Feb","target":18849.0,"prev":15707.0},{"month":"Mar","target":20997.0,"prev":17498.0},{"month":"Apr","target":7195.0,"prev":5996.0},{"month":"May","target":-72593.0,"prev":-60494.0},{"month":"Jun","target":-35489.0,"prev":-29574.0},{"month":"Jul","target":18305.0,"prev":15254.0},{"month":"Aug","target":-68179.0,"prev":-56816.0},{"month":"Sep","target":-23576.0,"prev":-19647.0},{"month":"Oct","target":-21294.0,"prev":-17745.0},{"month":"Nov","target":-10452.0,"prev":-8710.0},{"month":"Dec","target":5305.0,"prev":4421.0}]}],"growthRates":[20,20,20,20]},{"name":"Alexander Poll","region":"NSW · QLD · VIC","color":"#ED7D31","monthly":[{"month":"Jan","target":90191.0,"prev":75159.0},{"month":"Feb","target":140273.0,"prev":116895.0},{"month":"Mar","target":129305.0,"prev":107754.0},{"month":"Apr","target":130584.0,"prev":108820.0},{"month":"May","target":121025.0,"prev":100854.0},{"month":"Jun","target":130160.0,"prev":108467.0},{"month":"Jul","target":140102.0,"prev":116752.0},{"month":"Aug","target":153258.0,"prev":127715.0},{"month":"Sep","target":195038.0,"prev":162531.0},{"month":"Oct","target":139353.0,"prev":116128.0},{"month":"Nov","target":177893.0,"prev":148244.0},{"month":"Dec","target":120402.0,"prev":100335.0}],"classes":[{"name":"Server Racks & Accessories","color":"#4472C4","monthly":[{"month":"Jan","target":26539.0,"prev":22116.0},{"month":"Feb","target":52783.0,"prev":43986.0},{"month":"Mar","target":43126.0,"prev":35938.0},{"month":"Apr","target":40881.0,"prev":34067.0},{"month":"May","target":48308.0,"prev":40257.0},{"month":"Jun","target":49426.0,"prev":41188.0},{"month":"Jul","target":53995.0,"prev":44996.0},{"month":"Aug","target":68944.0,"prev":57453.0},{"month":"Sep","target":52876.0,"prev":44064.0},{"month":"Oct","target":58535.0,"prev":48779.0},{"month":"Nov","target":62824.0,"prev":52353.0},{"month":"Dec","target":55871.0,"prev":46559.0}]},{"name":"Data Products","color":"#70AD47","monthly":[{"month":"Jan","target":30633.0,"prev":25527.0},{"month":"Feb","target":28443.0,"prev":23703.0},{"month":"Mar","target":27260.0,"prev":22717.0},{"month":"Apr","target":38833.0,"prev":32361.0},{"month":"May","target":34280.0,"prev":28567.0},{"month":"Jun","target":29782.0,"prev":24818.0},{"month":"Jul","target":42644.0,"prev":35536.0},{"month":"Aug","target":23688.0,"prev":19740.0},{"month":"Sep","target":77736.0,"prev":64780.0},{"month":"Oct","target":28518.0,"prev":23765.0},{"month":"Nov","target":37381.0,"prev":31151.0},{"month":"Dec","target":29497.0,"prev":24581.0}]},{"name":"Cabling & Adapters","color":"#ED7D31","monthly":[{"month":"Jan","target":28666.0,"prev":23889.0},{"month":"Feb","target":49539.0,"prev":41283.0},{"month":"Mar","target":52781.0,"prev":43984.0},{"month":"Apr","target":43605.0,"prev":36338.0},{"month":"May","target":31971.0,"prev":26642.0},{"month":"Jun","target":45523.0,"prev":37936.0},{"month":"Jul","target":38739.0,"prev":32282.0},{"month":"Aug","target":53323.0,"prev":44436.0},{"month":"Sep","target":56598.0,"prev":47165.0},{"month":"Oct","target":47638.0,"prev":39699.0},{"month":"Nov","target":74021.0,"prev":61684.0},{"month":"Dec","target":31626.0,"prev":26355.0}]},{"name":"Others","color":"#9E480E","monthly":[{"month":"Jan","target":4353.0,"prev":3628.0},{"month":"Feb","target":9508.0,"prev":7923.0},{"month":"Mar","target":6137.0,"prev":5114.0},{"month":"Apr","target":7265.0,"prev":6054.0},{"month":"May","target":6466.0,"prev":5388.0},{"month":"Jun","target":5429.0,"prev":4525.0},{"month":"Jul","target":4725.0,"prev":3938.0},{"month":"Aug","target":7302.0,"prev":6085.0},{"month":"Sep","target":7828.0,"prev":6524.0},{"month":"Oct","target":4662.0,"prev":3885.0},{"month":"Nov","target":3667.0,"prev":3056.0},{"month":"Dec","target":3408.0,"prev":2840.0}]}],"growthRates":[20,20,20,20]},{"name":"Stivi Maticevski","region":"ACT · NSW · QLD","color":"#9E480E","monthly":[{"month":"Jan","target":122343.0,"prev":101953.0},{"month":"Feb","target":164323.0,"prev":136936.0},{"month":"Mar","target":152631.0,"prev":127193.0},{"month":"Apr","target":152256.0,"prev":126880.0},{"month":"May","target":23553.0,"prev":19627.0},{"month":"Jun","target":114056.0,"prev":95046.0},{"month":"Jul","target":183562.0,"prev":152968.0},{"month":"Aug","target":-35187.0,"prev":-29322.0},{"month":"Sep","target":148615.0,"prev":123846.0},{"month":"Oct","target":131747.0,"prev":109790.0},{"month":"Nov","target":143638.0,"prev":119698.0},{"month":"Dec","target":158212.0,"prev":131843.0}],"classes":[{"name":"Server Racks & Accessories","color":"#4472C4","monthly":[{"month":"Jan","target":49595.0,"prev":41329.0},{"month":"Feb","target":58259.0,"prev":48549.0},{"month":"Mar","target":72076.0,"prev":60064.0},{"month":"Apr","target":50388.0,"prev":41990.0},{"month":"May","target":103494.0,"prev":86245.0},{"month":"Jun","target":104231.0,"prev":86859.0},{"month":"Jul","target":81310.0,"prev":67758.0},{"month":"Aug","target":56229.0,"prev":46858.0},{"month":"Sep","target":79065.0,"prev":65888.0},{"month":"Oct","target":75221.0,"prev":62684.0},{"month":"Nov","target":80040.0,"prev":66700.0},{"month":"Dec","target":59170.0,"prev":49308.0}]},{"name":"Data Products","color":"#70AD47","monthly":[{"month":"Jan","target":38576.0,"prev":32147.0},{"month":"Feb","target":31420.0,"prev":26183.0},{"month":"Mar","target":20263.0,"prev":16886.0},{"month":"Apr","target":58273.0,"prev":48560.0},{"month":"May","target":48827.0,"prev":40690.0},{"month":"Jun","target":24133.0,"prev":20111.0},{"month":"Jul","target":31814.0,"prev":26511.0},{"month":"Aug","target":25146.0,"prev":20955.0},{"month":"Sep","target":26351.0,"prev":21959.0},{"month":"Oct","target":34089.0,"prev":28407.0},{"month":"Nov","target":22789.0,"prev":18991.0},{"month":"Dec","target":35656.0,"prev":29713.0}]},{"name":"Cabling & Adapters","color":"#ED7D31","monthly":[{"month":"Jan","target":28004.0,"prev":23336.0},{"month":"Feb","target":40183.0,"prev":33486.0},{"month":"Mar","target":54213.0,"prev":45177.0},{"month":"Apr","target":36640.0,"prev":30533.0},{"month":"May","target":35900.0,"prev":29916.0},{"month":"Jun","target":29712.0,"prev":24760.0},{"month":"Jul","target":61610.0,"prev":51341.0},{"month":"Aug","target":27781.0,"prev":23151.0},{"month":"Sep","target":65117.0,"prev":54265.0},{"month":"Oct","target":44074.0,"prev":36728.0},{"month":"Nov","target":61245.0,"prev":51038.0},{"month":"Dec","target":53957.0,"prev":44964.0}]},{"name":"Others","color":"#9E480E","monthly":[{"month":"Jan","target":6169.0,"prev":5140.0},{"month":"Feb","target":34460.0,"prev":28717.0},{"month":"Mar","target":6079.0,"prev":5066.0},{"month":"Apr","target":6956.0,"prev":5797.0},{"month":"May","target":-164668.0,"prev":-137224.0},{"month":"Jun","target":-44020.0,"prev":-36684.0},{"month":"Jul","target":8829.0,"prev":7357.0},{"month":"Aug","target":-144343.0,"prev":-120286.0},{"month":"Sep","target":-21918.0,"prev":-18265.0},{"month":"Oct","target":-21636.0,"prev":-18030.0},{"month":"Nov","target":-20437.0,"prev":-17031.0},{"month":"Dec","target":9430.0,"prev":7858.0}]}],"growthRates":[20,20,20,20]}];
+
+// State: actuals keyed by repIndex-monthIndex and classIndex
+const state = {
+  actuals: {},       // "repIdx-monthIdx" -> value
+  classActuals: {},  // "repIdx-clsIdx-monthIdx" -> value
+  growthRates: REPS_DATA.map(r => [...r.growthRates]), // per rep per class
+};
+
+// ── Formatting ──────────────────────────────────────────────
+const $ = (s, ctx = document) => ctx.querySelector(s);
+const $$ = (s, ctx = document) => [...ctx.querySelectorAll(s)];
+const fmt = v => v == null || isNaN(v) ? '—' : (v < 0 ? '(' : '') + '$' + Math.abs(Math.round(v)).toLocaleString() + (v < 0 ? ')' : '');
+const fmtK = v => v == null || isNaN(v) ? '—' : '$' + (Math.round(v / 1000)).toLocaleString() + 'k';
+const fmtPct = v => isNaN(v) || !isFinite(v) ? '—' : (v * 100).toFixed(1) + '%';
+
+// ── Compute derived targets from growth rates ──────────────
+function getTarget(repIdx, monthIdx) {
+  const rep = REPS_DATA[repIdx];
+  // Recompute from class totals (each class has its own growth)
+  return rep.classes.reduce((sum, cls, ci) => {
+    const base = cls.monthly[monthIdx].prev;
+    return sum + base * (1 + state.growthRates[repIdx][ci] / 100);
+  }, 0);
+}
+function getClassTarget(repIdx, clsIdx, monthIdx) {
+  const base = REPS_DATA[repIdx].classes[clsIdx].monthly[monthIdx].prev;
+  return base * (1 + state.growthRates[repIdx][clsIdx] / 100);
+}
+function getActual(repIdx, monthIdx) {
+  return state.actuals[`${repIdx}-${monthIdx}`] || 0;
+}
+function getClassActual(repIdx, clsIdx, monthIdx) {
+  return state.classActuals[`${repIdx}-${clsIdx}-${monthIdx}`] || 0;
+}
+
+// ── Chart registry (to destroy/recreate) ──────────────────
+const charts = {};
+function destroyChart(id) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+function mkChart(id, config) {
+  destroyChart(id);
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  charts[id] = new Chart(ctx, config);
+  return charts[id];
+}
+
+const CHART_DEFAULTS = {
+  plugins: { legend: { labels: { color: '#888', font: { family: 'DM Mono', size: 10 }, boxWidth: 10 } } },
+  scales: {
+    x: { ticks: { color: '#666', font: { family: 'DM Mono', size: 10 } }, grid: { color: '#1e1e1e' } },
+    y: { ticks: { color: '#666', font: { family: 'DM Mono', size: 10 }, callback: v => '$' + (v/1000).toFixed(0) + 'k' }, grid: { color: '#1e1e1e' } }
+  }
+};
+
+// ══════════════════════════════════════════════════════════════
+// BUILD REP VIEW
+// ══════════════════════════════════════════════════════════════
+function buildRepView(repIdx) {
+  const rep = REPS_DATA[repIdx];
+  const months = rep.monthly.map(m => m.month);
+  const annualTarget = months.reduce((s, _, mi) => s + getTarget(repIdx, mi), 0);
+  const annualPrev   = rep.monthly.reduce((s, m) => s + m.prev, 0);
+  const ytdActual    = months.reduce((s, _, mi) => s + getActual(repIdx, mi), 0);
+  const stillToGo    = Math.max(annualTarget - ytdActual, 0);
+  const monthsEntered = months.filter((_, mi) => getActual(repIdx, mi) > 0).length;
+
+  const clsColors = ['#4472C4','#70AD47','#ED7D31','#9E480E'];
+
+  return `
+  <div class="rep-header">
+    <div>
+      <div class="rep-title" style="color:${rep.color}">${rep.name}</div>
+      <div class="rep-subtitle">Region: ${rep.region} &nbsp;·&nbsp; All values in Australian Dollars (AUD)</div>
+      <div class="rep-accent-bar" style="background:${rep.color}"></div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);text-align:right">
+      FY2026 Sales Tracker<br>
+      <span style="color:${rep.color};font-weight:700">${fmtPct(ytdActual / annualTarget)}</span> of annual target
+    </div>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi-card" style="--accent-color:${rep.color}">
+      <div class="kpi-label">Annual Target</div>
+      <div class="kpi-value" style="color:var(--green)" id="kpi-anntgt-${repIdx}">${fmt(annualTarget)}</div>
+      <div class="kpi-sub">FY2026 (20% growth basis)</div>
+    </div>
+    <div class="kpi-card" style="--accent-color:#888">
+      <div class="kpi-label">Achieved FY2025</div>
+      <div class="kpi-value" style="color:#6699cc">${fmt(annualPrev)}</div>
+      <div class="kpi-sub">Prior year reference</div>
+    </div>
+    <div class="kpi-card" style="--accent-color:var(--amber)">
+      <div class="kpi-label">YTD Entered</div>
+      <div class="kpi-value" style="color:var(--amber)" id="kpi-ytd-${repIdx}">${fmt(ytdActual)}</div>
+      <div class="kpi-sub">${monthsEntered} month(s) entered</div>
+    </div>
+    <div class="kpi-card" style="--accent-color:#e05252">
+      <div class="kpi-label">Still To Go</div>
+      <div class="kpi-value" style="color:#e05252" id="kpi-still-${repIdx}">${fmt(stillToGo)}</div>
+      <div class="kpi-sub">${12 - monthsEntered} month(s) remaining</div>
+    </div>
+  </div>
+
+  <div class="section-hdr">⚙ Growth Rate Assumptions — adjust sliders to recalculate all targets</div>
+  <div class="growth-panel">
+    <div class="growth-grid">
+      ${rep.classes.map((cls, ci) => `
+      <div class="growth-item">
+        <label style="color:${clsColors[ci]}">${cls.name}</label>
+        <div class="growth-val" style="color:${clsColors[ci]}" id="gval-${repIdx}-${ci}">${state.growthRates[repIdx][ci]}%</div>
+        <input type="range" min="0" max="100" value="${state.growthRates[repIdx][ci]}"
+          oninput="setGrowth(${repIdx},${ci},+this.value)"
+          style="accent-color:${clsColors[ci]}">
+      </div>`).join('')}
+    </div>
+  </div>
+
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-title">Monthly — 2026 Target vs 2025 Actual</div>
+      <div class="chart-wrap"><canvas id="ch-line-${repIdx}"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Annual Target by Class</div>
+      <div class="chart-wrap"><canvas id="ch-cls-${repIdx}"></canvas></div>
+    </div>
+    <div class="chart-card wide">
+      <div class="chart-title">Monthly Target vs Entered (updates as you type)</div>
+      <div class="chart-wrap tall"><canvas id="ch-bar-${repIdx}"></canvas></div>
+    </div>
+  </div>
+
+  <div class="section-hdr">📋 Monthly Tracker — Enter actuals in yellow fields</div>
+  <div class="tracker-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Month</th><th>2026 Target</th><th>2025 Actual</th>
+          <th>Your 2026 Entry</th><th>vs Target ($)</th><th>vs Target (%)</th><th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="tracker-body-${repIdx}">
+      </tbody>
+      <tfoot>
+        <tr class="total-row">
+          <td>FULL YEAR TOTAL</td>
+          <td id="tot-tgt-${repIdx}"></td>
+          <td>${fmt(annualPrev)}</td>
+          <td id="tot-act-${repIdx}"></td>
+          <td id="tot-var-${repIdx}"></td>
+          <td id="tot-vpct-${repIdx}"></td>
+          <td id="tot-stat-${repIdx}"></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <div class="section-hdr">📦 Results by Class</div>
+  <div class="class-tabs" id="cls-tabs-${repIdx}">
+    ${rep.classes.map((cls, ci) => `
+    <div class="class-tab ${ci===0?'active':''}"
+      style="${ci===0?`background:${clsColors[ci]};color:#fff;`:'color:var(--muted)'}"
+      onclick="switchClass(${repIdx},${ci})"
+      id="cls-tab-${repIdx}-${ci}">
+      ${cls.name}
+    </div>`).join('')}
+  </div>
+  ${rep.classes.map((cls, ci) => `
+  <div id="cls-section-${repIdx}-${ci}" style="display:${ci===0?'block':'none'}">
+    <div class="tracker-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Month</th><th>2026 Target</th><th>2025 Actual</th>
+            <th>Enter 2026 Actual</th><th>vs Target ($)</th><th>vs Target (%)</th><th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="cls-body-${repIdx}-${ci}"></tbody>
+        <tfoot>
+          <tr class="total-row">
+            <td>${cls.name} TOTAL</td>
+            <td id="cls-tot-tgt-${repIdx}-${ci}"></td>
+            <td>${fmt(cls.monthly.reduce((s,m)=>s+m.prev,0))}</td>
+            <td id="cls-tot-act-${repIdx}-${ci}"></td>
+            <td id="cls-tot-var-${repIdx}-${ci}"></td>
+            <td id="cls-tot-vpct-${repIdx}-${ci}"></td>
+            <td id="cls-tot-stat-${repIdx}-${ci}"></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>`).join('')}
+
+  <div class="section-hdr">🎯 Target Planner</div>
+  <div class="planner-grid" id="planner-${repIdx}"></div>
+  `;
+}
+
+// ── Populate tracker rows ────────────────────────────────────
+function populateTracker(repIdx) {
+  const rep = REPS_DATA[repIdx];
+  const tbody = document.getElementById(`tracker-body-${repIdx}`);
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  let totTgt = 0, totAct = 0, totPrev = 0;
+  rep.monthly.forEach((m, mi) => {
+    const tgt  = getTarget(repIdx, mi);
+    const act  = getActual(repIdx, mi);
+    const vari = act > 0 ? act - tgt : null;
+    const vpct = act > 0 && tgt !== 0 ? (act - tgt) / Math.abs(tgt) : null;
+    totTgt += tgt; totAct += act; totPrev += m.prev;
+    const status = act > 0 ? (act >= tgt ? `<span class="status-on">✅ On Target</span>` : `<span class="status-off">⚠️ Below Target</span>`) : `<span class="status-pend">Pending</span>`;
+    const varCell = vari !== null ? `<span class="${vari >= 0 ? 'variance-pos' : 'variance-neg'}">${fmt(vari)}</span>` : '—';
+    const pctCell = vpct !== null ? `<span class="${vpct >= 0 ? 'variance-pos' : 'variance-neg'}">${fmtPct(vpct)}</span>` : '—';
+    tbody.innerHTML += `<tr>
+      <td>${m.month} 2026</td>
+      <td class="target-cell">${fmt(tgt)}</td>
+      <td class="prev-cell">${fmt(m.prev)}</td>
+      <td><input class="actual-input" type="number" placeholder="0"
+        value="${act > 0 ? act : ''}"
+        oninput="setActual(${repIdx},${mi},+this.value)"
+        onchange="setActual(${repIdx},${mi},+this.value)"></td>
+      <td>${varCell}</td>
+      <td>${pctCell}</td>
+      <td>${status}</td>
+    </tr>`;
+  });
+  // Totals
+  const totVar = totAct > 0 ? totAct - totTgt : null;
+  const totVpct = totAct > 0 && totTgt !== 0 ? (totAct - totTgt) / Math.abs(totTgt) : null;
+  document.getElementById(`tot-tgt-${repIdx}`).textContent = fmt(totTgt);
+  document.getElementById(`tot-act-${repIdx}`).textContent = fmt(totAct);
+  document.getElementById(`tot-var-${repIdx}`).innerHTML = totVar !== null ? `<span class="${totVar>=0?'variance-pos':'variance-neg'}">${fmt(totVar)}</span>` : '—';
+  document.getElementById(`tot-vpct-${repIdx}`).innerHTML = totVpct !== null ? `<span class="${totVpct>=0?'variance-pos':'variance-neg'}">${fmtPct(totVpct)}</span>` : '—';
+  const s = totAct > 0 ? (totAct >= totTgt ? `<span class="status-on">✅ On Target</span>` : `<span class="status-off">⚠️ Below Target</span>`) : `<span class="status-pend">Pending</span>`;
+  document.getElementById(`tot-stat-${repIdx}`).innerHTML = s;
+  // KPI cards
+  const kpiYtd = document.getElementById(`kpi-ytd-${repIdx}`);
+  const kpiStill = document.getElementById(`kpi-still-${repIdx}`);
+  const kpiTgt = document.getElementById(`kpi-anntgt-${repIdx}`);
+  if (kpiYtd) kpiYtd.textContent = fmt(totAct);
+  if (kpiStill) kpiStill.textContent = fmt(Math.max(totTgt - totAct, 0));
+  if (kpiTgt) kpiTgt.textContent = fmt(totTgt);
+  populatePlanner(repIdx, totTgt, totAct);
+}
+
+function populateClassTrackers(repIdx) {
+  const rep = REPS_DATA[repIdx];
+  rep.classes.forEach((cls, ci) => {
+    const tbody = document.getElementById(`cls-body-${repIdx}-${ci}`);
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    let totTgt = 0, totAct = 0;
+    cls.monthly.forEach((m, mi) => {
+      const tgt  = getClassTarget(repIdx, ci, mi);
+      const act  = getClassActual(repIdx, ci, mi);
+      const vari = act > 0 ? act - tgt : null;
+      const vpct = act > 0 && tgt !== 0 ? (act - tgt) / Math.abs(tgt) : null;
+      totTgt += tgt; totAct += act;
+      const status = act > 0 ? (act >= tgt ? `<span class="status-on">✅ On Target</span>` : `<span class="status-off">⚠️ Below Target</span>`) : `<span class="status-pend">Pending</span>`;
+      const varCell = vari !== null ? `<span class="${vari>=0?'variance-pos':'variance-neg'}">${fmt(vari)}</span>` : '—';
+      const pctCell = vpct !== null ? `<span class="${vpct>=0?'variance-pos':'variance-neg'}">${fmtPct(vpct)}</span>` : '—';
+      tbody.innerHTML += `<tr>
+        <td>${m.month} 2026</td>
+        <td class="target-cell">${fmt(tgt)}</td>
+        <td class="prev-cell">${fmt(m.prev)}</td>
+        <td><input class="actual-input" type="number" placeholder="0"
+          value="${act > 0 ? act : ''}"
+          oninput="setClassActual(${repIdx},${ci},${mi},+this.value)"
+          onchange="setClassActual(${repIdx},${ci},${mi},+this.value)"></td>
+        <td>${varCell}</td><td>${pctCell}</td><td>${status}</td>
+      </tr>`;
+    });
+    const totVar = totAct > 0 ? totAct - totTgt : null;
+    const totVpct = totAct > 0 && totTgt !== 0 ? (totAct - totTgt) / Math.abs(totTgt) : null;
+    const el = (id) => document.getElementById(id);
+    if (el(`cls-tot-tgt-${repIdx}-${ci}`)) el(`cls-tot-tgt-${repIdx}-${ci}`).textContent = fmt(totTgt);
+    if (el(`cls-tot-act-${repIdx}-${ci}`)) el(`cls-tot-act-${repIdx}-${ci}`).textContent = fmt(totAct);
+    if (el(`cls-tot-var-${repIdx}-${ci}`)) el(`cls-tot-var-${repIdx}-${ci}`).innerHTML = totVar !== null ? `<span class="${totVar>=0?'variance-pos':'variance-neg'}">${fmt(totVar)}</span>` : '—';
+    if (el(`cls-tot-vpct-${repIdx}-${ci}`)) el(`cls-tot-vpct-${repIdx}-${ci}`).innerHTML = totVpct !== null ? `<span class="${totVpct>=0?'variance-pos':'variance-neg'}">${fmtPct(totVpct)}</span>` : '—';
+    const s = totAct > 0 ? (totAct >= totTgt ? `<span class="status-on">✅ On Target</span>` : `<span class="status-off">⚠️ Below Target</span>`) : `<span class="status-pend">Pending</span>`;
+    if (el(`cls-tot-stat-${repIdx}-${ci}`)) el(`cls-tot-stat-${repIdx}-${ci}`).innerHTML = s;
+  });
+}
+
+function populatePlanner(repIdx, annTgt, ytd) {
+  const el = document.getElementById(`planner-${repIdx}`);
+  if (!el) return;
+  const monthsLeft = 12 - REPS_DATA[repIdx].monthly.filter((_, mi) => getActual(repIdx, mi) > 0).length;
+  const stillToGo = Math.max(annTgt - ytd, 0);
+  const neededPer = monthsLeft > 0 ? stillToGo / monthsLeft : 0;
+  el.innerHTML = `
+    <div class="planner-card">
+      <div class="planner-label">Annual Target</div>
+      <div class="planner-val" style="color:var(--green)">${fmt(annTgt)}</div>
+    </div>
+    <div class="planner-card">
+      <div class="planner-label">Total Entered So Far</div>
+      <div class="planner-val" style="color:var(--amber)">${fmt(ytd)}</div>
+    </div>
+    <div class="planner-card">
+      <div class="planner-label">Still To Go</div>
+      <div class="planner-val" style="color:#e05252">${fmt(stillToGo)}</div>
+    </div>
+    <div class="planner-card">
+      <div class="planner-label">Months With Entries</div>
+      <div class="planner-val" style="color:#6699cc">${12 - monthsLeft}</div>
+    </div>
+    <div class="planner-card">
+      <div class="planner-label">Months Remaining</div>
+      <div class="planner-val" style="color:var(--muted)">${monthsLeft}</div>
+    </div>
+    <div class="planner-card">
+      <div class="planner-label">Needed Per Month (Avg)</div>
+      <div class="planner-val" style="color:var(--amber)">${fmt(neededPer)}</div>
+    </div>`;
+}
+
+// ── Draw charts for a rep ────────────────────────────────────
+function drawRepCharts(repIdx) {
+  const rep = REPS_DATA[repIdx];
+  const months = rep.monthly.map(m => m.month);
+  const targets = months.map((_, mi) => getTarget(repIdx, mi));
+  const prevs   = rep.monthly.map(m => m.prev);
+  const actuals = months.map((_, mi) => getActual(repIdx, mi));
+  const clsColors = ['#4472C4','#70AD47','#ED7D31','#9E480E'];
+
+  // Line: target vs 2025
+  mkChart(`ch-line-${repIdx}`, {
+    type: 'line', data: {
+      labels: months,
+      datasets: [
+        { label: '2026 Target', data: targets, borderColor: rep.color, backgroundColor: 'transparent', borderWidth: 2, tension: .4, pointRadius: 3 },
+        { label: '2025 Actual', data: prevs, borderColor: '#555', borderDash: [4,3], backgroundColor: 'transparent', borderWidth: 1.5, tension: .4, pointRadius: 2 }
+      ]
+    }, options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false, plugins: { ...CHART_DEFAULTS.plugins, legend: { ...CHART_DEFAULTS.plugins.legend } } }
+  });
+
+  // Class bar
+  const clsAnnualTgts = rep.classes.map((cls, ci) => cls.monthly.reduce((s, _, mi) => s + getClassTarget(repIdx, ci, mi), 0));
+  const clsAnnualPrev = rep.classes.map(cls => cls.monthly.reduce((s, m) => s + m.prev, 0));
+  mkChart(`ch-cls-${repIdx}`, {
+    type: 'bar', data: {
+      labels: rep.classes.map(c => c.name.split(' ')[0]),
+      datasets: [
+        { label: '2026 Target', data: clsAnnualTgts, backgroundColor: clsColors.map(c => c + 'cc'), borderColor: clsColors, borderWidth: 1 },
+        { label: '2025 Actual', data: clsAnnualPrev, backgroundColor: '#333', borderColor: '#555', borderWidth: 1 }
+      ]
+    }, options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { ...CHART_DEFAULTS.plugins } }
+  });
+
+  // Bar: target vs entered
+  mkChart(`ch-bar-${repIdx}`, {
+    type: 'bar', data: {
+      labels: months,
+      datasets: [
+        { label: '2026 Target', data: targets, backgroundColor: rep.color + '99', borderColor: rep.color, borderWidth: 1 },
+        { label: 'Entered', data: actuals, backgroundColor: '#f5a62399', borderColor: '#f5a623', borderWidth: 1 }
+      ]
+    }, options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false, plugins: { ...CHART_DEFAULTS.plugins } }
+  });
+}
+
+// ── Interactions ─────────────────────────────────────────────
+function setActual(repIdx, monthIdx, val) {
+  state.actuals[`${repIdx}-${monthIdx}`] = val;
+  populateTracker(repIdx);
+  drawRepCharts(repIdx);
+  refreshTeamView();
+}
+function setClassActual(repIdx, clsIdx, monthIdx, val) {
+  state.classActuals[`${repIdx}-${clsIdx}-${monthIdx}`] = val;
+  populateClassTrackers(repIdx);
+}
+function setGrowth(repIdx, clsIdx, val) {
+  state.growthRates[repIdx][clsIdx] = val;
+  const el = document.getElementById(`gval-${repIdx}-${clsIdx}`);
+  if (el) el.textContent = val + '%';
+  populateTracker(repIdx);
+  populateClassTrackers(repIdx);
+  drawRepCharts(repIdx);
+  refreshTeamView();
+}
+function switchClass(repIdx, ci) {
+  const rep = REPS_DATA[repIdx];
+  const clsColors = ['#4472C4','#70AD47','#ED7D31','#9E480E'];
+  rep.classes.forEach((_, i) => {
+    const tab = document.getElementById(`cls-tab-${repIdx}-${i}`);
+    const sec = document.getElementById(`cls-section-${repIdx}-${i}`);
+    if (tab) { tab.className = 'class-tab' + (i === ci ? ' active' : ''); tab.style.cssText = i === ci ? `background:${clsColors[i]};color:#fff` : 'color:var(--muted)'; }
+    if (sec) sec.style.display = i === ci ? 'block' : 'none';
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// TEAM VIEW
+// ══════════════════════════════════════════════════════════════
+function buildTeamView() {
+  const repColors = REPS_DATA.map(r => r.color);
+  const months = REPS_DATA[0].monthly.map(m => m.month);
+  return `
+  <div class="rep-header">
+    <div>
+      <div class="rep-title" style="color:var(--green)">Team Overview</div>
+      <div class="rep-subtitle">FY2026 · All Associates · Manager View · All values in AUD</div>
+      <div class="rep-accent-bar" style="background:var(--green)"></div>
+    </div>
+    <div style="font-size:11px;color:var(--muted)">Live from individual rep entries</div>
+  </div>
+
+  <div class="section-hdr">📊 Team Summary Cards</div>
+  <div class="team-grid" id="team-cards"></div>
+
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-title">Annual Target vs FY2025 by Associate</div>
+      <div class="chart-wrap tall"><canvas id="ch-team-bar"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Class Mix — 2025 Revenue</div>
+      <div class="chart-wrap tall"><canvas id="ch-team-cls"></canvas></div>
+    </div>
+    <div class="chart-card wide">
+      <div class="chart-title">Monthly Team Revenue — FY2025 (All Associates)</div>
+      <div class="chart-wrap tall"><canvas id="ch-team-monthly"></canvas></div>
+    </div>
+  </div>
+
+  <div class="section-hdr">📋 Monthly Team Performance Table</div>
+  <div class="tracker-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Month</th>
+          ${REPS_DATA.map(r => `<th>${r.name.split(' ')[0]}</th>`).join('')}
+          <th>Team Total</th>
+          <th>vs Team Target</th>
+        </tr>
+      </thead>
+      <tbody id="team-monthly-body"></tbody>
+      <tfoot>
+        <tr class="total-row">
+          <td>TOTAL FY2026</td>
+          ${REPS_DATA.map((_, ri) => `<td id="team-tot-${ri}"></td>`).join('')}
+          <td id="team-tot-all"></td>
+          <td id="team-tot-var"></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <div class="section-hdr">📦 Results by Class (Team)</div>
+  <div class="tracker-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Class</th>
+          ${REPS_DATA.map(r => `<th>${r.name.split(' ')[0]}</th>`).join('')}
+          <th>Team Total</th>
+        </tr>
+      </thead>
+      <tbody id="team-class-body"></tbody>
+    </table>
+  </div>
+  `;
+}
+
+function refreshTeamView() {
+  const teamView = document.getElementById('view-team');
+  if (!teamView || !teamView.classList.contains('active')) return;
+
+  // Team cards
+  const cardsEl = document.getElementById('team-cards');
+  if (cardsEl) {
+    cardsEl.innerHTML = REPS_DATA.map((rep, ri) => {
+      const annTgt = REPS_DATA[ri].monthly.reduce((s, _, mi) => s + getTarget(ri, mi), 0);
+      const annPrev = rep.monthly.reduce((s, m) => s + m.prev, 0);
+      const ytd = rep.monthly.reduce((s, _, mi) => s + getActual(ri, mi), 0);
+      const pct = annTgt > 0 ? ytd / annTgt : 0;
+      return `<div class="rep-card">
+        <div style="position:absolute;top:0;left:0;right:0;height:3px;background:${rep.color};border-radius:8px 8px 0 0"></div>
+        <div class="rep-card-name" style="color:${rep.color}">${rep.name}</div>
+        <div class="rep-card-region">Region: ${rep.region}</div>
+        <div class="rep-card-stats">
+          <div><div class="rep-stat-label">2026 Target</div><div class="rep-stat-val" style="color:var(--green)">${fmtK(annTgt)}</div></div>
+          <div><div class="rep-stat-label">FY2025</div><div class="rep-stat-val" style="color:#6699cc">${fmtK(annPrev)}</div></div>
+          <div><div class="rep-stat-label">YTD Entered</div><div class="rep-stat-val" style="color:var(--amber)">${fmtK(ytd)}</div></div>
+        </div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${Math.min(pct*100,100)}%;background:${rep.color}"></div></div>
+          <div class="progress-label"><span>${fmtPct(pct)} of target</span><span>${fmtK(Math.max(annTgt - ytd, 0))} remaining</span></div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // Monthly table
+  const tbody = document.getElementById('team-monthly-body');
+  if (tbody) {
+    tbody.innerHTML = '';
+    const months = REPS_DATA[0].monthly.map(m => m.month);
+    let totByRep = REPS_DATA.map(() => 0);
+    let totTgtByRep = REPS_DATA.map((_, ri) => REPS_DATA[ri].monthly.reduce((s,_,mi) => s + getTarget(ri,mi), 0));
+    months.forEach((m, mi) => {
+      const repActs = REPS_DATA.map((_, ri) => getActual(ri, mi));
+      const teamTotal = repActs.reduce((s, v) => s + v, 0);
+      const teamTgt = REPS_DATA.reduce((s, _, ri) => s + getTarget(ri, mi), 0);
+      repActs.forEach((v, ri) => totByRep[ri] += v);
+      tbody.innerHTML += `<tr>
+        <td>${m} 2026</td>
+        ${repActs.map((v, ri) => `<td style="color:${v>0?REPS_DATA[ri].color:'var(--muted)'}">${v > 0 ? fmt(v) : '—'}</td>`).join('')}
+        <td style="color:var(--green);font-weight:600">${teamTotal > 0 ? fmt(teamTotal) : '—'}</td>
+        <td>${teamTotal > 0 ? `<span class="${teamTotal>=teamTgt?'variance-pos':'variance-neg'}">${fmt(teamTotal-teamTgt)}</span>` : '—'}</td>
+      </tr>`;
+    });
+    REPS_DATA.forEach((_, ri) => {
+      const el = document.getElementById(`team-tot-${ri}`);
+      if (el) el.textContent = fmt(totByRep[ri]);
+    });
+    const teamGrandTotal = totByRep.reduce((s, v) => s + v, 0);
+    const teamGrandTgt   = totTgtByRep.reduce((s, v) => s + v, 0);
+    const te = document.getElementById('team-tot-all');
+    const tv = document.getElementById('team-tot-var');
+    if (te) te.textContent = fmt(teamGrandTotal);
+    if (tv) tv.innerHTML = teamGrandTotal > 0 ? `<span class="${teamGrandTotal>=teamGrandTgt?'variance-pos':'variance-neg'}">${fmt(teamGrandTotal-teamGrandTgt)}</span>` : '—';
+  }
+
+  // Class table
+  const ctbody = document.getElementById('team-class-body');
+  if (ctbody) {
+    const clsNames = REPS_DATA[0].classes.map(c => c.name);
+    const clsColors = ['#4472C4','#70AD47','#ED7D31','#9E480E'];
+    ctbody.innerHTML = clsNames.map((cls, ci) => {
+      const repTots = REPS_DATA.map((_, ri) =>
+        REPS_DATA[ri].classes[ci].monthly.reduce((s, _, mi) => s + getClassTarget(ri, ci, mi), 0)
+      );
+      const teamTotal = repTots.reduce((s, v) => s + v, 0);
+      return `<tr>
+        <td style="color:${clsColors[ci]};font-weight:600">${cls}</td>
+        ${repTots.map(v => `<td class="target-cell">${fmt(v)}</td>`).join('')}
+        <td style="color:var(--green);font-weight:700">${fmt(teamTotal)}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Charts
+  const allMonthlyTgts = REPS_DATA.map((_, ri) => REPS_DATA[ri].monthly.reduce((s,_,mi) => s + getTarget(ri,mi), 0));
+  const allMonthlyPrev = REPS_DATA.map(r => r.monthly.reduce((s,m) => s + m.prev, 0));
+  mkChart('ch-team-bar', {
+    type: 'bar', data: {
+      labels: REPS_DATA.map(r => r.name.split(' ')[0]),
+      datasets: [
+        { label: '2026 Target', data: allMonthlyTgts, backgroundColor: REPS_DATA.map(r => r.color + '99'), borderColor: REPS_DATA.map(r => r.color), borderWidth: 1 },
+        { label: 'FY2025', data: allMonthlyPrev, backgroundColor: '#333', borderColor: '#555', borderWidth: 1 }
+      ]
+    }, options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false, plugins: { ...CHART_DEFAULTS.plugins } }
+  });
+
+  // Class pie (team total by class based on 2025)
+  const clsColors = ['#4472C4','#70AD47','#ED7D31','#9E480E'];
+  const clsTotals = REPS_DATA[0].classes.map((_, ci) =>
+    REPS_DATA.reduce((s, r) => s + r.classes[ci].monthly.reduce((s2, m) => s2 + m.prev, 0), 0)
+  );
+  mkChart('ch-team-cls', {
+    type: 'doughnut', data: {
+      labels: REPS_DATA[0].classes.map(c => c.name),
+      datasets: [{ data: clsTotals, backgroundColor: clsColors.map(c => c + 'cc'), borderColor: clsColors, borderWidth: 2 }]
+    }, options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'right', labels: { color: '#888', font: { family: 'DM Mono', size: 10 }, boxWidth: 10 } } }
+    }
+  });
+
+  // Monthly stacked team
+  const months = REPS_DATA[0].monthly.map(m => m.month);
+  mkChart('ch-team-monthly', {
+    type: 'bar', data: {
+      labels: months,
+      datasets: REPS_DATA.map((rep, ri) => ({
+        label: rep.name.split(' ')[0],
+        data: months.map((_, mi) => rep.monthly[mi].prev),
+        backgroundColor: rep.color + '99',
+        borderColor: rep.color, borderWidth: 1, stack: 'team'
+      }))
+    }, options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false, plugins: { ...CHART_DEFAULTS.plugins } }
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// VIEW ROUTING
+// ══════════════════════════════════════════════════════════════
+function showView(id) {
+  $$('.view').forEach(v => v.classList.remove('active'));
+  $$('.tab-btn').forEach(b => b.classList.remove('active'));
+  const view = document.getElementById(`view-${id}`);
+  const tab  = document.getElementById(`tab-${id}`);
+  if (view) view.classList.add('active');
+  if (tab)  tab.classList.add('active');
+
+  if (id === 'team') {
+    refreshTeamView();
+  } else {
+    const repIdx = parseInt(id.split('-')[1]);
+    setTimeout(() => {
+      populateTracker(repIdx);
+      populateClassTrackers(repIdx);
+      drawRepCharts(repIdx);
+    }, 50);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════
+function init() {
+  const container = document.getElementById('views-container');
+
+  // Team view
+  const teamDiv = document.createElement('div');
+  teamDiv.id = 'view-team';
+  teamDiv.className = 'view active';
+  teamDiv.innerHTML = buildTeamView();
+  container.appendChild(teamDiv);
+
+  // Rep views
+  REPS_DATA.forEach((rep, ri) => {
+    const div = document.createElement('div');
+    div.id = `view-rep-${ri}`;
+    div.className = 'view';
+    div.innerHTML = buildRepView(ri);
+    container.appendChild(div);
+  });
+
+  // Initial render
+  refreshTeamView();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
