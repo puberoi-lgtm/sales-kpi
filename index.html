@@ -920,6 +920,13 @@ function buildBulkView() {
     " onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
       Choose CSV File
     </button>
+    <button onclick="clearAllData()" style="
+      background: transparent; color: #e05252; border: 1px solid #e05252; border-radius: 6px;
+      padding: 8px 20px; font-family: var(--font-mono); font-size: 12px;
+      font-weight: 600; cursor: pointer; margin-left: 10px; transition: all .15s;
+    " onmouseover="this.style.background='rgba(224,82,82,.1)'" onmouseout="this.style.background='transparent'">
+      🗑 Clear All Data
+    </button>
     <div id="csv-status" style="margin-top:14px;font-size:12px;color:var(--muted);min-height:18px"></div>
   </div>`;
 
@@ -1116,6 +1123,34 @@ function applyCsvTotals(totals) {
     }
   }
   // Refresh everything
+  populateBulkView();
+  REPS_DATA.forEach((_, ri) => {
+    const repView = document.getElementById(`view-rep-${ri}`);
+    if (repView && repView.classList.contains('active')) {
+      populateTracker(ri);
+      populateClassTrackers(ri);
+      drawRepCharts(ri);
+    }
+  });
+  refreshTeamView();
+}
+
+function clearAllData() {
+  if (!confirm('This will remove all entered actuals and CSV data. Are you sure?')) return;
+
+  // Clear all state
+  state.actuals = {};
+  state.classActuals = {};
+
+  // Reset upload panel UI
+  const panel = document.getElementById('csv-upload-panel');
+  if (panel) { panel.style.borderColor = 'var(--border)'; panel.style.background = 'var(--surface)'; }
+  const status = document.getElementById('csv-status');
+  if (status) { status.style.color = 'var(--green)'; status.textContent = '✅ All data cleared. You can now upload a new CSV.'; }
+  const fileInput = document.getElementById('csv-file-input');
+  if (fileInput) fileInput.value = '';
+
+  // Refresh all views
   populateBulkView();
   REPS_DATA.forEach((_, ri) => {
     const repView = document.getElementById(`view-rep-${ri}`);
