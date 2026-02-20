@@ -278,6 +278,9 @@
     <button class="tab-btn" onclick="showView('rep-3')" id="tab-rep-3">
       <span class="dot" style="background:#9e480e"></span>Stivi Maticevski
     </button>
+    <button class="tab-btn" onclick="showView('bulk')" id="tab-bulk">
+      <span class="dot" style="background:#f5a623"></span>Bulk Entry
+    </button>
   </div>
 </div>
 
@@ -882,6 +885,116 @@ function refreshTeamView() {
 }
 
 // ══════════════════════════════════════════════════════════════
+// BULK ENTRY VIEW
+// ══════════════════════════════════════════════════════════════
+function buildBulkView() {
+  const months = REPS_DATA[0].monthly.map(m => m.month);
+  const clsNames = REPS_DATA[0].classes.map(c => c.name);
+  const clsColors = ['#4472C4','#70AD47','#ED7D31','#9E480E'];
+
+  // Build a section per rep, with a tab per class
+  const repSections = REPS_DATA.map((rep, ri) => `
+    <div style="margin-bottom:28px;">
+      <div class="section-hdr"><span style="color:${rep.color}">● ${rep.name}</span> — ${rep.region}</div>
+      <div class="class-tabs" id="bulk-cls-tabs-${ri}">
+        ${clsNames.map((cls, ci) => `
+          <div class="class-tab ${ci===0?'active':''}"
+            style="${ci===0?`background:${clsColors[ci]};color:#fff`:'color:var(--muted)'}"
+            onclick="switchBulkClass(${ri},${ci})"
+            id="bulk-cls-tab-${ri}-${ci}">${cls}</div>
+        `).join('')}
+      </div>
+      ${clsNames.map((cls, ci) => `
+        <div id="bulk-cls-section-${ri}-${ci}" style="display:${ci===0?'block':'none'}">
+          <div class="tracker-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Month</th>
+                  <th>2026 Target</th>
+                  <th>2025 Actual</th>
+                  <th style="color:#ffe566">Enter 2026 Actual</th>
+                  <th>vs Target ($)</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="bulk-body-${ri}-${ci}"></tbody>
+            </table>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
+
+  return `
+  <div class="rep-header">
+    <div>
+      <div class="rep-title" style="color:var(--amber)">⚡ Bulk Entry</div>
+      <div class="rep-subtitle">Enter actuals for all associates and all classes in one place · Updates all individual sheets instantly</div>
+      <div class="rep-accent-bar" style="background:var(--amber)"></div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);text-align:right">Changes propagate to all rep sheets<br>and the Team Overview automatically</div>
+  </div>
+  ${repSections}
+  `;
+}
+
+function populateBulkView() {
+  const clsColors = ['#4472C4','#70AD47','#ED7D31','#9E480E'];
+  REPS_DATA.forEach((rep, ri) => {
+    rep.classes.forEach((cls, ci) => {
+      const tbody = document.getElementById(`bulk-body-${ri}-${ci}`);
+      if (!tbody) return;
+      tbody.innerHTML = '';
+      cls.monthly.forEach((m, mi) => {
+        const tgt = getClassTarget(ri, ci, mi);
+        const act = getClassActual(ri, ci, mi);
+        const vari = act > 0 ? act - tgt : null;
+        const varCell = vari !== null ? `<span class="${vari>=0?'variance-pos':'variance-neg'}">${fmt(vari)}</span>` : '—';
+        const status = act > 0 ? (act >= tgt ? `<span class="status-on">✅ On Target</span>` : `<span class="status-off">⚠️ Below Target</span>`) : `<span class="status-pend">Pending</span>`;
+        tbody.innerHTML += `<tr>
+          <td>${m.month} 2026</td>
+          <td class="target-cell">${fmt(tgt)}</td>
+          <td class="prev-cell">${fmt(m.prev)}</td>
+          <td><input class="actual-input" type="text" inputmode="numeric" placeholder="0"
+            value="${act > 0 ? act : ''}"
+            onblur="setBulkActual(${ri},${ci},${mi},parseFloat(this.value.replace(/[^0-9.]/g,''))||0)"></td>
+          <td>${varCell}</td>
+          <td>${status}</td>
+        </tr>`;
+      });
+    });
+  });
+}
+
+function setBulkActual(repIdx, clsIdx, monthIdx, val) {
+  // Write into classActuals state — same store used by individual rep sheets
+  state.classActuals[`${repIdx}-${clsIdx}-${monthIdx}`] = val;
+  // Refresh all views that may be affected
+  populateBulkView();
+  // Refresh individual rep view if it's currently open
+  REPS_DATA.forEach((_, ri) => {
+    const repView = document.getElementById(`view-rep-${ri}`);
+    if (repView && repView.classList.contains('active')) {
+      populateTracker(ri);
+      populateClassTrackers(ri);
+      drawRepCharts(ri);
+    }
+  });
+  refreshTeamView();
+}
+
+function switchBulkClass(ri, ci) {
+  const clsColors = ['#4472C4','#70AD47','#ED7D31','#9E480E'];
+  REPS_DATA[ri].classes.forEach((_, i) => {
+    const tab = document.getElementById(`bulk-cls-tab-${ri}-${i}`);
+    const sec = document.getElementById(`bulk-cls-section-${ri}-${i}`);
+    if (tab) { tab.className = 'class-tab' + (i===ci?' active':''); tab.style.cssText = i===ci?`background:${clsColors[i]};color:#fff`:'color:var(--muted)'; }
+    if (sec) sec.style.display = i===ci ? 'block' : 'none';
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
 // VIEW ROUTING
 // ══════════════════════════════════════════════════════════════
 function showView(id) {
@@ -894,6 +1007,8 @@ function showView(id) {
 
   if (id === 'team') {
     refreshTeamView();
+  } else if (id === 'bulk') {
+    populateBulkView();
   } else {
     const repIdx = parseInt(id.split('-')[1]);
     setTimeout(() => {
@@ -925,6 +1040,13 @@ function init() {
     div.innerHTML = buildRepView(ri);
     container.appendChild(div);
   });
+
+  // Bulk entry view
+  const bulkDiv = document.createElement('div');
+  bulkDiv.id = 'view-bulk';
+  bulkDiv.className = 'view';
+  bulkDiv.innerHTML = buildBulkView();
+  container.appendChild(bulkDiv);
 
   // Initial render
   refreshTeamView();
