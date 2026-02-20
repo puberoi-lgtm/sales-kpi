@@ -892,6 +892,37 @@ function buildBulkView() {
   const clsNames = REPS_DATA[0].classes.map(c => c.name);
   const clsColors = ['#4472C4','#70AD47','#ED7D31','#9E480E'];
 
+  const csvUploadSection = `
+  <div id="csv-upload-panel" style="
+    background: var(--surface);
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 28px 24px;
+    margin-bottom: 24px;
+    text-align: center;
+    transition: border-color .2s, background .2s;
+  " ondragover="event.preventDefault();this.style.borderColor='var(--amber)';this.style.background='rgba(245,166,35,.05)'"
+     ondragleave="this.style.borderColor='var(--border)';this.style.background='var(--surface)'"
+     ondrop="handleCsvDrop(event)">
+    <div style="font-size:28px;margin-bottom:8px">📂</div>
+    <div style="font-family:var(--font-head);font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px">
+      Upload your NetSuite CSV export
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:16px">
+      Drag & drop your CSV file here, or click to browse.<br>
+      All actuals will be parsed and applied to every rep and class automatically.
+    </div>
+    <input type="file" id="csv-file-input" accept=".csv" style="display:none" onchange="handleCsvFile(this.files[0])">
+    <button onclick="document.getElementById('csv-file-input').click()" style="
+      background: var(--amber); color: #000; border: none; border-radius: 6px;
+      padding: 8px 20px; font-family: var(--font-mono); font-size: 12px;
+      font-weight: 600; cursor: pointer; transition: opacity .15s;
+    " onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+      Choose CSV File
+    </button>
+    <div id="csv-status" style="margin-top:14px;font-size:12px;color:var(--muted);min-height:18px"></div>
+  </div>`;
+
   // Build a section per rep, with a tab per class
   const repSections = REPS_DATA.map((rep, ri) => `
     <div style="margin-bottom:28px;">
@@ -930,11 +961,12 @@ function buildBulkView() {
   <div class="rep-header">
     <div>
       <div class="rep-title" style="color:var(--amber)">⚡ Bulk Entry</div>
-      <div class="rep-subtitle">Enter actuals for all associates and all classes in one place · Updates all individual sheets instantly</div>
+      <div class="rep-subtitle">Upload a CSV or enter actuals manually · Updates all individual sheets instantly</div>
       <div class="rep-accent-bar" style="background:var(--amber)"></div>
     </div>
     <div style="font-size:11px;color:var(--muted);text-align:right">Changes propagate to all rep sheets<br>and the Team Overview automatically</div>
   </div>
+  ${csvUploadSection}
   ${repSections}
   `;
 }
@@ -992,6 +1024,147 @@ function switchBulkClass(ri, ci) {
     if (tab) { tab.className = 'class-tab' + (i===ci?' active':''); tab.style.cssText = i===ci?`background:${clsColors[i]};color:#fff`:'color:var(--muted)'; }
     if (sec) sec.style.display = i===ci ? 'block' : 'none';
   });
+}
+
+// ══════════════════════════════════════════════════════════════
+// CSV IMPORT
+// ══════════════════════════════════════════════════════════════
+const CSV_REP_MAP = {
+  'Robert M Schaffer':  0,
+  'Andrew M Mobilia':   1,
+  'Alexander Poll':     2,
+  'Stivi Maticevski':   3,
+};
+const CSV_CLASS_MAP = {
+  'Server Racks & Accessories': 0,
+  'Data Products':               1,
+  'Cabling & Adapters':          2,
+  // anything else -> 3 (Others)
+};
+const CSV_MONTH_MAP = {
+  '01/01/25':0,'01/02/25':1,'01/03/25':2,'01/04/25':3,
+  '01/05/25':4,'01/06/25':5,'01/07/25':6,'01/08/25':7,
+  '01/08/25':7,'01/09/25':8,'01/10/25':9,'01/11/25':10,'01/12/25':11,
+  '01/01/26':0,'01/02/26':1,'01/03/26':2,'01/04/26':3,
+  '01/05/26':4,'01/06/26':5,'01/07/26':6,'01/08/26':7,
+  '01/09/26':8,'01/10/26':9,'01/11/26':10,'01/12/26':11,
+};
+
+function parseCsvAmount(s) {
+  if (!s) return 0;
+  s = s.trim();
+  const neg = s.startsWith('(');
+  s = s.replace(/[($,)\s]/g, '');
+  const v = parseFloat(s) || 0;
+  return neg ? -v : v;
+}
+
+function parseCsv(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  // Find header row
+  const headerIdx = lines.findIndex(l => l.includes('Sales Rep') && l.includes('Amount'));
+  if (headerIdx < 0) return null;
+
+  const headers = lines[headerIdx].split(',').map(h => h.replace(/^"|"$/g,'').trim());
+  const idxRep    = headers.indexOf('Sales Rep');
+  const idxPeriod = headers.indexOf('Period');
+  const idxClass  = headers.indexOf('Class (no hierarchy)');
+  const idxAmt    = headers.indexOf('Amount');
+
+  if ([idxRep,idxPeriod,idxClass,idxAmt].includes(-1)) return null;
+
+  // Accumulate totals: [repIdx][clsIdx][monthIdx]
+  const totals = Array.from({length:4}, () =>
+    Array.from({length:4}, () => new Array(12).fill(0))
+  );
+
+  for (let i = headerIdx + 1; i < lines.length; i++) {
+    // Handle quoted fields with commas inside
+    const cols = [];
+    let cur = '', inQuote = false;
+    for (const ch of lines[i]) {
+      if (ch === '"') { inQuote = !inQuote; }
+      else if (ch === ',' && !inQuote) { cols.push(cur); cur = ''; }
+      else cur += ch;
+    }
+    cols.push(cur);
+
+    const repName  = (cols[idxRep]    || '').trim();
+    const period   = (cols[idxPeriod] || '').trim();
+    const clsName  = (cols[idxClass]  || '').trim();
+    const amt      = parseCsvAmount(cols[idxAmt] || '');
+
+    const ri = CSV_REP_MAP[repName];
+    const mi = CSV_MONTH_MAP[period];
+    if (ri === undefined || mi === undefined) continue;
+
+    const ci = CSV_CLASS_MAP[clsName] !== undefined ? CSV_CLASS_MAP[clsName] : 3;
+    totals[ri][ci][mi] += amt;
+  }
+  return totals;
+}
+
+function applyCsvTotals(totals) {
+  // Write into classActuals state
+  for (let ri = 0; ri < 4; ri++) {
+    for (let ci = 0; ci < 4; ci++) {
+      for (let mi = 0; mi < 12; mi++) {
+        if (totals[ri][ci][mi] !== 0) {
+          state.classActuals[`${ri}-${ci}-${mi}`] = totals[ri][ci][mi];
+        }
+      }
+    }
+  }
+  // Refresh everything
+  populateBulkView();
+  REPS_DATA.forEach((_, ri) => {
+    const repView = document.getElementById(`view-rep-${ri}`);
+    if (repView && repView.classList.contains('active')) {
+      populateTracker(ri);
+      populateClassTrackers(ri);
+      drawRepCharts(ri);
+    }
+  });
+  refreshTeamView();
+}
+
+function handleCsvFile(file) {
+  if (!file) return;
+  const status = document.getElementById('csv-status');
+  status.style.color = 'var(--muted)';
+  status.textContent = '⏳ Parsing ' + file.name + '...';
+  const reader = new FileReader();
+  reader.onload = e => {
+    const totals = parseCsv(e.target.result);
+    if (!totals) {
+      status.style.color = '#e05252';
+      status.textContent = '❌ Could not parse CSV. Please check the file format matches the NetSuite export.';
+      return;
+    }
+    applyCsvTotals(totals);
+    // Count non-zero entries
+    let count = 0;
+    totals.forEach(r => r.forEach(c => c.forEach(v => { if (v !== 0) count++; })));
+    status.style.color = 'var(--green)';
+    status.textContent = `✅ Successfully imported ${file.name} — ${count} data points applied across all reps and classes.`;
+    // Update panel style
+    const panel = document.getElementById('csv-upload-panel');
+    if (panel) { panel.style.borderColor = 'var(--green)'; panel.style.background = 'rgba(107,191,51,.04)'; }
+  };
+  reader.readAsText(file);
+}
+
+function handleCsvDrop(event) {
+  event.preventDefault();
+  const panel = document.getElementById('csv-upload-panel');
+  if (panel) { panel.style.borderColor = 'var(--border)'; panel.style.background = 'var(--surface)'; }
+  const file = event.dataTransfer.files[0];
+  if (file && file.name.endsWith('.csv')) {
+    handleCsvFile(file);
+  } else {
+    const status = document.getElementById('csv-status');
+    if (status) { status.style.color = '#e05252'; status.textContent = '❌ Please drop a .csv file.'; }
+  }
 }
 
 // ══════════════════════════════════════════════════════════════
