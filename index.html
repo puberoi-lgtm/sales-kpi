@@ -514,8 +514,7 @@ function populateTracker(repIdx) {
       <td class="prev-cell">${fmt(m.prev)}</td>
       <td><input class="actual-input" type="text" inputmode="numeric" placeholder="0"
         value="${act > 0 ? act : ''}"
-        oninput="setActual(${repIdx},${mi},parseFloat(this.value.replace(/[^0-9.]/g,''))||0)"
-        onchange="setActual(${repIdx},${mi},parseFloat(this.value.replace(/[^0-9.]/g,''))||0)"></td>
+        onblur="setActual(${repIdx},${mi},parseFloat(this.value.replace(/[^0-9.]/g,''))||0)"></td>
       <td>${varCell}</td>
       <td>${pctCell}</td>
       <td>${status}</td>
@@ -562,8 +561,7 @@ function populateClassTrackers(repIdx) {
         <td class="prev-cell">${fmt(m.prev)}</td>
         <td><input class="actual-input" type="text" inputmode="numeric" placeholder="0"
           value="${act > 0 ? act : ''}"
-          oninput="setClassActual(${repIdx},${ci},${mi},parseFloat(this.value.replace(/[^0-9.]/g,''))||0)"
-          onchange="setClassActual(${repIdx},${ci},${mi},parseFloat(this.value.replace(/[^0-9.]/g,''))||0)"></td>
+          onblur="setClassActual(${repIdx},${ci},${mi},parseFloat(this.value.replace(/[^0-9.]/g,''))||0)"></td>
         <td>${varCell}</td><td>${pctCell}</td><td>${status}</td>
       </tr>`;
     });
