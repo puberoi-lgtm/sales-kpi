@@ -320,7 +320,8 @@ function getClassTarget(repIdx, clsIdx, monthIdx) {
   return base * (1 + state.growthRates[repIdx][clsIdx] / 100);
 }
 function getActual(repIdx, monthIdx) {
-  return state.actuals[`${repIdx}-${monthIdx}`] || 0;
+  // Sum across all class actuals so Monthly Tracker always reflects class entries
+  return REPS_DATA[repIdx].classes.reduce((sum, _, ci) => sum + getClassActual(repIdx, ci, monthIdx), 0);
 }
 function getClassActual(repIdx, clsIdx, monthIdx) {
   return state.classActuals[`${repIdx}-${clsIdx}-${monthIdx}`] || 0;
@@ -426,13 +427,13 @@ function buildRepView(repIdx) {
     </div>
   </div>
 
-  <div class="section-hdr">📋 Monthly Tracker — Enter actuals in yellow fields</div>
+  <div class="section-hdr">📋 Monthly Tracker — Auto-summed from Results by Class entries</div>
   <div class="tracker-wrap">
     <table>
       <thead>
         <tr>
           <th>Month</th><th>2026 Target</th><th>2025 Actual</th>
-          <th>Your 2026 Entry</th><th>vs Target ($)</th><th>vs Target (%)</th><th>Status</th>
+          <th>2026 Actual (Sum of Classes)</th><th>vs Target ($)</th><th>vs Target (%)</th><th>Status</th>
         </tr>
       </thead>
       <tbody id="tracker-body-${repIdx}">
@@ -512,9 +513,7 @@ function populateTracker(repIdx) {
       <td>${m.month} 2026</td>
       <td class="target-cell">${fmt(tgt)}</td>
       <td class="prev-cell">${fmt(m.prev)}</td>
-      <td><input class="actual-input" type="text" inputmode="numeric" placeholder="0"
-        value="${act > 0 ? act : ''}"
-        onblur="setActual(${repIdx},${mi},parseFloat(this.value.replace(/[^0-9.]/g,''))||0)"></td>
+      <td><span class="actual-input" style="display:inline-block;width:110px;cursor:default;color:#ffe566">${act > 0 ? fmt(act) : '—'}</span></td>
       <td>${varCell}</td>
       <td>${pctCell}</td>
       <td>${status}</td>
@@ -665,6 +664,9 @@ function setActual(repIdx, monthIdx, val) {
 function setClassActual(repIdx, clsIdx, monthIdx, val) {
   state.classActuals[`${repIdx}-${clsIdx}-${monthIdx}`] = val;
   populateClassTrackers(repIdx);
+  populateTracker(repIdx);
+  drawRepCharts(repIdx);
+  refreshTeamView();
 }
 function setGrowth(repIdx, clsIdx, val) {
   state.growthRates[repIdx][clsIdx] = val;
