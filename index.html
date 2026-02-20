@@ -5,6 +5,30 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Serveredge — FY2026 Sales Dashboard</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, set, onValue, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCLY-DmXkQIh6BNVx7KDxDYblPNbQW9YMs",
+    authDomain: "serveredge-dashboard-3732a.firebaseapp.com",
+    databaseURL: "https://serveredge-dashboard-3732a-default-rtdb.firebaseio.com",
+    projectId: "serveredge-dashboard-3732a",
+    storageBucket: "serveredge-dashboard-3732a.appspot.com",
+    messagingSenderId: "387114868703",
+    appId: "1:387114868703:web:dashboard"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  // Expose Firebase functions to global scope for use in non-module scripts
+  window._fbSet    = (path, val) => set(ref(db, path), val);
+  window._fbRemove = (path)      => remove(ref(db, path));
+  window._fbListen = (path, cb)  => onValue(ref(db, path), snap => cb(snap.val()));
+  window._fbReady  = true;
+  window.dispatchEvent(new Event('firebase-ready'));
+</script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -281,10 +305,9 @@
     <button class="tab-btn" onclick="showView('bulk')" id="tab-bulk">
       <span class="dot" style="background:#f5a623"></span>Bulk Entry
     </button>
+    <span id="sync-indicator" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-left:12px">🔴 Live</span>
   </div>
-</div>
-
-<!-- ── VIEWS ──────────────────────────────────────────────── -->
+</div> ──────────────────────────────────────────────── -->
 <div id="views-container">
   <!-- Team view and rep views are injected by JS -->
 </div>
@@ -301,6 +324,52 @@ const state = {
   classActuals: {},  // "repIdx-clsIdx-monthIdx" -> value
   growthRates: REPS_DATA.map(r => [...r.growthRates]), // per rep per class
 };
+
+// ── Firebase persistence ─────────────────────────────────────
+function fbSave() {
+  if (!window._fbSet) return;
+  window._fbSet('dashboard/classActuals', state.classActuals);
+}
+
+function fbClear() {
+  if (!window._fbRemove) return;
+  window._fbRemove('dashboard/classActuals');
+}
+
+function fbStartListening() {
+  if (!window._fbListen) return;
+  window._fbListen('dashboard/classActuals', data => {
+    state.classActuals = data || {};
+    // Refresh all visible views
+    populateBulkView();
+    REPS_DATA.forEach((_, ri) => {
+      const repView = document.getElementById(`view-rep-${ri}`);
+      if (repView && repView.classList.contains('active')) {
+        populateTracker(ri);
+        populateClassTrackers(ri);
+        drawRepCharts(ri);
+      }
+    });
+    refreshTeamView();
+    // Show sync indicator
+    showSyncIndicator();
+  });
+}
+
+function showSyncIndicator() {
+  let el = document.getElementById('sync-indicator');
+  if (!el) return;
+  el.textContent = '✅ Synced';
+  el.style.color = 'var(--green)';
+  setTimeout(() => { el.textContent = '🔴 Live'; el.style.color = 'var(--muted)'; }, 2000);
+}
+
+// Start Firebase listener once ready
+if (window._fbReady) {
+  fbStartListening();
+} else {
+  window.addEventListener('firebase-ready', fbStartListening);
+}
 
 // ── Formatting ──────────────────────────────────────────────
 const $ = (s, ctx = document) => ctx.querySelector(s);
@@ -666,6 +735,7 @@ function setActual(repIdx, monthIdx, val) {
 }
 function setClassActual(repIdx, clsIdx, monthIdx, val) {
   state.classActuals[`${repIdx}-${clsIdx}-${monthIdx}`] = val;
+  fbSave();
   populateClassTrackers(repIdx);
   populateTracker(repIdx);
   drawRepCharts(repIdx);
@@ -1007,11 +1077,9 @@ function populateBulkView() {
 }
 
 function setBulkActual(repIdx, clsIdx, monthIdx, val) {
-  // Write into classActuals state — same store used by individual rep sheets
   state.classActuals[`${repIdx}-${clsIdx}-${monthIdx}`] = val;
-  // Refresh all views that may be affected
+  fbSave();
   populateBulkView();
-  // Refresh individual rep view if it's currently open
   REPS_DATA.forEach((_, ri) => {
     const repView = document.getElementById(`view-rep-${ri}`);
     if (repView && repView.classList.contains('active')) {
@@ -1122,6 +1190,8 @@ function applyCsvTotals(totals) {
       }
     }
   }
+  // Save to Firebase so all users see the update
+  fbSave();
   // Refresh everything
   populateBulkView();
   REPS_DATA.forEach((_, ri) => {
@@ -1136,17 +1206,18 @@ function applyCsvTotals(totals) {
 }
 
 function clearAllData() {
-  if (!confirm('This will remove all entered actuals and CSV data. Are you sure?')) return;
+  if (!confirm('This will remove all entered actuals and CSV data for everyone. Are you sure?')) return;
 
-  // Clear all state
+  // Clear state and Firebase
   state.actuals = {};
   state.classActuals = {};
+  fbClear();
 
   // Reset upload panel UI
   const panel = document.getElementById('csv-upload-panel');
   if (panel) { panel.style.borderColor = 'var(--border)'; panel.style.background = 'var(--surface)'; }
   const status = document.getElementById('csv-status');
-  if (status) { status.style.color = 'var(--green)'; status.textContent = '✅ All data cleared. You can now upload a new CSV.'; }
+  if (status) { status.style.color = 'var(--green)'; status.textContent = '✅ All data cleared for everyone. You can now upload a new CSV.'; }
   const fileInput = document.getElementById('csv-file-input');
   if (fileInput) fileInput.value = '';
 
