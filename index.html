@@ -8,6 +8,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getDatabase, ref, set, onValue, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+  import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyCLY-DmXkQIh6BNVx7KDxDYblPNbQW9YMs",
@@ -20,13 +21,28 @@
   };
 
   const app = initializeApp(firebaseConfig);
-  const db = getDatabase(app);
+  const db  = getDatabase(app);
+  const auth = getAuth(app);
 
-  // Expose Firebase functions to global scope for use in non-module scripts
+  // Expose Firebase functions to global scope
   window._fbSet    = (path, val) => set(ref(db, path), val);
   window._fbRemove = (path)      => remove(ref(db, path));
   window._fbListen = (path, cb)  => onValue(ref(db, path), snap => cb(snap.val()));
-  window._fbReady  = true;
+
+  window._fbLogin  = (email, password) => signInWithEmailAndPassword(auth, email, password);
+  window._fbLogout = () => signOut(auth);
+
+  onAuthStateChanged(auth, user => {
+    if (user) {
+      window._currentUser = user;
+      window.dispatchEvent(new CustomEvent('auth-changed', { detail: { user } }));
+    } else {
+      window._currentUser = null;
+      window.dispatchEvent(new CustomEvent('auth-changed', { detail: { user: null } }));
+    }
+  });
+
+  window._fbReady = true;
   window.dispatchEvent(new Event('firebase-ready'));
 </script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -272,9 +288,74 @@
   ::-webkit-scrollbar-track { background: var(--surface); }
   ::-webkit-scrollbar-thumb { background: var(--faint); border-radius: 3px; }
   ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  /* ── LOGIN SCREEN ── */
+  #login-screen {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .login-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 40px 44px;
+    width: 100%; max-width: 400px;
+    box-shadow: 0 8px 40px rgba(0,0,0,.6);
+  }
+  .login-logo {
+    display: flex; align-items: center; gap: 12px;
+    font-family: var(--font-head); font-weight: 800; font-size: 20px;
+    color: var(--green); margin-bottom: 28px;
+  }
+  .login-title { font-family: var(--font-head); font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+  .login-subtitle { font-size: 11px; color: var(--muted); margin-bottom: 28px; }
+  .login-field { margin-bottom: 16px; }
+  .login-field label { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 6px; }
+  .login-field input {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 6px; padding: 10px 12px; color: var(--text);
+    font-family: var(--font-mono); font-size: 13px; outline: none;
+    transition: border-color .15s;
+  }
+  .login-field input:focus { border-color: var(--green); }
+  .login-btn {
+    width: 100%; background: var(--green); color: #000; border: none;
+    border-radius: 6px; padding: 11px; font-family: var(--font-head);
+    font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 8px;
+    transition: opacity .15s;
+  }
+  .login-btn:hover { opacity: .85; }
+  .login-error { color: #e05252; font-size: 11px; margin-top: 10px; min-height: 16px; text-align: center; }
 </style>
 </head>
 <body>
+
+<!-- ── LOGIN SCREEN ───────────────────────────────────────── -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <svg width="32" height="32" viewBox="0 0 28 28" fill="none">
+        <rect width="28" height="28" rx="6" fill="#6bbf33"/>
+        <text x="14" y="20" text-anchor="middle" font-family="Syne,sans-serif" font-weight="800" font-size="14" fill="white">SE</text>
+      </svg>
+      SERVEREDGE
+    </div>
+    <div class="login-title">FY2026 Sales Dashboard</div>
+    <div class="login-subtitle">Sign in with your Serveredge email to continue</div>
+    <div class="login-field">
+      <label>Email Address</label>
+      <input type="email" id="login-email" placeholder="you@serveredge.com.au" autocomplete="email">
+    </div>
+    <div class="login-field">
+      <label>Password</label>
+      <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password"
+        onkeydown="if(event.key==='Enter') doLogin()">
+    </div>
+    <button class="login-btn" onclick="doLogin()">Sign In</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
 
 <!-- ── TOP NAV ─────────────────────────────────────────────── -->
 <div class="topbar">
@@ -306,6 +387,8 @@
       <span class="dot" style="background:#f5a623"></span>Bulk Entry
     </button>
     <span id="sync-indicator" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-left:12px">🔴 Live</span>
+    <span id="user-info" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-left:16px"></span>
+    <button id="logout-btn" onclick="doLogout()" style="display:none;margin-left:10px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:4px 10px;font-family:var(--font-mono);font-size:11px;cursor:pointer;" onmouseover="this.style.borderColor='#e05252';this.style.color='#e05252'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">Sign Out</button>
   </div>
 </div> ──────────────────────────────────────────────── -->
 <div id="views-container">
@@ -326,6 +409,100 @@ const state = {
 };
 
 // ── Firebase persistence ─────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+// AUTH & ACCESS CONTROL
+// ══════════════════════════════════════════════════════════════
+
+// Define who is admin and which rep each email maps to
+const ADMIN_EMAILS = ['pkumar@serveredge.com.au', 'puberoi@serveredge.com.au'];
+const REP_EMAIL_MAP = {
+  'rschaffer@serveredge.com.au': 0,
+  'smaticevski@serveredge.com.au': 1,
+  'apoll@serveredge.com.au': 2,
+  'amobilia@serveredge.com.au': 3,
+};
+
+function getCurrentUserRole() {
+  const email = window._currentUser?.email?.toLowerCase();
+  if (!email) return null;
+  if (ADMIN_EMAILS.includes(email)) return { role: 'admin', repIdx: null };
+  const repIdx = REP_EMAIL_MAP[email];
+  if (repIdx !== undefined) return { role: 'rep', repIdx };
+  return null;
+}
+
+function applyAccessControl() {
+  const access = getCurrentUserRole();
+  if (!access) return;
+
+  const tabs = document.getElementById('mainTabs');
+  if (!tabs) return;
+
+  if (access.role === 'admin') {
+    // Admin sees everything — show all tabs
+    tabs.querySelectorAll('.tab-btn').forEach(b => b.style.display = '');
+  } else {
+    // Rep sees only their own tab — hide all others
+    tabs.querySelectorAll('.tab-btn').forEach(b => b.style.display = 'none');
+    const myTab = document.getElementById(`tab-rep-${access.repIdx}`);
+    if (myTab) { myTab.style.display = ''; }
+    // Auto-navigate to their tab
+    showView(`rep-${access.repIdx}`);
+  }
+}
+
+function doLogin() {
+  const email    = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl    = document.getElementById('login-error');
+  errEl.textContent = '';
+
+  if (!email || !password) { errEl.textContent = 'Please enter your email and password.'; return; }
+  if (!window._fbLogin)    { errEl.textContent = 'Still connecting, please wait a moment...'; return; }
+
+  const btn = document.querySelector('.login-btn');
+  btn.textContent = 'Signing in...'; btn.disabled = true;
+
+  window._fbLogin(email, password)
+    .then(() => { /* auth-changed event handles the rest */ })
+    .catch(err => {
+      btn.textContent = 'Sign In'; btn.disabled = false;
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
+        errEl.textContent = 'Incorrect email or password. Please try again.';
+      } else if (err.code === 'auth/too-many-requests') {
+        errEl.textContent = 'Too many failed attempts. Please try again later.';
+      } else {
+        errEl.textContent = 'Sign in failed. Please check your connection.';
+      }
+    });
+}
+
+function doLogout() {
+  if (window._fbLogout) window._fbLogout();
+}
+
+// Listen for auth state changes
+window.addEventListener('auth-changed', e => {
+  const user = e.detail.user;
+  if (user) {
+    // Hide login screen, show dashboard
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('logout-btn').style.display = '';
+    const userInfo = document.getElementById('user-info');
+    if (userInfo) userInfo.textContent = '👤 ' + user.email;
+    applyAccessControl();
+    fbStartListening();
+  } else {
+    // Show login screen, hide dashboard
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('logout-btn').style.display = 'none';
+    const userInfo = document.getElementById('user-info');
+    if (userInfo) userInfo.textContent = '';
+    const btn = document.querySelector('.login-btn');
+    if (btn) { btn.textContent = 'Sign In'; btn.disabled = false; }
+  }
+});
+
 function fbSave() {
   if (!window._fbSet) return;
   window._fbSet('dashboard/classActuals', state.classActuals);
@@ -365,11 +542,7 @@ function showSyncIndicator() {
 }
 
 // Start Firebase listener once ready
-if (window._fbReady) {
-  fbStartListening();
-} else {
-  window.addEventListener('firebase-ready', fbStartListening);
-}
+// fbStartListening is called from auth-changed event after login
 
 // ── Formatting ──────────────────────────────────────────────
 const $ = (s, ctx = document) => ctx.querySelector(s);
