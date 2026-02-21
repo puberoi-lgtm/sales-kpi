@@ -439,13 +439,16 @@ function applyAccessControl() {
   if (!tabs) return;
 
   if (access.role === 'admin') {
-    // Admin sees everything — show all tabs
+    // Admin sees everything including growth sliders
     tabs.querySelectorAll('.tab-btn').forEach(b => b.style.display = '');
+    document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
   } else {
-    // Rep sees only their own tab — hide all others
+    // Rep sees only their own tab
     tabs.querySelectorAll('.tab-btn').forEach(b => b.style.display = 'none');
     const myTab = document.getElementById(`tab-rep-${access.repIdx}`);
-    if (myTab) { myTab.style.display = ''; }
+    if (myTab) myTab.style.display = '';
+    // Hide all growth sliders — reps cannot adjust targets
+    document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
     // Auto-navigate to their tab
     showView(`rep-${access.repIdx}`);
   }
@@ -643,8 +646,8 @@ function buildRepView(repIdx) {
     </div>
   </div>
 
-  <div class="section-hdr">⚙ Growth Rate Assumptions — adjust sliders to recalculate all targets</div>
-  <div class="growth-panel">
+  <div class="section-hdr admin-only">⚙ Growth Rate Assumptions — adjust sliders to recalculate all targets</div>
+  <div class="growth-panel admin-only">
     <div class="growth-grid">
       ${rep.classes.map((cls, ci) => `
       <div class="growth-item">
@@ -915,6 +918,9 @@ function setClassActual(repIdx, clsIdx, monthIdx, val) {
   refreshTeamView();
 }
 function setGrowth(repIdx, clsIdx, val) {
+  // Only admins can adjust growth rates
+  const access = getCurrentUserRole();
+  if (!access || access.role !== 'admin') return;
   state.growthRates[repIdx][clsIdx] = val;
   const el = document.getElementById(`gval-${repIdx}-${clsIdx}`);
   if (el) el.textContent = val + '%';
