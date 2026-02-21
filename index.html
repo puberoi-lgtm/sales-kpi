@@ -229,6 +229,35 @@
   .status-off { color: #e05252; font-size: 11px; }
   .status-pend { color: var(--muted); font-size: 11px; }
 
+  /* ── CURRENT MONTH ROW ── */
+  .current-month-row td {
+    background: rgba(245,166,35,.08) !important;
+    border-top: 1px solid rgba(245,166,35,.4) !important;
+    border-bottom: 1px solid rgba(245,166,35,.4) !important;
+  }
+  .current-month-badge {
+    display: inline-block; font-size: 9px; background: var(--amber);
+    color: #000; border-radius: 3px; padding: 1px 5px;
+    font-weight: 700; margin-left: 6px; vertical-align: middle;
+    text-transform: uppercase; letter-spacing: .06em;
+  }
+
+  /* ── EOY PREDICTION CARD ── */
+  .eoy-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 18px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+  .eoy-item .eoy-label { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 4px; }
+  .eoy-item .eoy-val { font-family: var(--font-head); font-size: 22px; font-weight: 800; }
+  .eoy-item .eoy-sub { font-size: 10px; color: var(--muted); margin-top: 3px; }
+  @media (max-width: 900px) { .eoy-card { grid-template-columns: repeat(2,1fr); } }
+
   /* ── CLASS BREAKDOWN TABS ── */
   .class-tabs { display: flex; gap: 4px; margin-bottom: 12px; flex-wrap: wrap; }
   .class-tab {
@@ -675,13 +704,18 @@ function buildRepView(repIdx) {
     </div>
   </div>
 
+  <div class="section-hdr">🔮 End of Year Prediction — based on current run rate</div>
+  <div class="eoy-card" id="eoy-card-${repIdx}">
+    <div class="eoy-item"><div class="eoy-label">EOY Projection</div><div class="eoy-val" style="color:var(--muted);font-size:14px">Enter actuals to see projection</div></div>
+  </div>
+
   <div class="section-hdr">📋 Monthly Tracker — Auto-summed from Results by Class entries</div>
   <div class="tracker-wrap">
     <table>
       <thead>
         <tr>
           <th>Month</th><th>2026 Target</th><th>2025 Actual</th>
-          <th>2026 Actual (Sum of Classes)</th><th>vs Target ($)</th><th>vs Target (%)</th><th>Status</th>
+          <th>2026 Actual (Sum of Classes)</th><th>Achievement %</th><th>vs Target ($)</th><th>vs Target (%)</th><th>Status</th>
         </tr>
       </thead>
       <tbody id="tracker-body-${repIdx}">
@@ -692,6 +726,7 @@ function buildRepView(repIdx) {
           <td id="tot-tgt-${repIdx}"></td>
           <td>${fmt(annualPrev)}</td>
           <td id="tot-act-${repIdx}"></td>
+          <td id="tot-ach-${repIdx}"></td>
           <td id="tot-var-${repIdx}"></td>
           <td id="tot-vpct-${repIdx}"></td>
           <td id="tot-stat-${repIdx}"></td>
@@ -747,35 +782,54 @@ function populateTracker(repIdx) {
   const tbody = document.getElementById(`tracker-body-${repIdx}`);
   if (!tbody) return;
   tbody.innerHTML = '';
+
+  // Current month index (0=Jan ... 11=Dec), FY2026
+  const now = new Date();
+  const currentMi = now.getMonth(); // JS months are 0-indexed, same as our array
+
   let totTgt = 0, totAct = 0, totPrev = 0;
   rep.monthly.forEach((m, mi) => {
     const tgt  = getTarget(repIdx, mi);
     const act  = getActual(repIdx, mi);
     const vari = act > 0 ? act - tgt : null;
     const vpct = act > 0 && tgt !== 0 ? (act - tgt) / Math.abs(tgt) : null;
+    const achPct = act > 0 && tgt > 0 ? act / tgt : null; // achievement %
     totTgt += tgt; totAct += act; totPrev += m.prev;
+
+    const isCurrentMonth = mi === currentMi;
+    const rowClass = isCurrentMonth ? 'current-month-row' : '';
+    const badge = isCurrentMonth ? '<span class="current-month-badge">▶ Now</span>' : '';
+
     const status = act > 0 ? (act >= tgt ? `<span class="status-on">✅ On Target</span>` : `<span class="status-off">⚠️ Below Target</span>`) : `<span class="status-pend">Pending</span>`;
     const varCell = vari !== null ? `<span class="${vari >= 0 ? 'variance-pos' : 'variance-neg'}">${fmt(vari)}</span>` : '—';
     const pctCell = vpct !== null ? `<span class="${vpct >= 0 ? 'variance-pos' : 'variance-neg'}">${fmtPct(vpct)}</span>` : '—';
-    tbody.innerHTML += `<tr>
-      <td>${m.month} 2026</td>
+    const achCell = achPct !== null ? `<span class="${achPct >= 1 ? 'variance-pos' : achPct >= 0.8 ? '' : 'variance-neg'}" style="${achPct >= 0.8 && achPct < 1 ? 'color:var(--amber)' : ''}">${(achPct * 100).toFixed(1)}%</span>` : '—';
+
+    tbody.innerHTML += `<tr class="${rowClass}">
+      <td>${m.month} 2026${badge}</td>
       <td class="target-cell">${fmt(tgt)}</td>
       <td class="prev-cell">${fmt(m.prev)}</td>
       <td><span class="actual-input" style="display:inline-block;width:110px;cursor:default;color:#ffe566">${act > 0 ? fmt(act) : '—'}</span></td>
+      <td>${achCell}</td>
       <td>${varCell}</td>
       <td>${pctCell}</td>
       <td>${status}</td>
     </tr>`;
   });
+
   // Totals
   const totVar = totAct > 0 ? totAct - totTgt : null;
   const totVpct = totAct > 0 && totTgt !== 0 ? (totAct - totTgt) / Math.abs(totTgt) : null;
   document.getElementById(`tot-tgt-${repIdx}`).textContent = fmt(totTgt);
   document.getElementById(`tot-act-${repIdx}`).textContent = fmt(totAct);
+  const totAchPct = totAct > 0 && totTgt > 0 ? totAct / totTgt : null;
+  const totAchEl = document.getElementById(`tot-ach-${repIdx}`);
+  if (totAchEl) totAchEl.innerHTML = totAchPct !== null ? `<span class="${totAchPct>=1?'variance-pos':totAchPct>=0.8?'':'variance-neg'}" style="${totAchPct>=0.8&&totAchPct<1?'color:var(--amber)':''}">${(totAchPct*100).toFixed(1)}%</span>` : '—';
   document.getElementById(`tot-var-${repIdx}`).innerHTML = totVar !== null ? `<span class="${totVar>=0?'variance-pos':'variance-neg'}">${fmt(totVar)}</span>` : '—';
   document.getElementById(`tot-vpct-${repIdx}`).innerHTML = totVpct !== null ? `<span class="${totVpct>=0?'variance-pos':'variance-neg'}">${fmtPct(totVpct)}</span>` : '—';
   const s = totAct > 0 ? (totAct >= totTgt ? `<span class="status-on">✅ On Target</span>` : `<span class="status-off">⚠️ Below Target</span>`) : `<span class="status-pend">Pending</span>`;
   document.getElementById(`tot-stat-${repIdx}`).innerHTML = s;
+
   // KPI cards
   const kpiYtd = document.getElementById(`kpi-ytd-${repIdx}`);
   const kpiStill = document.getElementById(`kpi-still-${repIdx}`);
@@ -783,7 +837,9 @@ function populateTracker(repIdx) {
   if (kpiYtd) kpiYtd.textContent = fmt(totAct);
   if (kpiStill) kpiStill.textContent = fmt(Math.max(totTgt - totAct, 0));
   if (kpiTgt) kpiTgt.textContent = fmt(totTgt);
+
   populatePlanner(repIdx, totTgt, totAct);
+  populateEoyPrediction(repIdx, totTgt, totAct);
 }
 
 function populateClassTrackers(repIdx) {
@@ -822,6 +878,90 @@ function populateClassTrackers(repIdx) {
     const s = totAct > 0 ? (totAct >= totTgt ? `<span class="status-on">✅ On Target</span>` : `<span class="status-off">⚠️ Below Target</span>`) : `<span class="status-pend">Pending</span>`;
     if (el(`cls-tot-stat-${repIdx}-${ci}`)) el(`cls-tot-stat-${repIdx}-${ci}`).innerHTML = s;
   });
+}
+
+function populateEoyPrediction(repIdx, annTgt, ytdAct) {
+  const el = document.getElementById(`eoy-card-${repIdx}`);
+  if (!el) return;
+
+  const rep = REPS_DATA[repIdx];
+  const monthsWithData = rep.monthly.filter((_, mi) => getActual(repIdx, mi) > 0).length;
+
+  if (monthsWithData === 0) {
+    el.innerHTML = `<div class="eoy-item"><div class="eoy-label">End of Year Prediction</div><div class="eoy-val" style="color:var(--muted);font-size:14px">Enter actuals to see projection</div></div>`;
+    return;
+  }
+
+  // ── Seasonality from last year ──────────────────────────────
+  // Use each month's prev (last year actual) to get the seasonal weight
+  const prevTotals = rep.monthly.map((m, mi) => {
+    // Sum prev across all classes for this month
+    return rep.classes.reduce((s, cls) => s + (cls.monthly[mi]?.prev || 0), 0);
+  });
+  const prevAnnualTotal = prevTotals.reduce((s, v) => s + v, 0);
+  // Monthly share of last year's total (seasonal weight)
+  const seasonalWeights = prevTotals.map(v => prevAnnualTotal > 0 ? v / prevAnnualTotal : 1/12);
+
+  // ── Achievement rate on months with data ───────────────────
+  // For months with actuals, compare actual vs target to get run-rate %
+  let achievedTgt = 0, achievedAct = 0;
+  rep.monthly.forEach((_, mi) => {
+    const act = getActual(repIdx, mi);
+    if (act > 0) {
+      achievedTgt += getTarget(repIdx, mi);
+      achievedAct += act;
+    }
+  });
+  const achievementRate = achievedTgt > 0 ? achievedAct / achievedTgt : 1;
+
+  // ── Project remaining months ───────────────────────────────
+  // For months without data: projected actual = target for that month × achievement rate
+  // Target is already seasonality-adjusted via growth rates, so this correctly
+  // applies the run-rate performance to the seasonal shape of remaining months
+  let projectedRemaining = 0;
+  rep.monthly.forEach((_, mi) => {
+    const act = getActual(repIdx, mi);
+    if (act === 0) {
+      projectedRemaining += getTarget(repIdx, mi) * achievementRate;
+    }
+  });
+
+  const eoyProjection = ytdAct + projectedRemaining;
+  const eoyAchPct = annTgt > 0 ? eoyProjection / annTgt : null;
+  const gap = eoyProjection - annTgt;
+
+  const projColor = eoyAchPct >= 1 ? 'var(--green)' : eoyAchPct >= 0.85 ? 'var(--amber)' : '#e05252';
+  const gapColor  = gap >= 0 ? 'var(--green)' : '#e05252';
+  const gapLabel  = gap >= 0 ? '▲ Surplus vs Target' : '▼ Shortfall vs Target';
+  const verdict   = eoyAchPct >= 1    ? '🟢 On track to hit target'
+                  : eoyAchPct >= 0.85 ? '🟡 Close — push required in remaining months'
+                  : '🔴 Significant gap — urgent attention needed';
+
+  const monthsRemaining = 12 - monthsWithData;
+  const achRatePct = (achievementRate * 100).toFixed(1);
+
+  el.innerHTML = `
+    <div class="eoy-item">
+      <div class="eoy-label">📈 EOY Projection</div>
+      <div class="eoy-val" style="color:${projColor}">${fmt(eoyProjection)}</div>
+      <div class="eoy-sub">Seasonality-adjusted · ${monthsRemaining} month${monthsRemaining!==1?'s':''} remaining</div>
+    </div>
+    <div class="eoy-item">
+      <div class="eoy-label">🎯 Full Year Target</div>
+      <div class="eoy-val">${fmt(annTgt)}</div>
+      <div class="eoy-sub">Current run rate: ${achRatePct}% of target</div>
+    </div>
+    <div class="eoy-item">
+      <div class="eoy-label">✅ Projected Achievement</div>
+      <div class="eoy-val" style="color:${projColor}">${eoyAchPct !== null ? (eoyAchPct*100).toFixed(1)+'%' : '—'}</div>
+      <div class="eoy-sub">${verdict}</div>
+    </div>
+    <div class="eoy-item">
+      <div class="eoy-label">${gapLabel}</div>
+      <div class="eoy-val" style="color:${gapColor}">${fmt(Math.abs(gap))}</div>
+      <div class="eoy-sub">${gap >= 0 ? 'Ahead of full year target' : 'Still needed to hit full year target'}</div>
+    </div>
+  `;
 }
 
 function populatePlanner(repIdx, annTgt, ytd) {
