@@ -242,7 +242,31 @@
     text-transform: uppercase; letter-spacing: .06em;
   }
 
-  /* ── EOY PREDICTION CARD ── */
+  /* ── TARGET EDITOR ── */
+  .target-editor-tabs { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .target-editor-tab {
+    padding: 5px 14px; border-radius: 5px; font-size: 11px; font-weight: 600;
+    cursor: pointer; border: 1px solid var(--border); color: var(--muted);
+    font-family: var(--font-mono); transition: all .15s;
+  }
+  .target-editor-tab.active { color: #fff; border-color: transparent; }
+  .target-editor-wrap { background: var(--surface); border-radius: 8px; overflow-x: auto; margin-bottom: 20px; }
+  .target-editor-wrap table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .target-editor-wrap th { background: var(--surface2); color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .07em; padding: 8px 10px; text-align: left; }
+  .target-editor-wrap td { padding: 7px 10px; border-bottom: 1px solid var(--border); }
+  .target-input {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 4px;
+    color: #ffe566; font-family: var(--font-mono); font-size: 12px;
+    padding: 4px 8px; width: 120px; outline: none; transition: border-color .15s;
+  }
+  .target-input:focus { border-color: var(--amber); }
+  .target-input.modified { border-color: var(--amber); color: var(--amber); }
+  .target-reset-btn {
+    background: transparent; border: 1px solid var(--border); color: var(--muted);
+    border-radius: 4px; padding: 3px 8px; font-size: 10px; cursor: pointer;
+    font-family: var(--font-mono); transition: all .15s; margin-left: 6px;
+  }
+  .target-reset-btn:hover { border-color: #e05252; color: #e05252; }
   .eoy-card {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -432,9 +456,10 @@ const REPS_DATA = [{"name":"Robert Schaffer","region":"QLD","color":"#4472C4","m
 
 // State: actuals keyed by repIndex-monthIndex and classIndex
 const state = {
-  actuals: {},       // "repIdx-monthIdx" -> value
-  classActuals: {},  // "repIdx-clsIdx-monthIdx" -> value
-  growthRates: REPS_DATA.map(r => [...r.growthRates]), // per rep per class
+  actuals: {},         // "repIdx-monthIdx" -> value
+  classActuals: {},    // "repIdx-clsIdx-monthIdx" -> value
+  customTargets: {},   // "repIdx-clsIdx-monthIdx" -> value (admin overrides)
+  growthRates: REPS_DATA.map(r => [...r.growthRates]), // kept for legacy
 };
 
 // ── Firebase persistence ─────────────────────────────────────
@@ -538,18 +563,21 @@ window.addEventListener('auth-changed', e => {
 function fbSave() {
   if (!window._fbSet) return;
   window._fbSet('dashboard/classActuals', state.classActuals);
+  window._fbSet('dashboard/customTargets', state.customTargets);
 }
 
 function fbClear() {
   if (!window._fbRemove) return;
   window._fbRemove('dashboard/classActuals');
+  // Don't clear growthRates on data clear — targets should persist
 }
 
 function fbStartListening() {
   if (!window._fbListen) return;
+
+  // Listen for actuals
   window._fbListen('dashboard/classActuals', data => {
     state.classActuals = data || {};
-    // Refresh all visible views
     populateBulkView();
     REPS_DATA.forEach((_, ri) => {
       const repView = document.getElementById(`view-rep-${ri}`);
@@ -560,7 +588,20 @@ function fbStartListening() {
       }
     });
     refreshTeamView();
-    // Show sync indicator
+    showSyncIndicator();
+  });
+
+  // Listen for custom targets (admin overrides)
+  window._fbListen('dashboard/customTargets', data => {
+    state.customTargets = data || {};
+    // Refresh target editor UI and all calculations
+    REPS_DATA.forEach((_, ri) => {
+      populateTargetEditor(ri);
+      populateTracker(ri);
+      populateClassTrackers(ri);
+      drawRepCharts(ri);
+    });
+    refreshTeamView();
     showSyncIndicator();
   });
 }
@@ -584,17 +625,15 @@ const fmtK = v => v == null || isNaN(v) ? '—' : '$' + (Math.round(v / 1000)).t
 const fmtPct = v => isNaN(v) || !isFinite(v) ? '—' : (v * 100).toFixed(1) + '%';
 
 // ── Compute derived targets from growth rates ──────────────
-function getTarget(repIdx, monthIdx) {
-  const rep = REPS_DATA[repIdx];
-  // Recompute from class totals (each class has its own growth)
-  return rep.classes.reduce((sum, cls, ci) => {
-    const base = cls.monthly[monthIdx].prev;
-    return sum + base * (1 + state.growthRates[repIdx][ci] / 100);
-  }, 0);
-}
 function getClassTarget(repIdx, clsIdx, monthIdx) {
-  const base = REPS_DATA[repIdx].classes[clsIdx].monthly[monthIdx].prev;
-  return base * (1 + state.growthRates[repIdx][clsIdx] / 100);
+  // Use admin-set custom target if it exists, otherwise fall back to original data
+  const custom = state.customTargets[`${repIdx}-${clsIdx}-${monthIdx}`];
+  if (custom !== undefined) return custom;
+  return REPS_DATA[repIdx].classes[clsIdx].monthly[monthIdx].target;
+}
+function getTarget(repIdx, monthIdx) {
+  // Sum class targets
+  return REPS_DATA[repIdx].classes.reduce((sum, _, ci) => sum + getClassTarget(repIdx, ci, monthIdx), 0);
 }
 function getActual(repIdx, monthIdx) {
   // Sum across all class actuals so Monthly Tracker always reflects class entries
@@ -675,18 +714,9 @@ function buildRepView(repIdx) {
     </div>
   </div>
 
-  <div class="section-hdr admin-only">⚙ Growth Rate Assumptions — adjust sliders to recalculate all targets</div>
-  <div class="growth-panel admin-only">
-    <div class="growth-grid">
-      ${rep.classes.map((cls, ci) => `
-      <div class="growth-item">
-        <label style="color:${clsColors[ci]}">${cls.name}</label>
-        <div class="growth-val" style="color:${clsColors[ci]}" id="gval-${repIdx}-${ci}">${state.growthRates[repIdx][ci]}%</div>
-        <input type="range" min="0" max="100" value="${state.growthRates[repIdx][ci]}"
-          oninput="setGrowth(${repIdx},${ci},+this.value)"
-          style="accent-color:${clsColors[ci]}">
-      </div>`).join('')}
-    </div>
+  <div class="section-hdr admin-only">🎯 Target Editor — set individual monthly targets per class (admin only)</div>
+  <div class="admin-only" id="target-editor-${repIdx}">
+    <!-- populated by populateTargetEditor() -->
   </div>
 
   <div class="charts-row">
@@ -964,6 +994,112 @@ function populateEoyPrediction(repIdx, annTgt, ytdAct) {
   `;
 }
 
+// ── Target Editor ─────────────────────────────────────────────
+function populateTargetEditor(repIdx) {
+  const el = document.getElementById(`target-editor-${repIdx}`);
+  if (!el) return;
+  const rep = REPS_DATA[repIdx];
+  const months = rep.monthly.map(m => m.month);
+  const clsColors = ['#4472C4','#70AD47','#ED7D31','#9E480E'];
+
+  // Active class tab (default 0)
+  const activeCi = el._activeCi || 0;
+
+  const tabs = rep.classes.map((cls, ci) => `
+    <div class="target-editor-tab ${ci===activeCi?'active':''}"
+      style="${ci===activeCi?`background:${clsColors[ci]};color:#fff`:''}"
+      onclick="switchTargetEditorTab(${repIdx},${ci})">${cls.name}</div>
+  `).join('');
+
+  const cls = rep.classes[activeCi];
+  const rows = months.map((month, mi) => {
+    const orig = REPS_DATA[repIdx].classes[activeCi].monthly[mi].target;
+    const custom = state.customTargets[`${repIdx}-${activeCi}-${mi}`];
+    const val = custom !== undefined ? custom : orig;
+    const isModified = custom !== undefined && custom !== orig;
+    const resetBtn = isModified
+      ? `<button class="target-reset-btn" onclick="resetCustomTarget(${repIdx},${activeCi},${mi})" title="Reset to original">↺ Reset</button>`
+      : '';
+    return `<tr>
+      <td>${month} 2026</td>
+      <td style="color:var(--muted);font-size:11px">${fmt(orig)}</td>
+      <td>
+        <input class="target-input ${isModified?'modified':''}" type="text" inputmode="numeric"
+          value="${Math.round(val)}"
+          onblur="setCustomTarget(${repIdx},${activeCi},${mi},parseFloat(this.value.replace(/[^0-9.-]/g,''))||0)"
+          title="Edit target for ${month}">
+        ${resetBtn}
+      </td>
+      <td style="color:var(--muted);font-size:11px">${fmt(REPS_DATA[repIdx].classes[activeCi].monthly[mi].prev)}</td>
+    </tr>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="target-editor-tabs">${tabs}</div>
+    <div class="target-editor-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Month</th>
+            <th>Original Target</th>
+            <th style="color:var(--amber)">Custom Target ✏️</th>
+            <th>2025 Actual (ref)</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <button onclick="resetAllTargets(${repIdx},${activeCi})" style="background:transparent;border:1px solid #e05252;color:#e05252;border-radius:5px;padding:5px 14px;font-family:var(--font-mono);font-size:11px;cursor:pointer;margin-bottom:16px">
+      ↺ Reset all ${cls.name} targets to original
+    </button>
+  `;
+  el._activeCi = activeCi;
+}
+
+function switchTargetEditorTab(repIdx, ci) {
+  const el = document.getElementById(`target-editor-${repIdx}`);
+  if (el) { el._activeCi = ci; populateTargetEditor(repIdx); }
+}
+
+function setCustomTarget(repIdx, clsIdx, monthIdx, val) {
+  const access = getCurrentUserRole();
+  if (!access || access.role !== 'admin') return;
+  state.customTargets[`${repIdx}-${clsIdx}-${monthIdx}`] = val;
+  fbSave();
+  populateTargetEditor(repIdx);
+  populateTracker(repIdx);
+  populateClassTrackers(repIdx);
+  drawRepCharts(repIdx);
+  refreshTeamView();
+}
+
+function resetCustomTarget(repIdx, clsIdx, monthIdx) {
+  const access = getCurrentUserRole();
+  if (!access || access.role !== 'admin') return;
+  delete state.customTargets[`${repIdx}-${clsIdx}-${monthIdx}`];
+  fbSave();
+  populateTargetEditor(repIdx);
+  populateTracker(repIdx);
+  populateClassTrackers(repIdx);
+  drawRepCharts(repIdx);
+  refreshTeamView();
+}
+
+function resetAllTargets(repIdx, clsIdx) {
+  const access = getCurrentUserRole();
+  if (!access || access.role !== 'admin') return;
+  if (!confirm('Reset all custom targets for this class back to original values?')) return;
+  for (let mi = 0; mi < 12; mi++) {
+    delete state.customTargets[`${repIdx}-${clsIdx}-${mi}`];
+  }
+  fbSave();
+  populateTargetEditor(repIdx);
+  populateTracker(repIdx);
+  populateClassTrackers(repIdx);
+  drawRepCharts(repIdx);
+  refreshTeamView();
+}
+
 function populatePlanner(repIdx, annTgt, ytd) {
   const el = document.getElementById(`planner-${repIdx}`);
   if (!el) return;
@@ -1068,6 +1204,7 @@ function setGrowth(repIdx, clsIdx, val) {
   populateClassTrackers(repIdx);
   drawRepCharts(repIdx);
   refreshTeamView();
+  fbSave();
 }
 function switchClass(repIdx, ci) {
   const rep = REPS_DATA[repIdx];
@@ -1612,6 +1749,7 @@ function showView(id) {
     setTimeout(() => {
       populateTracker(repIdx);
       populateClassTrackers(repIdx);
+      populateTargetEditor(repIdx);
       drawRepCharts(repIdx);
     }, 50);
   }
