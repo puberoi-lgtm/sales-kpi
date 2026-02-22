@@ -525,17 +525,16 @@ function applyAccessControl() {
   if (!tabs) return;
 
   if (access.role === 'admin') {
-    // Admin sees everything including growth sliders
     tabs.querySelectorAll('.tab-btn').forEach(b => b.style.display = '');
     document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
+    document.querySelectorAll('.rep-only').forEach(el => el.style.display = 'none');
   } else {
-    // Rep sees only their own tab
     tabs.querySelectorAll('.tab-btn').forEach(b => b.style.display = 'none');
     const myTab = document.getElementById(`tab-rep-${access.repIdx}`);
     if (myTab) myTab.style.display = '';
-    // Hide all growth sliders — reps cannot adjust targets
     document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
-    // Auto-navigate to their tab
+    // Show rep charts
+    document.querySelectorAll('.rep-only').forEach(el => el.style.display = '');
     showView(`rep-${access.repIdx}`);
   }
 }
@@ -768,9 +767,21 @@ function buildRepView(repIdx) {
     <!-- populated by populateTargetEditor() -->
   </div>
 
-  <div class="section-hdr">🔮 End of Year Prediction — based on current run rate</div>
-  <div class="eoy-card" id="eoy-card-${repIdx}">
+  <div class="section-hdr admin-only">🔮 End of Year Prediction — based on current run rate</div>
+  <div class="eoy-card admin-only" id="eoy-card-${repIdx}">
     <div class="eoy-item"><div class="eoy-label">EOY Projection</div><div class="eoy-val" style="color:var(--muted);font-size:14px">Enter actuals to see projection</div></div>
+  </div>
+
+  <div class="section-hdr rep-only" id="rep-charts-hdr-${repIdx}" style="display:none">📊 Performance Charts — FY2026</div>
+  <div class="charts-row rep-only" id="rep-charts-${repIdx}" style="display:none">
+    <div class="chart-card">
+      <div class="chart-title">Total Target vs Achievement</div>
+      <div class="chart-wrap"><canvas id="ch-rep-total-${repIdx}"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Target vs Achievement by Class</div>
+      <div class="chart-wrap"><canvas id="ch-rep-class-${repIdx}"></canvas></div>
+    </div>
   </div>
 
   <div class="section-hdr">📋 Monthly Tracker — Auto-summed from Results by Class entries</div>
@@ -1150,44 +1161,149 @@ function drawRepCharts(repIdx) {
   const rep = REPS_DATA[repIdx];
   const months = rep.monthly.map(m => m.month);
   const targets = months.map((_, mi) => getTarget(repIdx, mi));
-  const prevs   = rep.monthly.map(m => m.prev);
   const actuals = months.map((_, mi) => getActual(repIdx, mi));
   const clsColors = ['#4472C4','#70AD47','#ED7D31','#9E480E'];
+  const access = getCurrentUserRole();
+  const isRep = access && access.role !== 'admin';
 
-  // Line: target vs 2025
-  mkChart(`ch-line-${repIdx}`, {
-    type: 'line', data: {
-      labels: months,
-      datasets: [
-        { label: '2026 Target', data: targets, borderColor: rep.color, backgroundColor: 'transparent', borderWidth: 2, tension: .4, pointRadius: 3 },
-        { label: '2025 Actual', data: prevs, borderColor: '#555', borderDash: [4,3], backgroundColor: 'transparent', borderWidth: 1.5, tension: .4, pointRadius: 2 }
-      ]
-    }, options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false, plugins: { ...CHART_DEFAULTS.plugins, legend: { ...CHART_DEFAULTS.plugins.legend } } }
-  });
+  if (isRep) {
+    // ── Chart 1: Total monthly target vs actual (only months with data + current) ──
+    const now = new Date();
+    const currentMi = now.getMonth();
+    // Show months up to and including current month
+    const visibleMonths = months.filter((_, mi) => mi <= currentMi);
+    const visTargets = visibleMonths.map((_, mi) => Math.round(getTarget(repIdx, mi)));
+    const visActuals = visibleMonths.map((_, mi) => {
+      const a = getActual(repIdx, mi);
+      return a > 0 ? Math.round(a) : null;
+    });
 
-  // Class bar
-  const clsAnnualTgts = rep.classes.map((cls, ci) => cls.monthly.reduce((s, _, mi) => s + getClassTarget(repIdx, ci, mi), 0));
-  const clsAnnualPrev = rep.classes.map(cls => cls.monthly.reduce((s, m) => s + m.prev, 0));
-  mkChart(`ch-cls-${repIdx}`, {
-    type: 'bar', data: {
-      labels: rep.classes.map(c => c.name.split(' ')[0]),
-      datasets: [
-        { label: '2026 Target', data: clsAnnualTgts, backgroundColor: clsColors.map(c => c + 'cc'), borderColor: clsColors, borderWidth: 1 },
-        { label: '2025 Actual', data: clsAnnualPrev, backgroundColor: '#333', borderColor: '#555', borderWidth: 1 }
-      ]
-    }, options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { ...CHART_DEFAULTS.plugins } }
-  });
+    mkChart(`ch-rep-total-${repIdx}`, {
+      type: 'bar',
+      data: {
+        labels: visibleMonths,
+        datasets: [
+          {
+            label: '2026 Target',
+            data: visTargets,
+            backgroundColor: rep.color + '55',
+            borderColor: rep.color,
+            borderWidth: 2,
+            borderRadius: 4,
+          },
+          {
+            label: 'Actual',
+            data: visActuals,
+            backgroundColor: '#f5a62399',
+            borderColor: '#f5a623',
+            borderWidth: 2,
+            borderRadius: 4,
+          }
+        ]
+      },
+      options: {
+        ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false,
+        plugins: {
+          ...CHART_DEFAULTS.plugins,
+          legend: { ...CHART_DEFAULTS.plugins.legend },
+          tooltip: {
+            callbacks: {
+              label: ctx => ` ${ctx.dataset.label}: $${ctx.parsed.y?.toLocaleString() ?? 'No data'}`
+            }
+          }
+        },
+        scales: {
+          ...CHART_DEFAULTS.scales,
+          y: { ...CHART_DEFAULTS.scales?.y, ticks: { callback: v => '$' + (v >= 1000 ? (v/1000).toFixed(0)+'k' : v) } }
+        }
+      }
+    });
 
-  // Bar: target vs entered
-  mkChart(`ch-bar-${repIdx}`, {
-    type: 'bar', data: {
-      labels: months,
-      datasets: [
-        { label: '2026 Target', data: targets, backgroundColor: rep.color + '99', borderColor: rep.color, borderWidth: 1 },
-        { label: 'Entered', data: actuals, backgroundColor: '#f5a62399', borderColor: '#f5a623', borderWidth: 1 }
-      ]
-    }, options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false, plugins: { ...CHART_DEFAULTS.plugins } }
-  });
+    // ── Chart 2: Class-wise YTD target vs actual ──
+    const clsYtdTargets = rep.classes.map((_, ci) =>
+      Math.round(months.reduce((s, _, mi) => s + getClassTarget(repIdx, ci, mi), 0))
+    );
+    const clsYtdActuals = rep.classes.map((_, ci) =>
+      Math.round(months.reduce((s, _, mi) => s + getClassActual(repIdx, ci, mi), 0))
+    );
+    const clsLabels = rep.classes.map(c => c.name.replace(' & ', ' &\n'));
+
+    mkChart(`ch-rep-class-${repIdx}`, {
+      type: 'bar',
+      data: {
+        labels: clsLabels,
+        datasets: [
+          {
+            label: '2026 Target',
+            data: clsYtdTargets,
+            backgroundColor: clsColors.map(c => c + '55'),
+            borderColor: clsColors,
+            borderWidth: 2,
+            borderRadius: 4,
+          },
+          {
+            label: 'Actual YTD',
+            data: clsYtdActuals.map(v => v > 0 ? v : null),
+            backgroundColor: '#f5a62366',
+            borderColor: '#f5a623',
+            borderWidth: 2,
+            borderRadius: 4,
+          }
+        ]
+      },
+      options: {
+        ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false,
+        plugins: {
+          ...CHART_DEFAULTS.plugins,
+          legend: { ...CHART_DEFAULTS.plugins.legend },
+          tooltip: {
+            callbacks: {
+              label: ctx => ` ${ctx.dataset.label}: $${ctx.parsed.y?.toLocaleString() ?? 'No data'}`
+            }
+          }
+        },
+        scales: {
+          ...CHART_DEFAULTS.scales,
+          y: { ...CHART_DEFAULTS.scales?.y, ticks: { callback: v => '$' + (v >= 1000 ? (v/1000).toFixed(0)+'k' : v) } }
+        }
+      }
+    });
+
+  } else {
+    // ── Admin charts (existing team-level charts) ──
+    const prevs = rep.monthly.map(m => m.prev);
+    mkChart(`ch-line-${repIdx}`, {
+      type: 'line', data: {
+        labels: months,
+        datasets: [
+          { label: '2026 Target', data: targets, borderColor: rep.color, backgroundColor: 'transparent', borderWidth: 2, tension: .4, pointRadius: 3 },
+          { label: '2025 Actual', data: prevs, borderColor: '#555', borderDash: [4,3], backgroundColor: 'transparent', borderWidth: 1.5, tension: .4, pointRadius: 2 }
+        ]
+      }, options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false }
+    });
+
+    const clsAnnualTgts = rep.classes.map((cls, ci) => cls.monthly.reduce((s, _, mi) => s + getClassTarget(repIdx, ci, mi), 0));
+    const clsAnnualPrev = rep.classes.map(cls => cls.monthly.reduce((s, m) => s + m.prev, 0));
+    mkChart(`ch-cls-${repIdx}`, {
+      type: 'bar', data: {
+        labels: rep.classes.map(c => c.name.split(' ')[0]),
+        datasets: [
+          { label: '2026 Target', data: clsAnnualTgts, backgroundColor: clsColors.map(c => c + 'cc'), borderColor: clsColors, borderWidth: 1 },
+          { label: '2025 Actual', data: clsAnnualPrev, backgroundColor: '#333', borderColor: '#555', borderWidth: 1 }
+        ]
+      }, options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false, indexAxis: 'y' }
+    });
+
+    mkChart(`ch-bar-${repIdx}`, {
+      type: 'bar', data: {
+        labels: months,
+        datasets: [
+          { label: '2026 Target', data: targets, backgroundColor: rep.color + '99', borderColor: rep.color, borderWidth: 1 },
+          { label: 'Entered', data: actuals, backgroundColor: '#f5a62399', borderColor: '#f5a623', borderWidth: 1 }
+        ]
+      }, options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false }
+    });
+  }
 }
 
 // ── Interactions ─────────────────────────────────────────────
