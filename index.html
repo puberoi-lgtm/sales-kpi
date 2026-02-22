@@ -68,6 +68,37 @@
     --font-head: 'Syne', sans-serif;
     --font-mono: 'DM Mono', monospace;
   }
+  /* ── LIGHT THEME ── */
+  body.light {
+    --bg:        #f4f5f7;
+    --surface:   #ffffff;
+    --surface2:  #f0f1f3;
+    --surface3:  #e8eaed;
+    --border:    #d0d4da;
+    --green:     #4a9020;
+    --green-dk:  #3a7018;
+    --green-dim: #d4edcc;
+    --amber:     #d4870a;
+    --text:      #1a1a2e;
+    --muted:     #6b7280;
+    --faint:     #9ca3af;
+  }
+  body.light .topbar { border-bottom-color: #d0d4da; }
+  body.light .login-card { box-shadow: 0 4px 20px rgba(0,0,0,.12); }
+  body.light .current-month-row td { background: rgba(212,135,10,.1) !important; }
+  body.light .actual-input { color: #b06000 !important; }
+  body.light .target-input { color: #b06000; }
+  body.light .target-input.modified { color: var(--amber); }
+
+  /* ── THEME TOGGLE BUTTON ── */
+  .theme-toggle {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 20px; padding: 4px 12px; cursor: pointer;
+    font-family: var(--font-mono); font-size: 11px; color: var(--muted);
+    transition: all .2s; display: flex; align-items: center; gap: 6px;
+    white-space: nowrap;
+  }
+  .theme-toggle:hover { border-color: var(--green); color: var(--text); }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html { scroll-behavior: smooth; }
   body {
@@ -441,6 +472,7 @@
     </button>
     <span id="sync-indicator" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-left:12px">🔴 Live</span>
     <span id="user-info" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-left:16px"></span>
+    <button class="theme-toggle" id="theme-toggle-btn" onclick="toggleTheme()">🌙 Dark</button>
     <button id="logout-btn" onclick="doLogout()" style="display:none;margin-left:10px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:4px 10px;font-family:var(--font-mono);font-size:11px;cursor:pointer;" onmouseover="this.style.borderColor='#e05252';this.style.color='#e05252'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">Sign Out</button>
   </div>
 </div> ──────────────────────────────────────────────── -->
@@ -507,6 +539,27 @@ function applyAccessControl() {
     showView(`rep-${access.repIdx}`);
   }
 }
+
+// ── Theme toggle ─────────────────────────────────────────────
+function toggleTheme() {
+  const isLight = document.body.classList.toggle('light');
+  const btn = document.getElementById('theme-toggle-btn');
+  if (btn) btn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+  localStorage.setItem('se-theme', isLight ? 'light' : 'dark');
+}
+
+// Apply saved theme on load
+(function() {
+  const saved = localStorage.getItem('se-theme');
+  if (saved === 'light') {
+    document.body.classList.add('light');
+    // Update button once DOM ready
+    window.addEventListener('DOMContentLoaded', () => {
+      const btn = document.getElementById('theme-toggle-btn');
+      if (btn) btn.textContent = '🌙 Dark';
+    });
+  }
+})();
 
 function doLogin() {
   const email    = document.getElementById('login-email').value.trim();
@@ -719,21 +772,6 @@ function buildRepView(repIdx) {
     <!-- populated by populateTargetEditor() -->
   </div>
 
-  <div class="charts-row">
-    <div class="chart-card">
-      <div class="chart-title">Monthly — 2026 Target vs 2025 Actual</div>
-      <div class="chart-wrap"><canvas id="ch-line-${repIdx}"></canvas></div>
-    </div>
-    <div class="chart-card">
-      <div class="chart-title">Annual Target by Class</div>
-      <div class="chart-wrap"><canvas id="ch-cls-${repIdx}"></canvas></div>
-    </div>
-    <div class="chart-card wide">
-      <div class="chart-title">Monthly Target vs Entered (updates as you type)</div>
-      <div class="chart-wrap tall"><canvas id="ch-bar-${repIdx}"></canvas></div>
-    </div>
-  </div>
-
   <div class="section-hdr">🔮 End of Year Prediction — based on current run rate</div>
   <div class="eoy-card" id="eoy-card-${repIdx}">
     <div class="eoy-item"><div class="eoy-label">EOY Projection</div><div class="eoy-val" style="color:var(--muted);font-size:14px">Enter actuals to see projection</div></div>
@@ -874,6 +912,11 @@ function populateTracker(repIdx) {
 
 function populateClassTrackers(repIdx) {
   const rep = REPS_DATA[repIdx];
+  const access = getCurrentUserRole();
+  const isAdmin = access && access.role === 'admin';
+  const now = new Date();
+  const currentMi = now.getMonth();
+
   rep.classes.forEach((cls, ci) => {
     const tbody = document.getElementById(`cls-body-${repIdx}-${ci}`);
     if (!tbody) return;
@@ -885,16 +928,25 @@ function populateClassTrackers(repIdx) {
       const vari = act > 0 ? act - tgt : null;
       const vpct = act > 0 && tgt !== 0 ? (act - tgt) / Math.abs(tgt) : null;
       totTgt += tgt; totAct += act;
+      const isCurrentMonth = mi === currentMi;
+      const rowClass = isCurrentMonth ? 'current-month-row' : '';
+      const badge = isCurrentMonth ? '<span class="current-month-badge">▶ Now</span>' : '';
       const status = act > 0 ? (act >= tgt ? `<span class="status-on">✅ On Target</span>` : `<span class="status-off">⚠️ Below Target</span>`) : `<span class="status-pend">Pending</span>`;
       const varCell = vari !== null ? `<span class="${vari>=0?'variance-pos':'variance-neg'}">${fmt(vari)}</span>` : '—';
       const pctCell = vpct !== null ? `<span class="${vpct>=0?'variance-pos':'variance-neg'}">${fmtPct(vpct)}</span>` : '—';
-      tbody.innerHTML += `<tr>
-        <td>${m.month} 2026</td>
+
+      // Admins can edit, reps see read-only display
+      const actualCell = isAdmin
+        ? `<input class="actual-input" type="text" inputmode="numeric" placeholder="0"
+            value="${act > 0 ? act : ''}"
+            onblur="setClassActual(${repIdx},${ci},${mi},parseFloat(this.value.replace(/[^0-9.]/g,''))||0)">`
+        : `<span style="color:#ffe566;font-family:var(--font-mono)">${act > 0 ? fmt(act) : '—'}</span>`;
+
+      tbody.innerHTML += `<tr class="${rowClass}">
+        <td>${m.month} 2026${badge}</td>
         <td class="target-cell">${fmt(tgt)}</td>
         <td class="prev-cell">${fmt(m.prev)}</td>
-        <td><input class="actual-input" type="text" inputmode="numeric" placeholder="0"
-          value="${act > 0 ? act : ''}"
-          onblur="setClassActual(${repIdx},${ci},${mi},parseFloat(this.value.replace(/[^0-9.]/g,''))||0)"></td>
+        <td>${actualCell}</td>
         <td>${varCell}</td><td>${pctCell}</td><td>${status}</td>
       </tr>`;
     });
