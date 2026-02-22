@@ -1238,6 +1238,8 @@ function setActual(repIdx, monthIdx, val) {
   refreshTeamView();
 }
 function setClassActual(repIdx, clsIdx, monthIdx, val) {
+  const access = getCurrentUserRole();
+  if (!access || access.role !== 'admin') return; // reps cannot edit
   state.classActuals[`${repIdx}-${clsIdx}-${monthIdx}`] = val;
   fbSave();
   populateClassTrackers(repIdx);
@@ -1558,6 +1560,9 @@ function buildBulkView() {
 
 function populateBulkView() {
   const clsColors = ['#4472C4','#70AD47','#ED7D31','#9E480E'];
+  const access = getCurrentUserRole();
+  const isAdmin = access && access.role === 'admin';
+
   REPS_DATA.forEach((rep, ri) => {
     rep.classes.forEach((cls, ci) => {
       const tbody = document.getElementById(`bulk-body-${ri}-${ci}`);
@@ -1569,13 +1574,16 @@ function populateBulkView() {
         const vari = act > 0 ? act - tgt : null;
         const varCell = vari !== null ? `<span class="${vari>=0?'variance-pos':'variance-neg'}">${fmt(vari)}</span>` : '—';
         const status = act > 0 ? (act >= tgt ? `<span class="status-on">✅ On Target</span>` : `<span class="status-off">⚠️ Below Target</span>`) : `<span class="status-pend">Pending</span>`;
+        const actualCell = isAdmin
+          ? `<input class="actual-input" type="text" inputmode="numeric" placeholder="0"
+              value="${act > 0 ? act : ''}"
+              onblur="setBulkActual(${ri},${ci},${mi},parseFloat(this.value.replace(/[^0-9.]/g,''))||0)">`
+          : `<span style="color:#ffe566;font-family:var(--font-mono)">${act > 0 ? fmt(act) : '—'}</span>`;
         tbody.innerHTML += `<tr>
           <td>${m.month} 2026</td>
           <td class="target-cell">${fmt(tgt)}</td>
           <td class="prev-cell">${fmt(m.prev)}</td>
-          <td><input class="actual-input" type="text" inputmode="numeric" placeholder="0"
-            value="${act > 0 ? act : ''}"
-            onblur="setBulkActual(${ri},${ci},${mi},parseFloat(this.value.replace(/[^0-9.]/g,''))||0)"></td>
+          <td>${actualCell}</td>
           <td>${varCell}</td>
           <td>${status}</td>
         </tr>`;
@@ -1585,6 +1593,8 @@ function populateBulkView() {
 }
 
 function setBulkActual(repIdx, clsIdx, monthIdx, val) {
+  const access = getCurrentUserRole();
+  if (!access || access.role !== 'admin') return; // reps cannot edit
   state.classActuals[`${repIdx}-${clsIdx}-${monthIdx}`] = val;
   fbSave();
   populateBulkView();
