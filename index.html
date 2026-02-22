@@ -748,22 +748,18 @@ function buildRepView(repIdx) {
     <div class="kpi-card" style="--accent-color:${rep.color}">
       <div class="kpi-label">Annual Target</div>
       <div class="kpi-value" style="color:var(--green)" id="kpi-anntgt-${repIdx}">${fmt(annualTarget)}</div>
-      <div class="kpi-sub">FY2026 (20% growth basis)</div>
     </div>
     <div class="kpi-card" style="--accent-color:#888">
       <div class="kpi-label">Achieved FY2025</div>
       <div class="kpi-value" style="color:#6699cc">${fmt(annualPrev)}</div>
-      <div class="kpi-sub">Prior year reference</div>
     </div>
     <div class="kpi-card" style="--accent-color:var(--amber)">
       <div class="kpi-label">YTD Entered</div>
       <div class="kpi-value" style="color:var(--amber)" id="kpi-ytd-${repIdx}">${fmt(ytdActual)}</div>
-      <div class="kpi-sub">${monthsEntered} month(s) entered</div>
     </div>
     <div class="kpi-card" style="--accent-color:#e05252">
       <div class="kpi-label">Still To Go</div>
       <div class="kpi-value" style="color:#e05252" id="kpi-still-${repIdx}">${fmt(stillToGo)}</div>
-      <div class="kpi-sub">${12 - monthsEntered} month(s) remaining</div>
     </div>
   </div>
 
@@ -839,8 +835,6 @@ function buildRepView(repIdx) {
     </div>
   </div>`).join('')}
 
-  <div class="section-hdr">🎯 Target Planner</div>
-  <div class="planner-grid" id="planner-${repIdx}"></div>
   `;
 }
 
@@ -906,7 +900,6 @@ function populateTracker(repIdx) {
   if (kpiStill) kpiStill.textContent = fmt(Math.max(totTgt - totAct, 0));
   if (kpiTgt) kpiTgt.textContent = fmt(totTgt);
 
-  populatePlanner(repIdx, totTgt, totAct);
   populateEoyPrediction(repIdx, totTgt, totAct);
 }
 
@@ -1150,39 +1143,6 @@ function resetAllTargets(repIdx, clsIdx) {
   populateClassTrackers(repIdx);
   drawRepCharts(repIdx);
   refreshTeamView();
-}
-
-function populatePlanner(repIdx, annTgt, ytd) {
-  const el = document.getElementById(`planner-${repIdx}`);
-  if (!el) return;
-  const monthsLeft = 12 - REPS_DATA[repIdx].monthly.filter((_, mi) => getActual(repIdx, mi) > 0).length;
-  const stillToGo = Math.max(annTgt - ytd, 0);
-  const neededPer = monthsLeft > 0 ? stillToGo / monthsLeft : 0;
-  el.innerHTML = `
-    <div class="planner-card">
-      <div class="planner-label">Annual Target</div>
-      <div class="planner-val" style="color:var(--green)">${fmt(annTgt)}</div>
-    </div>
-    <div class="planner-card">
-      <div class="planner-label">Total Entered So Far</div>
-      <div class="planner-val" style="color:var(--amber)">${fmt(ytd)}</div>
-    </div>
-    <div class="planner-card">
-      <div class="planner-label">Still To Go</div>
-      <div class="planner-val" style="color:#e05252">${fmt(stillToGo)}</div>
-    </div>
-    <div class="planner-card">
-      <div class="planner-label">Months With Entries</div>
-      <div class="planner-val" style="color:#6699cc">${12 - monthsLeft}</div>
-    </div>
-    <div class="planner-card">
-      <div class="planner-label">Months Remaining</div>
-      <div class="planner-val" style="color:var(--muted)">${monthsLeft}</div>
-    </div>
-    <div class="planner-card">
-      <div class="planner-label">Needed Per Month (Avg)</div>
-      <div class="planner-val" style="color:var(--amber)">${fmt(neededPer)}</div>
-    </div>`;
 }
 
 // ── Draw charts for a rep ────────────────────────────────────
