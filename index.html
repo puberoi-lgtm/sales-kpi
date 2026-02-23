@@ -803,7 +803,7 @@ function buildRepView(repIdx) {
     </div>
     <div class="chart-card">
       <div class="chart-title">Target vs Actual by Class</div>
-      <div class="chart-wrap"><canvas id="ch-rep-class-${repIdx}"></canvas></div>
+      <div class="chart-wrap tall"><canvas id="ch-rep-class-${repIdx}"></canvas></div>
     </div>
   </div>
 
@@ -1182,30 +1182,34 @@ function drawRepCharts(repIdx) {
     }
   });
 
-  // ── Chart 2: Class-wise YTD — Target vs Actual line chart ──
+  // ── Chart 2: Class-wise — Target vs Actual line chart ──
+  // Use shorter class names for legend clarity
+  const clsShortNames = ['Server Racks', 'Data Products', 'Cabling', 'Others'];
   const clsDatasets = rep.classes.map((cls, ci) => {
     const tgtData = months.map((_, mi) => Math.round(getClassTarget(repIdx, ci, mi)));
     const actData = months.map((_, mi) => { const a = getClassActual(repIdx, ci, mi); return a > 0 ? Math.round(a) : null; });
     return [
       {
-        label: `${cls.name} Target`,
+        label: clsShortNames[ci] + ' ╌ Target',
         data: tgtData,
-        borderColor: clsColors[ci],
+        borderColor: clsColors[ci] + 'aa',
         backgroundColor: 'transparent',
-        borderWidth: 2,
-        borderDash: [5, 3],
+        borderWidth: 1.5,
+        borderDash: [4, 3],
         tension: 0.4,
-        pointRadius: 3,
+        pointRadius: 2,
+        pointHoverRadius: 4,
         fill: false,
       },
       {
-        label: `${cls.name} Actual`,
+        label: clsShortNames[ci] + ' — Actual',
         data: actData,
         borderColor: clsColors[ci],
-        backgroundColor: clsColors[ci] + '22',
+        backgroundColor: 'transparent',
         borderWidth: 2.5,
         tension: 0.4,
-        pointRadius: 4,
+        pointRadius: 3,
+        pointHoverRadius: 5,
         fill: false,
         spanGaps: false,
       }
@@ -1219,7 +1223,29 @@ function drawRepCharts(repIdx) {
       ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false,
       plugins: {
         ...CHART_DEFAULTS.plugins,
-        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: $${ctx.parsed.y?.toLocaleString() ?? 'No data'}` } }
+        legend: {
+          display: true,
+          position: 'bottom',
+          labels: {
+            color: '#888',
+            font: { family: "'DM Mono', monospace", size: 10 },
+            boxWidth: 24,
+            boxHeight: 2,
+            padding: 10,
+            usePointStyle: false,
+            filter: item => item.text.includes('Actual'), // only show Actual entries in legend
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const isTarget = ctx.dataset.label.includes('Target');
+              const prefix = isTarget ? '⋯ Target' : '— Actual';
+              const cls = ctx.dataset.label.split(' ')[0];
+              return ` ${cls} ${prefix}: $${ctx.parsed.y?.toLocaleString() ?? 'No data'}`;
+            }
+          }
+        }
       },
       scales: {
         x: { ...CHART_DEFAULTS.scales?.x },
