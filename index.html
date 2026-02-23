@@ -527,14 +527,11 @@ function applyAccessControl() {
   if (access.role === 'admin') {
     tabs.querySelectorAll('.tab-btn').forEach(b => b.style.display = '');
     document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
-    document.querySelectorAll('.rep-only').forEach(el => el.style.display = 'none');
   } else {
     tabs.querySelectorAll('.tab-btn').forEach(b => b.style.display = 'none');
     const myTab = document.getElementById(`tab-rep-${access.repIdx}`);
     if (myTab) myTab.style.display = '';
     document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
-    // Show rep charts
-    document.querySelectorAll('.rep-only').forEach(el => el.style.display = '');
     showView(`rep-${access.repIdx}`);
   }
 }
@@ -762,9 +759,37 @@ function buildRepView(repIdx) {
     </div>
   </div>
 
-  <div class="section-hdr admin-only">🎯 Target Editor — set individual monthly targets per class (admin only)</div>
-  <div class="admin-only" id="target-editor-${repIdx}">
-    <!-- populated by populateTargetEditor() -->
+  <div class="section-hdr admin-only">🎯 Target Upload — bulk update targets via CSV (admin only)</div>
+  <div class="admin-only" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px;margin-bottom:18px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+      <div>
+        <div style="font-size:12px;font-weight:600;margin-bottom:8px">Upload CSV to set targets for ${rep.name}</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.6">
+          CSV format: <span style="color:var(--amber)">Month, Class, Target</span><br>
+          Month: Jan–Dec &nbsp;|&nbsp; Class: Server Racks, Data Products, Cabling, Others
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <label style="background:var(--green);color:#000;border-radius:5px;padding:7px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font-head)">
+            📂 Upload CSV
+            <input type="file" accept=".csv" style="display:none"
+              onchange="const f=this.files[0];if(!f)return;document.getElementById('target-upload-status-${repIdx}').textContent='⏳ Importing...';const r=new FileReader();r.onload=e=>applyTargetCsv(e.target.result,${repIdx});r.readAsText(f)">
+          </label>
+          <button onclick="resetAllCustomTargets(${repIdx})" style="background:transparent;border:1px solid #e05252;color:#e05252;border-radius:5px;padding:7px 14px;font-size:11px;font-family:var(--font-mono);cursor:pointer">↺ Reset to Original</button>
+          <button onclick="downloadTargetTemplate(${repIdx})" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:7px 14px;font-size:11px;font-family:var(--font-mono);cursor:pointer">⬇ Download Template</button>
+        </div>
+        <div id="target-upload-status-${repIdx}" style="font-size:11px;margin-top:10px;color:var(--green)"></div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);background:var(--surface2);border-radius:6px;padding:12px;font-family:var(--font-mono);line-height:1.8">
+        <strong style="color:var(--text)">Example CSV:</strong><br>
+        Month,Class,Target<br>
+        Jan,Server Racks,120000<br>
+        Jan,Data Products,45000<br>
+        Jan,Cabling,85000<br>
+        Jan,Others,5000<br>
+        Feb,Server Racks,135000<br>
+        ...
+      </div>
+    </div>
   </div>
 
   <div class="section-hdr admin-only">🔮 End of Year Prediction — based on current run rate</div>
@@ -772,14 +797,14 @@ function buildRepView(repIdx) {
     <div class="eoy-item"><div class="eoy-label">EOY Projection</div><div class="eoy-val" style="color:var(--muted);font-size:14px">Enter actuals to see projection</div></div>
   </div>
 
-  <div class="section-hdr rep-only" id="rep-charts-hdr-${repIdx}" style="display:none">📊 Performance Charts — FY2026</div>
-  <div class="charts-row rep-only" id="rep-charts-${repIdx}" style="display:none">
+  <div class="section-hdr">📊 Performance Charts — FY2026</div>
+  <div class="charts-row" id="rep-charts-${repIdx}">
     <div class="chart-card">
-      <div class="chart-title">Total Target vs Achievement</div>
+      <div class="chart-title">Monthly Target vs Actual</div>
       <div class="chart-wrap"><canvas id="ch-rep-total-${repIdx}"></canvas></div>
     </div>
     <div class="chart-card">
-      <div class="chart-title">Target vs Achievement by Class</div>
+      <div class="chart-title">Target vs Actual by Class</div>
       <div class="chart-wrap"><canvas id="ch-rep-class-${repIdx}"></canvas></div>
     </div>
   </div>
@@ -1051,259 +1076,177 @@ function populateEoyPrediction(repIdx, annTgt, ytdAct) {
 }
 
 // ── Target Editor ─────────────────────────────────────────────
-function populateTargetEditor(repIdx) {
-  const el = document.getElementById(`target-editor-${repIdx}`);
-  if (!el) return;
-  const rep = REPS_DATA[repIdx];
-  const months = rep.monthly.map(m => m.month);
-  const clsColors = ['#4472C4','#70AD47','#ED7D31','#9E480E'];
-
-  // Active class tab (default 0)
-  const activeCi = el._activeCi || 0;
-
-  const tabs = rep.classes.map((cls, ci) => `
-    <div class="target-editor-tab ${ci===activeCi?'active':''}"
-      style="${ci===activeCi?`background:${clsColors[ci]};color:#fff`:''}"
-      onclick="switchTargetEditorTab(${repIdx},${ci})">${cls.name}</div>
-  `).join('');
-
-  const cls = rep.classes[activeCi];
-  const rows = months.map((month, mi) => {
-    const orig = REPS_DATA[repIdx].classes[activeCi].monthly[mi].target;
-    const custom = state.customTargets[`${repIdx}-${activeCi}-${mi}`];
-    const val = custom !== undefined ? custom : orig;
-    const isModified = custom !== undefined && custom !== orig;
-    const resetBtn = isModified
-      ? `<button class="target-reset-btn" onclick="resetCustomTarget(${repIdx},${activeCi},${mi})" title="Reset to original">↺ Reset</button>`
-      : '';
-    return `<tr>
-      <td>${month} 2026</td>
-      <td style="color:var(--muted);font-size:11px">${fmt(orig)}</td>
-      <td>
-        <input class="target-input ${isModified?'modified':''}" type="text" inputmode="numeric"
-          value="${Math.round(val)}"
-          onblur="setCustomTarget(${repIdx},${activeCi},${mi},parseFloat(this.value.replace(/[^0-9.-]/g,''))||0)"
-          title="Edit target for ${month}">
-        ${resetBtn}
-      </td>
-      <td style="color:var(--muted);font-size:11px">${fmt(REPS_DATA[repIdx].classes[activeCi].monthly[mi].prev)}</td>
-    </tr>`;
-  }).join('');
-
-  el.innerHTML = `
-    <div class="target-editor-tabs">${tabs}</div>
-    <div class="target-editor-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Month</th>
-            <th>Original Target</th>
-            <th style="color:var(--amber)">Custom Target ✏️</th>
-            <th>2025 Actual (ref)</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>
-    <button onclick="resetAllTargets(${repIdx},${activeCi})" style="background:transparent;border:1px solid #e05252;color:#e05252;border-radius:5px;padding:5px 14px;font-family:var(--font-mono);font-size:11px;cursor:pointer;margin-bottom:16px">
-      ↺ Reset all ${cls.name} targets to original
-    </button>
-  `;
-  el._activeCi = activeCi;
-}
-
-function switchTargetEditorTab(repIdx, ci) {
-  const el = document.getElementById(`target-editor-${repIdx}`);
-  if (el) { el._activeCi = ci; populateTargetEditor(repIdx); }
-}
-
-function setCustomTarget(repIdx, clsIdx, monthIdx, val) {
+function applyTargetCsv(text, repIdx) {
   const access = getCurrentUserRole();
   if (!access || access.role !== 'admin') return;
-  state.customTargets[`${repIdx}-${clsIdx}-${monthIdx}`] = val;
-  fbSave();
-  populateTargetEditor(repIdx);
-  populateTracker(repIdx);
-  populateClassTrackers(repIdx);
-  drawRepCharts(repIdx);
-  refreshTeamView();
-}
-
-function resetCustomTarget(repIdx, clsIdx, monthIdx) {
-  const access = getCurrentUserRole();
-  if (!access || access.role !== 'admin') return;
-  delete state.customTargets[`${repIdx}-${clsIdx}-${monthIdx}`];
-  fbSave();
-  populateTargetEditor(repIdx);
-  populateTracker(repIdx);
-  populateClassTrackers(repIdx);
-  drawRepCharts(repIdx);
-  refreshTeamView();
-}
-
-function resetAllTargets(repIdx, clsIdx) {
-  const access = getCurrentUserRole();
-  if (!access || access.role !== 'admin') return;
-  if (!confirm('Reset all custom targets for this class back to original values?')) return;
-  for (let mi = 0; mi < 12; mi++) {
-    delete state.customTargets[`${repIdx}-${clsIdx}-${mi}`];
+  const lines = text.trim().split('\n').slice(1); // skip header
+  const months = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+  const clsMap = {
+    'server racks': 0, 'server racks & accessories': 0,
+    'data products': 1,
+    'cabling': 2, 'cabling & adapters': 2,
+    'others': 3, 'other': 3
+  };
+  let count = 0;
+  lines.forEach(line => {
+    const cols = line.split(',').map(s => s.trim().replace(/^"|"$/g,''));
+    if (cols.length < 3) return;
+    const monthStr = cols[0].toLowerCase().substring(0,3);
+    const clsStr   = cols[1].toLowerCase();
+    const val      = parseFloat(cols[2].replace(/[^0-9.-]/g,''));
+    const mi = months.indexOf(monthStr);
+    const ci = clsMap[clsStr];
+    if (mi === -1 || ci === undefined || isNaN(val)) return;
+    state.customTargets[`${repIdx}-${ci}-${mi}`] = val;
+    count++;
+  });
+  if (count > 0) {
+    fbSave();
+    REPS_DATA.forEach((_, ri) => {
+      populateTracker(ri);
+      populateClassTrackers(ri);
+      drawRepCharts(ri);
+    });
+    refreshTeamView();
+    document.getElementById(`target-upload-status-${repIdx}`).textContent = `✅ Imported ${count} target overrides`;
+  } else {
+    document.getElementById(`target-upload-status-${repIdx}`).textContent = `❌ No valid rows found — check format`;
   }
+}
+
+function resetAllCustomTargets(repIdx) {
+  const access = getCurrentUserRole();
+  if (!access || access.role !== 'admin') return;
+  if (!confirm(`Reset ALL custom targets for ${REPS_DATA[repIdx].name} back to original values?`)) return;
+  REPS_DATA[repIdx].classes.forEach((_, ci) => {
+    for (let mi = 0; mi < 12; mi++) delete state.customTargets[`${repIdx}-${ci}-${mi}`];
+  });
   fbSave();
-  populateTargetEditor(repIdx);
   populateTracker(repIdx);
   populateClassTrackers(repIdx);
   drawRepCharts(repIdx);
   refreshTeamView();
+  document.getElementById(`target-upload-status-${repIdx}`).textContent = `↺ Targets reset to original`;
 }
 
 // ── Draw charts for a rep ────────────────────────────────────
 function drawRepCharts(repIdx) {
   const rep = REPS_DATA[repIdx];
   const months = rep.monthly.map(m => m.month);
-  const targets = months.map((_, mi) => getTarget(repIdx, mi));
-  const actuals = months.map((_, mi) => getActual(repIdx, mi));
+  const targets = months.map((_, mi) => Math.round(getTarget(repIdx, mi)));
+  const actuals = months.map((_, mi) => { const a = getActual(repIdx, mi); return a > 0 ? Math.round(a) : null; });
   const clsColors = ['#4472C4','#70AD47','#ED7D31','#9E480E'];
-  const access = getCurrentUserRole();
-  const isRep = access && access.role !== 'admin';
+  const now = new Date();
+  const currentMi = now.getMonth();
 
-  if (isRep) {
-    // ── Chart 1: Total monthly target vs actual (only months with data + current) ──
-    const now = new Date();
-    const currentMi = now.getMonth();
-    // Show months up to and including current month
-    const visibleMonths = months.filter((_, mi) => mi <= currentMi);
-    const visTargets = visibleMonths.map((_, mi) => Math.round(getTarget(repIdx, mi)));
-    const visActuals = visibleMonths.map((_, mi) => {
-      const a = getActual(repIdx, mi);
-      return a > 0 ? Math.round(a) : null;
-    });
-
-    mkChart(`ch-rep-total-${repIdx}`, {
-      type: 'bar',
-      data: {
-        labels: visibleMonths,
-        datasets: [
-          {
-            label: '2026 Target',
-            data: visTargets,
-            backgroundColor: rep.color + '55',
-            borderColor: rep.color,
-            borderWidth: 2,
-            borderRadius: 4,
-          },
-          {
-            label: 'Actual',
-            data: visActuals,
-            backgroundColor: '#f5a62399',
-            borderColor: '#f5a623',
-            borderWidth: 2,
-            borderRadius: 4,
-          }
-        ]
-      },
-      options: {
-        ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false,
-        plugins: {
-          ...CHART_DEFAULTS.plugins,
-          legend: { ...CHART_DEFAULTS.plugins.legend },
-          tooltip: {
-            callbacks: {
-              label: ctx => ` ${ctx.dataset.label}: $${ctx.parsed.y?.toLocaleString() ?? 'No data'}`
-            }
-          }
+  // ── Chart 1: Monthly total — Target vs Actual line chart ──
+  mkChart(`ch-rep-total-${repIdx}`, {
+    type: 'line',
+    data: {
+      labels: months,
+      datasets: [
+        {
+          label: '2026 Target',
+          data: targets,
+          borderColor: rep.color,
+          backgroundColor: rep.color + '18',
+          borderWidth: 2.5,
+          tension: 0.4,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          fill: true,
         },
-        scales: {
-          ...CHART_DEFAULTS.scales,
-          y: { ...CHART_DEFAULTS.scales?.y, ticks: { callback: v => '$' + (v >= 1000 ? (v/1000).toFixed(0)+'k' : v) } }
+        {
+          label: 'Actual',
+          data: actuals,
+          borderColor: '#f5a623',
+          backgroundColor: '#f5a62320',
+          borderWidth: 2.5,
+          tension: 0.4,
+          pointRadius: 5,
+          pointHoverRadius: 7,
+          fill: true,
+          spanGaps: false,
         }
-      }
-    });
-
-    // ── Chart 2: Class-wise YTD target vs actual ──
-    const clsYtdTargets = rep.classes.map((_, ci) =>
-      Math.round(months.reduce((s, _, mi) => s + getClassTarget(repIdx, ci, mi), 0))
-    );
-    const clsYtdActuals = rep.classes.map((_, ci) =>
-      Math.round(months.reduce((s, _, mi) => s + getClassActual(repIdx, ci, mi), 0))
-    );
-    const clsLabels = rep.classes.map(c => c.name.replace(' & ', ' &\n'));
-
-    mkChart(`ch-rep-class-${repIdx}`, {
-      type: 'bar',
-      data: {
-        labels: clsLabels,
-        datasets: [
-          {
-            label: '2026 Target',
-            data: clsYtdTargets,
-            backgroundColor: clsColors.map(c => c + '55'),
-            borderColor: clsColors,
-            borderWidth: 2,
-            borderRadius: 4,
-          },
-          {
-            label: 'Actual YTD',
-            data: clsYtdActuals.map(v => v > 0 ? v : null),
-            backgroundColor: '#f5a62366',
-            borderColor: '#f5a623',
-            borderWidth: 2,
-            borderRadius: 4,
-          }
-        ]
+      ]
+    },
+    options: {
+      ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false,
+      plugins: {
+        ...CHART_DEFAULTS.plugins,
+        annotation: undefined,
+        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: $${ctx.parsed.y?.toLocaleString() ?? 'No data'}` } }
       },
-      options: {
-        ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false,
-        plugins: {
-          ...CHART_DEFAULTS.plugins,
-          legend: { ...CHART_DEFAULTS.plugins.legend },
-          tooltip: {
-            callbacks: {
-              label: ctx => ` ${ctx.dataset.label}: $${ctx.parsed.y?.toLocaleString() ?? 'No data'}`
-            }
-          }
-        },
-        scales: {
-          ...CHART_DEFAULTS.scales,
-          y: { ...CHART_DEFAULTS.scales?.y, ticks: { callback: v => '$' + (v >= 1000 ? (v/1000).toFixed(0)+'k' : v) } }
-        }
+      scales: {
+        x: { ...CHART_DEFAULTS.scales?.x },
+        y: { ...CHART_DEFAULTS.scales?.y, ticks: { callback: v => '$' + (Math.abs(v) >= 1000 ? (v/1000).toFixed(0)+'k' : v) } }
       }
-    });
+    }
+  });
 
-  } else {
-    // ── Admin charts (existing team-level charts) ──
-    const prevs = rep.monthly.map(m => m.prev);
-    mkChart(`ch-line-${repIdx}`, {
-      type: 'line', data: {
-        labels: months,
-        datasets: [
-          { label: '2026 Target', data: targets, borderColor: rep.color, backgroundColor: 'transparent', borderWidth: 2, tension: .4, pointRadius: 3 },
-          { label: '2025 Actual', data: prevs, borderColor: '#555', borderDash: [4,3], backgroundColor: 'transparent', borderWidth: 1.5, tension: .4, pointRadius: 2 }
-        ]
-      }, options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false }
-    });
+  // ── Chart 2: Class-wise YTD — Target vs Actual line chart ──
+  const clsDatasets = rep.classes.map((cls, ci) => {
+    const tgtData = months.map((_, mi) => Math.round(getClassTarget(repIdx, ci, mi)));
+    const actData = months.map((_, mi) => { const a = getClassActual(repIdx, ci, mi); return a > 0 ? Math.round(a) : null; });
+    return [
+      {
+        label: `${cls.name} Target`,
+        data: tgtData,
+        borderColor: clsColors[ci],
+        backgroundColor: 'transparent',
+        borderWidth: 2,
+        borderDash: [5, 3],
+        tension: 0.4,
+        pointRadius: 3,
+        fill: false,
+      },
+      {
+        label: `${cls.name} Actual`,
+        data: actData,
+        borderColor: clsColors[ci],
+        backgroundColor: clsColors[ci] + '22',
+        borderWidth: 2.5,
+        tension: 0.4,
+        pointRadius: 4,
+        fill: false,
+        spanGaps: false,
+      }
+    ];
+  }).flat();
 
-    const clsAnnualTgts = rep.classes.map((cls, ci) => cls.monthly.reduce((s, _, mi) => s + getClassTarget(repIdx, ci, mi), 0));
-    const clsAnnualPrev = rep.classes.map(cls => cls.monthly.reduce((s, m) => s + m.prev, 0));
-    mkChart(`ch-cls-${repIdx}`, {
-      type: 'bar', data: {
-        labels: rep.classes.map(c => c.name.split(' ')[0]),
-        datasets: [
-          { label: '2026 Target', data: clsAnnualTgts, backgroundColor: clsColors.map(c => c + 'cc'), borderColor: clsColors, borderWidth: 1 },
-          { label: '2025 Actual', data: clsAnnualPrev, backgroundColor: '#333', borderColor: '#555', borderWidth: 1 }
-        ]
-      }, options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false, indexAxis: 'y' }
-    });
+  mkChart(`ch-rep-class-${repIdx}`, {
+    type: 'line',
+    data: { labels: months, datasets: clsDatasets },
+    options: {
+      ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false,
+      plugins: {
+        ...CHART_DEFAULTS.plugins,
+        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: $${ctx.parsed.y?.toLocaleString() ?? 'No data'}` } }
+      },
+      scales: {
+        x: { ...CHART_DEFAULTS.scales?.x },
+        y: { ...CHART_DEFAULTS.scales?.y, ticks: { callback: v => '$' + (Math.abs(v) >= 1000 ? (v/1000).toFixed(0)+'k' : v) } }
+      }
+    }
+  });
+}
 
-    mkChart(`ch-bar-${repIdx}`, {
-      type: 'bar', data: {
-        labels: months,
-        datasets: [
-          { label: '2026 Target', data: targets, backgroundColor: rep.color + '99', borderColor: rep.color, borderWidth: 1 },
-          { label: 'Entered', data: actuals, backgroundColor: '#f5a62399', borderColor: '#f5a623', borderWidth: 1 }
-        ]
-      }, options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false }
+function downloadTargetTemplate(repIdx) {
+  const rep = REPS_DATA[repIdx];
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const clsNames = ['Server Racks','Data Products','Cabling','Others'];
+  let csv = 'Month,Class,Target\n';
+  months.forEach((month, mi) => {
+    rep.classes.forEach((cls, ci) => {
+      const val = Math.round(getClassTarget(repIdx, ci, mi));
+      csv += `${month},${clsNames[ci]},${val}\n`;
     });
-  }
+  });
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `${rep.name.replace(' ','_')}_targets_2026.csv`;
+  a.click(); URL.revokeObjectURL(url);
 }
 
 // ── Interactions ─────────────────────────────────────────────
@@ -1887,7 +1830,6 @@ function showView(id) {
     setTimeout(() => {
       populateTracker(repIdx);
       populateClassTrackers(repIdx);
-      populateTargetEditor(repIdx);
       drawRepCharts(repIdx);
     }, 50);
   }
