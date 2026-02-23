@@ -643,9 +643,7 @@ function fbStartListening() {
   // Listen for custom targets (admin overrides)
   window._fbListen('dashboard/customTargets', data => {
     state.customTargets = data || {};
-    // Refresh target editor UI and all calculations
     REPS_DATA.forEach((_, ri) => {
-      populateTargetEditor(ri);
       populateTracker(ri);
       populateClassTrackers(ri);
       drawRepCharts(ri);
