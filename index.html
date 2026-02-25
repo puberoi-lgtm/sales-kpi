@@ -273,6 +273,16 @@
     text-transform: uppercase; letter-spacing: .06em;
   }
 
+  /* ── MONTH FILTER BUTTONS ── */
+  .month-filter-btn {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 4px; padding: 3px 8px; font-size: 10px;
+    font-family: var(--font-mono); color: var(--muted); cursor: pointer;
+    transition: all .15s;
+  }
+  .month-filter-btn:hover { border-color: var(--green); color: var(--text); }
+  .month-filter-btn.active { background: var(--green); border-color: var(--green); color: #000; font-weight: 700; }
+
   /* ── TARGET EDITOR ── */
   .target-editor-tabs { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
   .target-editor-tab {
@@ -1348,7 +1358,6 @@ function switchClass(repIdx, ci) {
 // TEAM VIEW
 // ══════════════════════════════════════════════════════════════
 function buildTeamView() {
-  const repColors = REPS_DATA.map(r => r.color);
   const months = REPS_DATA[0].monthly.map(m => m.month);
   return `
   <div class="rep-header">
@@ -1360,25 +1369,45 @@ function buildTeamView() {
     <div style="font-size:11px;color:var(--muted)">Live from individual rep entries</div>
   </div>
 
-  <div class="section-hdr">📊 Team Summary Cards</div>
+  <div class="kpi-row" id="team-kpi-strip" style="margin-bottom:18px"></div>
+
+  <div class="section-hdr">📈 Team Achievement — Target vs Actual vs 2025</div>
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:18px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <div style="font-size:11px;color:var(--muted)">Filter by month or view full year</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap" id="team-month-filter">
+        <button class="month-filter-btn active" onclick="setTeamMonthFilter(-1)" data-mi="-1">All Year</button>
+        ${months.map((m,mi) => `<button class="month-filter-btn" onclick="setTeamMonthFilter(${mi})" data-mi="${mi}">${m}</button>`).join('')}
+      </div>
+    </div>
+    <div style="position:relative;height:260px"><canvas id="ch-team-achievement"></canvas></div>
+  </div>
+
+  <div class="section-hdr">👤 Associate Summary</div>
   <div class="team-grid" id="team-cards"></div>
 
   <div class="charts-row">
     <div class="chart-card">
-      <div class="chart-title">Annual Target vs FY2025 by Associate</div>
+      <div class="chart-title">Target vs Achievement by Associate</div>
       <div class="chart-wrap tall"><canvas id="ch-team-bar"></canvas></div>
     </div>
     <div class="chart-card">
-      <div class="chart-title">Class Mix — 2025 Revenue</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <div class="chart-title" style="margin:0">Class Mix — 2026 Achievement</div>
+        <select id="cls-mix-month" onchange="refreshTeamView()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-family:var(--font-mono);font-size:10px;border-radius:4px;padding:2px 6px">
+          <option value="-1">Full Year</option>
+          ${months.map((m,mi) => `<option value="${mi}">${m}</option>`).join('')}
+        </select>
+      </div>
       <div class="chart-wrap tall"><canvas id="ch-team-cls"></canvas></div>
     </div>
     <div class="chart-card wide">
-      <div class="chart-title">Monthly Team Revenue — FY2025 (All Associates)</div>
+      <div class="chart-title">Monthly Team Target vs Achievement — FY2026</div>
       <div class="chart-wrap tall"><canvas id="ch-team-monthly"></canvas></div>
     </div>
   </div>
 
-  <div class="section-hdr">📋 Monthly Team Performance Table</div>
+  <div class="section-hdr">📋 Monthly Team Performance</div>
   <div class="tracker-wrap">
     <table>
       <thead>
@@ -1386,29 +1415,35 @@ function buildTeamView() {
           <th>Month</th>
           ${REPS_DATA.map(r => `<th>${r.name.split(' ')[0]}</th>`).join('')}
           <th>Team Total</th>
-          <th>vs Team Target</th>
+          <th>Team Target</th>
+          <th>Achiev %</th>
+          <th>vs Target</th>
         </tr>
       </thead>
       <tbody id="team-monthly-body"></tbody>
       <tfoot>
         <tr class="total-row">
-          <td>TOTAL FY2026</td>
+          <td>FULL YEAR</td>
           ${REPS_DATA.map((_, ri) => `<td id="team-tot-${ri}"></td>`).join('')}
           <td id="team-tot-all"></td>
+          <td id="team-tot-tgt"></td>
+          <td id="team-tot-pct"></td>
           <td id="team-tot-var"></td>
         </tr>
       </tfoot>
     </table>
   </div>
 
-  <div class="section-hdr">📦 Results by Class (Team)</div>
+  <div class="section-hdr">📦 Class Achievement (Team)</div>
   <div class="tracker-wrap">
     <table>
       <thead>
         <tr>
           <th>Class</th>
           ${REPS_DATA.map(r => `<th>${r.name.split(' ')[0]}</th>`).join('')}
-          <th>Team Total</th>
+          <th>Team Target</th>
+          <th>Team Actual</th>
+          <th>Achiev %</th>
         </tr>
       </thead>
       <tbody id="team-class-body"></tbody>
@@ -1417,125 +1452,273 @@ function buildTeamView() {
   `;
 }
 
+
 function refreshTeamView() {
   const teamView = document.getElementById('view-team');
   if (!teamView || !teamView.classList.contains('active')) return;
 
-  // Team cards
+  const months = REPS_DATA[0].monthly.map(m => m.month);
+  const now = new Date();
+  const currentMi = now.getMonth(); // 0=Jan
+  const clsColors = ['#4472C4','#70AD47','#ED7D31','#9E480E'];
+
+  // ── Compute team-wide totals ──────────────────────────────
+  const teamYtdAct = REPS_DATA.reduce((s,_,ri) =>
+    s + months.reduce((s2,_,mi) => s2 + getActual(ri,mi), 0), 0);
+  const teamYtdTgt = REPS_DATA.reduce((s,_,ri) =>
+    s + months.reduce((s2,_,mi) => s2 + getTarget(ri,mi), 0), 0);
+  const teamMtdAct = REPS_DATA.reduce((s,_,ri) => s + getActual(ri,currentMi), 0);
+  const teamMtdTgt = REPS_DATA.reduce((s,_,ri) => s + getTarget(ri,currentMi), 0);
+  const teamPrev   = REPS_DATA.reduce((s,r) => s + r.monthly.reduce((s2,m) => s2 + m.prev, 0), 0);
+  const ytdPct = teamYtdTgt > 0 ? teamYtdAct / teamYtdTgt : 0;
+  const mtdPct = teamMtdTgt > 0 ? teamMtdAct / teamMtdTgt : 0;
+  const stillToGo = Math.max(teamYtdTgt - teamYtdAct, 0);
+
+  // ── KPI Strip ─────────────────────────────────────────────
+  const kpiEl = document.getElementById('team-kpi-strip');
+  if (kpiEl) {
+    const kpiColor = (pct) => pct >= 1 ? 'var(--green)' : pct >= 0.8 ? 'var(--amber)' : '#e05252';
+    kpiEl.innerHTML = `
+      <div class="kpi-card" style="--accent-color:var(--green)">
+        <div class="kpi-label">Annual Target</div>
+        <div class="kpi-value" style="color:var(--green)">${fmt(teamYtdTgt)}</div>
+      </div>
+      <div class="kpi-card" style="--accent-color:#6699cc">
+        <div class="kpi-label">FY2025 Total</div>
+        <div class="kpi-value" style="color:#6699cc">${fmt(teamPrev)}</div>
+      </div>
+      <div class="kpi-card" style="--accent-color:var(--amber)">
+        <div class="kpi-label">YTD Achievement</div>
+        <div class="kpi-value" style="color:${kpiColor(ytdPct)}">${fmt(teamYtdAct)}</div>
+      </div>
+      <div class="kpi-card" style="--accent-color:var(--blue)">
+        <div class="kpi-label">YTD vs Target</div>
+        <div class="kpi-value" style="color:${kpiColor(ytdPct)}">${fmtPct(ytdPct)}</div>
+      </div>
+      <div class="kpi-card" style="--accent-color:var(--amber)">
+        <div class="kpi-label">MTD Achievement (${months[currentMi]})</div>
+        <div class="kpi-value" style="color:${kpiColor(mtdPct)}">${fmt(teamMtdAct)}</div>
+      </div>
+      <div class="kpi-card" style="--accent-color:var(--blue)">
+        <div class="kpi-label">MTD vs Target</div>
+        <div class="kpi-value" style="color:${kpiColor(mtdPct)}">${fmtPct(mtdPct)}</div>
+      </div>
+      <div class="kpi-card" style="--accent-color:#e05252">
+        <div class="kpi-label">Still To Go</div>
+        <div class="kpi-value" style="color:#e05252">${fmt(stillToGo)}</div>
+      </div>
+    `;
+  }
+
+  // ── Overall Achievement Chart (filterable) ────────────────
+  const activeMi = window._teamMonthFilter !== undefined ? window._teamMonthFilter : -1;
+  if (activeMi === -1) {
+    // Full year — line chart: monthly target, actual, 2025 prev
+    const tgtData  = months.map((_,mi) => Math.round(REPS_DATA.reduce((s,_,ri) => s + getTarget(ri,mi), 0)));
+    const actData  = months.map((_,mi) => { const v = REPS_DATA.reduce((s,_,ri) => s + getActual(ri,mi), 0); return v > 0 ? Math.round(v) : null; });
+    const prevData = months.map((_,mi) => Math.round(REPS_DATA.reduce((s,r) => s + r.monthly[mi].prev, 0)));
+    mkChart('ch-team-achievement', {
+      type: 'line',
+      data: { labels: months, datasets: [
+        { label: '2026 Target', data: tgtData, borderColor: 'var(--green)', backgroundColor: 'rgba(107,191,51,.1)', borderWidth: 2.5, tension: .4, pointRadius: 4, fill: true },
+        { label: '2025 Actual', data: prevData, borderColor: '#555', backgroundColor: 'transparent', borderDash: [4,3], borderWidth: 1.5, tension: .4, pointRadius: 2, fill: false },
+        { label: '2026 Actual', data: actData, borderColor: 'var(--amber)', backgroundColor: 'rgba(245,166,35,.1)', borderWidth: 2.5, tension: .4, pointRadius: 5, fill: true, spanGaps: false },
+      ]},
+      options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false,
+        plugins: { ...CHART_DEFAULTS.plugins,
+          legend: { display: true, position: 'bottom', labels: { color: '#888', font: { family: 'DM Mono', size: 10 }, boxWidth: 20, padding: 12 } },
+          tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: $${ctx.parsed.y?.toLocaleString() ?? 'No data'}` } }
+        },
+        scales: { x: { ...CHART_DEFAULTS.scales?.x }, y: { ...CHART_DEFAULTS.scales?.y, ticks: { callback: v => '$' + (Math.abs(v)>=1000?(v/1000).toFixed(0)+'k':v) } } }
+      }
+    });
+  } else {
+    // Single month — grouped bar per rep: target, actual, 2025
+    const labels = REPS_DATA.map(r => r.name.split(' ')[0]);
+    const tgtData  = REPS_DATA.map((_,ri) => Math.round(getTarget(ri, activeMi)));
+    const actData  = REPS_DATA.map((_,ri) => { const v = getActual(ri,activeMi); return v > 0 ? Math.round(v) : null; });
+    const prevData = REPS_DATA.map(r => Math.round(r.monthly[activeMi].prev));
+    mkChart('ch-team-achievement', {
+      type: 'bar',
+      data: { labels, datasets: [
+        { label: '2026 Target', data: tgtData, backgroundColor: REPS_DATA.map(r => r.color+'55'), borderColor: REPS_DATA.map(r => r.color), borderWidth: 2, borderRadius: 4 },
+        { label: '2025 Actual', data: prevData, backgroundColor: '#33333399', borderColor: '#555', borderWidth: 1, borderRadius: 4 },
+        { label: '2026 Actual', data: actData, backgroundColor: '#f5a62355', borderColor: '#f5a623', borderWidth: 2, borderRadius: 4 },
+      ]},
+      options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false,
+        plugins: { ...CHART_DEFAULTS.plugins,
+          legend: { display: true, position: 'bottom', labels: { color: '#888', font: { family: 'DM Mono', size: 10 }, boxWidth: 20, padding: 12 } },
+          tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: $${ctx.parsed.y?.toLocaleString() ?? 'No data'}` } }
+        },
+        scales: { x: { ...CHART_DEFAULTS.scales?.x }, y: { ...CHART_DEFAULTS.scales?.y, ticks: { callback: v => '$' + (Math.abs(v)>=1000?(v/1000).toFixed(0)+'k':v) } } }
+      }
+    });
+  }
+
+  // ── Associate cards ───────────────────────────────────────
   const cardsEl = document.getElementById('team-cards');
   if (cardsEl) {
     cardsEl.innerHTML = REPS_DATA.map((rep, ri) => {
-      const annTgt = REPS_DATA[ri].monthly.reduce((s, _, mi) => s + getTarget(ri, mi), 0);
-      const annPrev = rep.monthly.reduce((s, m) => s + m.prev, 0);
-      const ytd = rep.monthly.reduce((s, _, mi) => s + getActual(ri, mi), 0);
-      const pct = annTgt > 0 ? ytd / annTgt : 0;
+      const annTgt  = months.reduce((s,_,mi) => s + getTarget(ri,mi), 0);
+      const annPrev = rep.monthly.reduce((s,m) => s + m.prev, 0);
+      const ytd     = months.reduce((s,_,mi) => s + getActual(ri,mi), 0);
+      const mtd     = getActual(ri, currentMi);
+      const mtdTgt  = getTarget(ri, currentMi);
+      const pct     = annTgt > 0 ? ytd / annTgt : 0;
+      const mtdPct  = mtdTgt > 0 ? mtd / mtdTgt : 0;
+      const pctColor = pct >= 1 ? 'var(--green)' : pct >= 0.8 ? 'var(--amber)' : '#e05252';
       return `<div class="rep-card">
         <div style="position:absolute;top:0;left:0;right:0;height:3px;background:${rep.color};border-radius:8px 8px 0 0"></div>
         <div class="rep-card-name" style="color:${rep.color}">${rep.name}</div>
-        <div class="rep-card-region">Region: ${rep.region}</div>
+        <div class="rep-card-region">${rep.region}</div>
         <div class="rep-card-stats">
           <div><div class="rep-stat-label">2026 Target</div><div class="rep-stat-val" style="color:var(--green)">${fmtK(annTgt)}</div></div>
           <div><div class="rep-stat-label">FY2025</div><div class="rep-stat-val" style="color:#6699cc">${fmtK(annPrev)}</div></div>
-          <div><div class="rep-stat-label">YTD Entered</div><div class="rep-stat-val" style="color:var(--amber)">${fmtK(ytd)}</div></div>
+          <div><div class="rep-stat-label">YTD Actual</div><div class="rep-stat-val" style="color:var(--amber)">${fmtK(ytd)}</div></div>
+          <div><div class="rep-stat-label">MTD (${months[currentMi]})</div><div class="rep-stat-val" style="color:${mtdPct>=1?'var(--green)':mtdPct>=0.8?'var(--amber)':'#e05252'}">${fmtK(mtd)}</div></div>
         </div>
         <div class="progress-bar-wrap">
           <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${Math.min(pct*100,100)}%;background:${rep.color}"></div></div>
-          <div class="progress-label"><span>${fmtPct(pct)} of target</span><span>${fmtK(Math.max(annTgt - ytd, 0))} remaining</span></div>
+          <div class="progress-label"><span style="color:${pctColor}">${fmtPct(pct)} of target</span><span>${fmtK(Math.max(annTgt-ytd,0))} remaining</span></div>
         </div>
       </div>`;
     }).join('');
   }
 
-  // Monthly table
+  // ── Monthly table ─────────────────────────────────────────
   const tbody = document.getElementById('team-monthly-body');
   if (tbody) {
     tbody.innerHTML = '';
-    const months = REPS_DATA[0].monthly.map(m => m.month);
     let totByRep = REPS_DATA.map(() => 0);
-    let totTgtByRep = REPS_DATA.map((_, ri) => REPS_DATA[ri].monthly.reduce((s,_,mi) => s + getTarget(ri,mi), 0));
+    let grandTgt = 0, grandAct = 0;
     months.forEach((m, mi) => {
-      const repActs = REPS_DATA.map((_, ri) => getActual(ri, mi));
-      const teamTotal = repActs.reduce((s, v) => s + v, 0);
-      const teamTgt = REPS_DATA.reduce((s, _, ri) => s + getTarget(ri, mi), 0);
-      repActs.forEach((v, ri) => totByRep[ri] += v);
-      tbody.innerHTML += `<tr>
-        <td>${m} 2026</td>
-        ${repActs.map((v, ri) => `<td style="color:${v>0?REPS_DATA[ri].color:'var(--muted)'}">${v > 0 ? fmt(v) : '—'}</td>`).join('')}
-        <td style="color:var(--green);font-weight:600">${teamTotal > 0 ? fmt(teamTotal) : '—'}</td>
-        <td>${teamTotal > 0 ? `<span class="${teamTotal>=teamTgt?'variance-pos':'variance-neg'}">${fmt(teamTotal-teamTgt)}</span>` : '—'}</td>
+      const repActs = REPS_DATA.map((_,ri) => getActual(ri,mi));
+      const teamAct = repActs.reduce((s,v) => s+v, 0);
+      const teamTgt = REPS_DATA.reduce((s,_,ri) => s+getTarget(ri,mi), 0);
+      repActs.forEach((v,ri) => totByRep[ri] += v);
+      grandTgt += teamTgt; grandAct += teamAct;
+      const achPct = teamAct > 0 && teamTgt > 0 ? teamAct/teamTgt : null;
+      const isCurrent = mi === currentMi;
+      tbody.innerHTML += `<tr class="${isCurrent?'current-month-row':''}">
+        <td>${m} 2026${isCurrent?'<span class="current-month-badge">▶ Now</span>':''}</td>
+        ${repActs.map((v,ri) => `<td style="color:${v>0?REPS_DATA[ri].color:'var(--muted)'}">${v>0?fmt(v):'—'}</td>`).join('')}
+        <td style="color:var(--green);font-weight:600">${teamAct>0?fmt(teamAct):'—'}</td>
+        <td style="color:var(--muted)">${fmt(teamTgt)}</td>
+        <td>${achPct!==null?`<span class="${achPct>=1?'variance-pos':achPct>=0.8?'':'variance-neg'}" style="${achPct>=0.8&&achPct<1?'color:var(--amber)':''}">${(achPct*100).toFixed(1)}%</span>`:'—'}</td>
+        <td>${teamAct>0?`<span class="${teamAct>=teamTgt?'variance-pos':'variance-neg'}">${fmt(teamAct-teamTgt)}</span>`:'—'}</td>
       </tr>`;
     });
-    REPS_DATA.forEach((_, ri) => {
-      const el = document.getElementById(`team-tot-${ri}`);
-      if (el) el.textContent = fmt(totByRep[ri]);
+    REPS_DATA.forEach((_,ri) => { const el=document.getElementById(`team-tot-${ri}`); if(el) el.textContent=fmt(totByRep[ri]); });
+    const achPct = grandAct>0&&grandTgt>0 ? grandAct/grandTgt : null;
+    ['team-tot-all','team-tot-tgt','team-tot-pct','team-tot-var'].forEach((id,i) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (i===0) el.textContent = fmt(grandAct);
+      if (i===1) el.textContent = fmt(grandTgt);
+      if (i===2) el.innerHTML = achPct!==null ? `<span class="${achPct>=1?'variance-pos':'variance-neg'}">${(achPct*100).toFixed(1)}%</span>` : '—';
+      if (i===3) el.innerHTML = grandAct>0 ? `<span class="${grandAct>=grandTgt?'variance-pos':'variance-neg'}">${fmt(grandAct-grandTgt)}</span>` : '—';
     });
-    const teamGrandTotal = totByRep.reduce((s, v) => s + v, 0);
-    const teamGrandTgt   = totTgtByRep.reduce((s, v) => s + v, 0);
-    const te = document.getElementById('team-tot-all');
-    const tv = document.getElementById('team-tot-var');
-    if (te) te.textContent = fmt(teamGrandTotal);
-    if (tv) tv.innerHTML = teamGrandTotal > 0 ? `<span class="${teamGrandTotal>=teamGrandTgt?'variance-pos':'variance-neg'}">${fmt(teamGrandTotal-teamGrandTgt)}</span>` : '—';
   }
 
-  // Class table
+  // ── Class achievement table ───────────────────────────────
   const ctbody = document.getElementById('team-class-body');
   if (ctbody) {
-    const clsNames = REPS_DATA[0].classes.map(c => c.name);
-    const clsColors = ['#4472C4','#70AD47','#ED7D31','#9E480E'];
-    ctbody.innerHTML = clsNames.map((cls, ci) => {
-      const repTots = REPS_DATA.map((_, ri) =>
-        REPS_DATA[ri].classes[ci].monthly.reduce((s, _, mi) => s + getClassTarget(ri, ci, mi), 0)
-      );
-      const teamTotal = repTots.reduce((s, v) => s + v, 0);
+    ctbody.innerHTML = REPS_DATA[0].classes.map((cls, ci) => {
+      const repTgts = REPS_DATA.map((_,ri) => months.reduce((s,_,mi) => s+getClassTarget(ri,ci,mi), 0));
+      const repActs = REPS_DATA.map((_,ri) => months.reduce((s,_,mi) => s+getClassActual(ri,ci,mi), 0));
+      const totTgt  = repTgts.reduce((s,v) => s+v, 0);
+      const totAct  = repActs.reduce((s,v) => s+v, 0);
+      const achPct  = totAct>0&&totTgt>0 ? totAct/totTgt : null;
       return `<tr>
-        <td style="color:${clsColors[ci]};font-weight:600">${cls}</td>
-        ${repTots.map(v => `<td class="target-cell">${fmt(v)}</td>`).join('')}
-        <td style="color:var(--green);font-weight:700">${fmt(teamTotal)}</td>
+        <td style="color:${clsColors[ci]};font-weight:600">${cls.name}</td>
+        ${repActs.map((v,ri) => `<td style="color:${v>0?REPS_DATA[ri].color:'var(--muted)'}">${v>0?fmt(v):'—'}</td>`).join('')}
+        <td class="target-cell">${fmt(totTgt)}</td>
+        <td style="color:var(--amber)">${totAct>0?fmt(totAct):'—'}</td>
+        <td>${achPct!==null?`<span class="${achPct>=1?'variance-pos':'variance-neg'}">${(achPct*100).toFixed(1)}%</span>`:'—'}</td>
       </tr>`;
     }).join('');
   }
 
-  // Charts
-  const allMonthlyTgts = REPS_DATA.map((_, ri) => REPS_DATA[ri].monthly.reduce((s,_,mi) => s + getTarget(ri,mi), 0));
-  const allMonthlyPrev = REPS_DATA.map(r => r.monthly.reduce((s,m) => s + m.prev, 0));
+  // ── Associate bar chart: Target vs Actual ─────────────────
+  const repTgts = REPS_DATA.map((_,ri) => Math.round(months.reduce((s,_,mi) => s+getTarget(ri,mi), 0)));
+  const repActs = REPS_DATA.map((_,ri) => { const v=months.reduce((s,_,mi) => s+getActual(ri,mi), 0); return v>0?Math.round(v):null; });
+  const repPrev = REPS_DATA.map(r => Math.round(r.monthly.reduce((s,m) => s+m.prev, 0)));
   mkChart('ch-team-bar', {
     type: 'bar', data: {
       labels: REPS_DATA.map(r => r.name.split(' ')[0]),
       datasets: [
-        { label: '2026 Target', data: allMonthlyTgts, backgroundColor: REPS_DATA.map(r => r.color + '99'), borderColor: REPS_DATA.map(r => r.color), borderWidth: 1 },
-        { label: 'FY2025', data: allMonthlyPrev, backgroundColor: '#333', borderColor: '#555', borderWidth: 1 }
+        { label: '2026 Target', data: repTgts, backgroundColor: REPS_DATA.map(r => r.color+'55'), borderColor: REPS_DATA.map(r => r.color), borderWidth: 2, borderRadius: 4 },
+        { label: 'FY2025 Actual', data: repPrev, backgroundColor: '#33333399', borderColor: '#555', borderWidth: 1, borderRadius: 4 },
+        { label: '2026 Actual', data: repActs, backgroundColor: '#f5a62355', borderColor: '#f5a623', borderWidth: 2, borderRadius: 4 },
       ]
-    }, options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false, plugins: { ...CHART_DEFAULTS.plugins } }
-  });
-
-  // Class pie (team total by class based on 2025)
-  const clsColors = ['#4472C4','#70AD47','#ED7D31','#9E480E'];
-  const clsTotals = REPS_DATA[0].classes.map((_, ci) =>
-    REPS_DATA.reduce((s, r) => s + r.classes[ci].monthly.reduce((s2, m) => s2 + m.prev, 0), 0)
-  );
-  mkChart('ch-team-cls', {
-    type: 'doughnut', data: {
-      labels: REPS_DATA[0].classes.map(c => c.name),
-      datasets: [{ data: clsTotals, backgroundColor: clsColors.map(c => c + 'cc'), borderColor: clsColors, borderWidth: 2 }]
-    }, options: { responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { position: 'right', labels: { color: '#888', font: { family: 'DM Mono', size: 10 }, boxWidth: 10 } } }
+    }, options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false,
+      plugins: { ...CHART_DEFAULTS.plugins, legend: { display: true, position: 'bottom', labels: { color:'#888', font:{family:'DM Mono',size:10}, boxWidth:20, padding:10 } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: $${ctx.parsed.y?.toLocaleString()??'No data'}` } }
+      },
+      scales: { x:{...CHART_DEFAULTS.scales?.x}, y:{...CHART_DEFAULTS.scales?.y, ticks:{callback:v=>'$'+(Math.abs(v)>=1000?(v/1000).toFixed(0)+'k':v)}} }
     }
   });
 
-  // Monthly stacked team
-  const months = REPS_DATA[0].monthly.map(m => m.month);
+  // ── Class mix doughnut — 2026 actuals ─────────────────────
+  const clsMixMi = parseInt(document.getElementById('cls-mix-month')?.value ?? '-1');
+  const clsActTotals = REPS_DATA[0].classes.map((_,ci) => {
+    const v = REPS_DATA.reduce((s,_,ri) => {
+      if (clsMixMi === -1) return s + months.reduce((s2,_,mi) => s2+getClassActual(ri,ci,mi), 0);
+      return s + getClassActual(ri,ci,clsMixMi);
+    }, 0);
+    return v > 0 ? Math.round(v) : 0;
+  });
+  const clsTgtTotals = REPS_DATA[0].classes.map((_,ci) =>
+    REPS_DATA.reduce((s,_,ri) => {
+      if (clsMixMi === -1) return s + months.reduce((s2,_,mi) => s2+getClassTarget(ri,ci,mi), 0);
+      return s + getClassTarget(ri,ci,clsMixMi);
+    }, 0)
+  );
+  const hasClsActuals = clsActTotals.some(v => v > 0);
+  mkChart('ch-team-cls', {
+    type: 'doughnut',
+    data: {
+      labels: REPS_DATA[0].classes.map(c => c.name),
+      datasets: [{
+        data: hasClsActuals ? clsActTotals : clsTgtTotals,
+        backgroundColor: clsColors.map(c => c+'cc'), borderColor: clsColors, borderWidth: 2
+      }]
+    },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'right', labels: { color: '#888', font: { family: 'DM Mono', size: 10 }, boxWidth: 10, padding: 8 } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: $${ctx.parsed?.toLocaleString()}` } }
+      }
+    }
+  });
+
+  // ── Monthly stacked: Target vs Actual ────────────────────
+  const teamMonthlyTgt = months.map((_,mi) => Math.round(REPS_DATA.reduce((s,_,ri) => s+getTarget(ri,mi), 0)));
+  const teamMonthlyAct = months.map((_,mi) => { const v=REPS_DATA.reduce((s,_,ri) => s+getActual(ri,mi), 0); return v>0?Math.round(v):null; });
   mkChart('ch-team-monthly', {
-    type: 'bar', data: {
+    type: 'line', data: {
       labels: months,
-      datasets: REPS_DATA.map((rep, ri) => ({
-        label: rep.name.split(' ')[0],
-        data: months.map((_, mi) => rep.monthly[mi].prev),
-        backgroundColor: rep.color + '99',
-        borderColor: rep.color, borderWidth: 1, stack: 'team'
-      }))
-    }, options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false, plugins: { ...CHART_DEFAULTS.plugins } }
+      datasets: [
+        { label: 'Team Target', data: teamMonthlyTgt, borderColor: 'var(--green)', backgroundColor: 'rgba(107,191,51,.1)', borderWidth: 2.5, tension: .4, pointRadius: 3, fill: true },
+        { label: 'Team Actual', data: teamMonthlyAct, borderColor: 'var(--amber)', backgroundColor: 'rgba(245,166,35,.1)', borderWidth: 2.5, tension: .4, pointRadius: 5, fill: true, spanGaps: false },
+      ]
+    }, options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false,
+      plugins: { ...CHART_DEFAULTS.plugins, legend: { display: true, position: 'bottom', labels: { color:'#888', font:{family:'DM Mono',size:10}, boxWidth:20, padding:10 } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: $${ctx.parsed.y?.toLocaleString()??'No data'}` } }
+      },
+      scales: { x:{...CHART_DEFAULTS.scales?.x}, y:{...CHART_DEFAULTS.scales?.y, ticks:{callback:v=>'$'+(Math.abs(v)>=1000?(v/1000).toFixed(0)+'k':v)}} }
+    }
   });
 }
+
+function setTeamMonthFilter(mi) {
+  window._teamMonthFilter = mi;
+  document.querySelectorAll('.month-filter-btn').forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.mi) === mi);
+  });
+  refreshTeamView();
+}
+
 
 // ══════════════════════════════════════════════════════════════
 // BULK ENTRY VIEW
