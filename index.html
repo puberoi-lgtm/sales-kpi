@@ -773,8 +773,9 @@ function buildRepView(repIdx) {
       <div class="kpi-value" style="color:#6699cc">${fmt(annualPrev)}</div>
     </div>
     <div class="kpi-card" style="--accent-color:var(--amber)">
-      <div class="kpi-label">YTD Entered</div>
+      <div class="kpi-label">YTD Invoiced</div>
       <div class="kpi-value" style="color:var(--amber)" id="kpi-ytd-${repIdx}">${fmt(ytdActual)}</div>
+      <div style="font-size:9px;color:var(--muted);margin-top:4px;line-height:1.4">Invoiced only · excludes open POs</div>
     </div>
     <div class="kpi-card" style="--accent-color:#e05252">
       <div class="kpi-label">Still To Go</div>
@@ -833,12 +834,16 @@ function buildRepView(repIdx) {
   </div>
 
   <div class="section-hdr">📋 Monthly Tracker — Auto-summed from Results by Class entries</div>
+  <div style="background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.25);border-radius:6px;padding:8px 14px;margin-bottom:12px;font-size:11px;color:var(--amber);display:flex;align-items:center;gap:8px">
+    <span style="font-size:14px">⚠️</span>
+    <span><strong>Invoiced figures only.</strong> Achievement is based on invoiced revenue. Open purchase orders (POs) that have not yet been invoiced are <strong>not included</strong> in these figures.</span>
+  </div>
   <div class="tracker-wrap">
     <table>
       <thead>
         <tr>
           <th>Month</th><th>2026 Target</th><th>2025 Actual</th>
-          <th>2026 Actual (Sum of Classes)</th><th>Achievement %</th><th>vs Target ($)</th><th>vs Target (%)</th><th>Status</th>
+          <th>2026 Invoiced (Sum of Classes)</th><th>Achievement %</th><th>vs Target ($)</th><th>vs Target (%)</th><th>Status</th>
         </tr>
       </thead>
       <tbody id="tracker-body-${repIdx}">
@@ -875,7 +880,7 @@ function buildRepView(repIdx) {
         <thead>
           <tr>
             <th>Month</th><th>2026 Target</th><th>2025 Actual</th>
-            <th>Enter 2026 Actual</th><th>vs Target ($)</th><th>vs Target (%)</th><th>Status</th>
+            <th>Enter 2026 Invoiced</th><th>vs Target ($)</th><th>vs Target (%)</th><th>Status</th>
           </tr>
         </thead>
         <tbody id="cls-body-${repIdx}-${ci}"></tbody>
@@ -1219,7 +1224,7 @@ function drawRepCharts(repIdx) {
           fill: false,
         },
         {
-          label: 'Actual',
+          label: 'Invoiced',
           data: actuals,
           borderColor: '#f5a623',
           backgroundColor: '#f5a62320',
@@ -1269,7 +1274,7 @@ function drawRepCharts(repIdx) {
         fill: false,
       },
       {
-        label: clsShortNames[ci] + ' — Actual',
+        label: clsShortNames[ci] + ' — Invoiced',
         data: actData,
         borderColor: clsColors[ci],
         backgroundColor: 'transparent',
@@ -1549,7 +1554,7 @@ function refreshTeamView() {
                 <div style="font-size:16px;font-weight:700;font-family:var(--font-head);color:var(--green);margin-top:2px">${fmtK(teamYtdTgt)}</div>
               </div>
               <div>
-                <div style="font-size:10px;color:var(--muted)">YTD Actual</div>
+                <div style="font-size:10px;color:var(--muted)">YTD Invoiced</div>
                 <div style="font-size:16px;font-weight:700;font-family:var(--font-head);color:${ytdColor};margin-top:2px">${fmtK(teamYtdAct)}</div>
               </div>
               <div>
@@ -1601,7 +1606,7 @@ function refreshTeamView() {
       data: { labels: months, datasets: [
         { label: '2026 Target', data: tgtData, borderColor: 'var(--green)', backgroundColor: 'rgba(107,191,51,.1)', borderWidth: 2.5, tension: .4, pointRadius: 4, fill: true },
         { label: '2025 Actual', data: prevData, borderColor: '#555', backgroundColor: 'transparent', borderDash: [4,3], borderWidth: 1.5, tension: .4, pointRadius: 2, fill: false },
-        { label: '2026 Actual', data: actData, borderColor: 'var(--amber)', backgroundColor: 'rgba(245,166,35,.1)', borderWidth: 2.5, tension: .4, pointRadius: 5, fill: true, spanGaps: false },
+        { label: '2026 Invoiced', data: actData, borderColor: 'var(--amber)', backgroundColor: 'rgba(245,166,35,.1)', borderWidth: 2.5, tension: .4, pointRadius: 5, fill: true, spanGaps: false },
       ]},
       options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false,
         plugins: { ...CHART_DEFAULTS.plugins,
@@ -1622,7 +1627,7 @@ function refreshTeamView() {
       data: { labels, datasets: [
         { label: '2026 Target', data: tgtData, backgroundColor: REPS_DATA.map(r => r.color+'55'), borderColor: REPS_DATA.map(r => r.color), borderWidth: 2, borderRadius: 4 },
         { label: '2025 Actual', data: prevData, backgroundColor: '#33333399', borderColor: '#555', borderWidth: 1, borderRadius: 4 },
-        { label: '2026 Actual', data: actData, backgroundColor: '#f5a62355', borderColor: '#f5a623', borderWidth: 2, borderRadius: 4 },
+        { label: '2026 Invoiced', data: actData, backgroundColor: '#f5a62355', borderColor: '#f5a623', borderWidth: 2, borderRadius: 4 },
       ]},
       options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false,
         plugins: { ...CHART_DEFAULTS.plugins,
@@ -1653,7 +1658,7 @@ function refreshTeamView() {
         <div class="rep-card-stats">
           <div><div class="rep-stat-label">2026 Target</div><div class="rep-stat-val" style="color:var(--green)">${fmtK(annTgt)}</div></div>
           <div><div class="rep-stat-label">FY2025</div><div class="rep-stat-val" style="color:#6699cc">${fmtK(annPrev)}</div></div>
-          <div><div class="rep-stat-label">YTD Actual</div><div class="rep-stat-val" style="color:var(--amber)">${fmtK(ytd)}</div></div>
+          <div><div class="rep-stat-label">YTD Invoiced</div><div class="rep-stat-val" style="color:var(--amber)">${fmtK(ytd)}</div></div>
           <div><div class="rep-stat-label">MTD (${months[currentMi]})</div><div class="rep-stat-val" style="color:${mtdPct>=1?'var(--green)':mtdPct>=0.8?'var(--amber)':'#e05252'}">${fmtK(mtd)}</div></div>
         </div>
         <div class="progress-bar-wrap">
@@ -1746,7 +1751,7 @@ function refreshTeamView() {
       datasets: [
         { label: '2026 Target', data: repTgts, backgroundColor: REPS_DATA.map(r => r.color+'55'), borderColor: REPS_DATA.map(r => r.color), borderWidth: 2, borderRadius: 4 },
         { label: 'FY2025 Actual', data: repPrev, backgroundColor: '#33333399', borderColor: '#555', borderWidth: 1, borderRadius: 4 },
-        { label: '2026 Actual', data: repActs, backgroundColor: '#f5a62355', borderColor: '#f5a623', borderWidth: 2, borderRadius: 4 },
+        { label: '2026 Invoiced', data: repActs, backgroundColor: '#f5a62355', borderColor: '#f5a623', borderWidth: 2, borderRadius: 4 },
       ]
     }, options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false,
       plugins: { ...CHART_DEFAULTS.plugins, legend: { display: true, position: 'bottom', labels: { color:'#888', font:{family:'DM Mono',size:10}, boxWidth:20, padding:10 } },
@@ -1828,7 +1833,7 @@ function refreshTeamView() {
       labels: months,
       datasets: [
         { label: 'Team Target', data: teamMonthlyTgt, borderColor: 'var(--green)', backgroundColor: 'rgba(107,191,51,.1)', borderWidth: 2.5, tension: .4, pointRadius: 3, fill: true },
-        { label: 'Team Actual', data: teamMonthlyAct, borderColor: 'var(--amber)', backgroundColor: 'rgba(245,166,35,.1)', borderWidth: 2.5, tension: .4, pointRadius: 5, fill: true, spanGaps: false },
+        { label: 'Team Invoiced', data: teamMonthlyAct, borderColor: 'var(--amber)', backgroundColor: 'rgba(245,166,35,.1)', borderWidth: 2.5, tension: .4, pointRadius: 5, fill: true, spanGaps: false },
       ]
     }, options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false,
       plugins: { ...CHART_DEFAULTS.plugins, legend: { display: true, position: 'bottom', labels: { color:'#888', font:{family:'DM Mono',size:10}, boxWidth:20, padding:10 } },
@@ -1915,7 +1920,7 @@ function buildBulkView() {
                   <th>Month</th>
                   <th>2026 Target</th>
                   <th>2025 Actual</th>
-                  <th style="color:#ffe566">Enter 2026 Actual</th>
+                  <th style="color:#ffe566">Enter 2026 Invoiced</th>
                   <th>vs Target ($)</th>
                   <th>Status</th>
                 </tr>
