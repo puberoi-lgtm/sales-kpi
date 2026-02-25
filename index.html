@@ -745,9 +745,21 @@ function buildRepView(repIdx) {
       <div class="rep-subtitle">Region: ${rep.region} &nbsp;·&nbsp; All values in Australian Dollars (AUD)</div>
       <div class="rep-accent-bar" style="background:${rep.color}"></div>
     </div>
-    <div style="font-size:11px;color:var(--muted);text-align:right">
-      FY2026 Sales Tracker<br>
-      <span style="color:${rep.color};font-weight:700" id="kpi-ytd-pct-${repIdx}">—</span> of annual target
+    <div style="display:flex;gap:20px;align-items:center">
+      <!-- MTD indicator -->
+      <div style="text-align:center;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 18px;min-width:140px">
+        <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:4px">MTD Achievement</div>
+        <div style="font-size:18px;font-weight:800;font-family:var(--font-head)" id="kpi-mtd-pct-${repIdx}">—</div>
+        <div style="font-size:9px;color:var(--muted);margin-top:2px" id="kpi-mtd-vals-${repIdx}">— of —</div>
+        <div style="margin-top:6px;background:var(--surface3);border-radius:3px;height:4px;overflow:hidden">
+          <div id="kpi-mtd-bar-${repIdx}" style="height:100%;width:0%;border-radius:3px;transition:width .4s"></div>
+        </div>
+      </div>
+      <!-- YTD indicator -->
+      <div style="text-align:right;font-size:11px;color:var(--muted)">
+        FY2026 Sales Tracker<br>
+        <span style="color:${rep.color};font-weight:700" id="kpi-ytd-pct-${repIdx}">—</span> of annual target
+      </div>
     </div>
   </div>
 
@@ -940,14 +952,27 @@ function populateTracker(repIdx) {
   document.getElementById(`tot-stat-${repIdx}`).innerHTML = s;
 
   // KPI cards
-  const kpiYtd = document.getElementById(`kpi-ytd-${repIdx}`);
+  const kpiYtd   = document.getElementById(`kpi-ytd-${repIdx}`);
   const kpiStill = document.getElementById(`kpi-still-${repIdx}`);
-  const kpiTgt = document.getElementById(`kpi-anntgt-${repIdx}`);
-  const kpiPct = document.getElementById(`kpi-ytd-pct-${repIdx}`);
-  if (kpiYtd) kpiYtd.textContent = fmt(totAct);
+  const kpiTgt   = document.getElementById(`kpi-anntgt-${repIdx}`);
+  const kpiPct   = document.getElementById(`kpi-ytd-pct-${repIdx}`);
+  if (kpiYtd)   kpiYtd.textContent   = fmt(totAct);
   if (kpiStill) kpiStill.textContent = fmt(Math.max(totTgt - totAct, 0));
-  if (kpiTgt) kpiTgt.textContent = fmt(totTgt);
-  if (kpiPct) kpiPct.textContent = totTgt > 0 ? fmtPct(totAct / totTgt) : '0.0%';
+  if (kpiTgt)   kpiTgt.textContent   = fmt(totTgt);
+  if (kpiPct)   kpiPct.textContent   = totTgt > 0 ? fmtPct(totAct / totTgt) : '0.0%';
+
+  // MTD indicator in header
+  const mtdAct = getActual(repIdx, currentMi);
+  const mtdTgt = getTarget(repIdx, currentMi);
+  const mtdPct = mtdTgt > 0 ? mtdAct / mtdTgt : 0;
+  const mtdColor = mtdPct >= 1 ? 'var(--green)' : mtdPct >= 0.8 ? 'var(--amber)' : mtdAct > 0 ? '#e05252' : 'var(--muted)';
+  const mtdLabel = mtdPct >= 1 ? '✅ On target' : mtdPct >= 0.8 ? '🟡 Close' : mtdAct > 0 ? '🔴 Below target' : 'Pending';
+  const mtdPctEl  = document.getElementById(`kpi-mtd-pct-${repIdx}`);
+  const mtdValsEl = document.getElementById(`kpi-mtd-vals-${repIdx}`);
+  const mtdBarEl  = document.getElementById(`kpi-mtd-bar-${repIdx}`);
+  if (mtdPctEl)  { mtdPctEl.textContent = mtdAct > 0 ? (mtdPct*100).toFixed(1)+'%' : 'Pending'; mtdPctEl.style.color = mtdColor; }
+  if (mtdValsEl) mtdValsEl.innerHTML = mtdAct > 0 ? `${fmtK(mtdAct)} of ${fmtK(mtdTgt)} &nbsp;·&nbsp; <span style="color:${mtdColor}">${mtdLabel}</span>` : `Target: ${fmtK(mtdTgt)}`;
+  if (mtdBarEl)  { mtdBarEl.style.width = Math.min(mtdPct*100, 100).toFixed(1)+'%'; mtdBarEl.style.background = mtdColor; }
 
   populateEoyPrediction(repIdx, totTgt, totAct);
 }
