@@ -1470,7 +1470,13 @@ function buildTeamView() {
     </table>
   </div>
 
-  <div class="section-hdr">📦 Class Achievement (Team)</div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+    <div class="section-hdr" style="margin:0">📦 Class Achievement (Team)</div>
+    <select id="cls-ach-month" onchange="refreshTeamView()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-family:var(--font-mono);font-size:10px;border-radius:4px;padding:4px 8px;margin-right:4px">
+      <option value="-1">Full Year</option>
+      ${months.map((m,mi) => `<option value="${mi}">${m}</option>`).join('')}
+    </select>
+  </div>
   <div class="tracker-wrap">
     <table>
       <thead>
@@ -1478,7 +1484,7 @@ function buildTeamView() {
           <th>Class</th>
           ${REPS_DATA.map(r => `<th>${r.name.split(' ')[0]}</th>`).join('')}
           <th>Team Target</th>
-          <th>Team Actual</th>
+          <th>Team Invoiced</th>
           <th>Achiev %</th>
         </tr>
       </thead>
@@ -1740,20 +1746,25 @@ function refreshTeamView() {
   }
 
   // ── Class achievement table ───────────────────────────────
+  const clsAchMi = parseInt(document.getElementById('cls-ach-month')?.value ?? '-1');
   const ctbody = document.getElementById('team-class-body');
   if (ctbody) {
     ctbody.innerHTML = REPS_DATA[0].classes.map((cls, ci) => {
-      const repTgts = REPS_DATA.map((_,ri) => months.reduce((s,_,mi) => s+getClassTarget(ri,ci,mi), 0));
-      const repActs = REPS_DATA.map((_,ri) => months.reduce((s,_,mi) => s+getClassActual(ri,ci,mi), 0));
-      const totTgt  = repTgts.reduce((s,v) => s+v, 0);
-      const totAct  = repActs.reduce((s,v) => s+v, 0);
-      const achPct  = totAct>0&&totTgt>0 ? totAct/totTgt : null;
+      const repTgts = REPS_DATA.map((_,ri) =>
+        clsAchMi === -1 ? months.reduce((s,_,mi) => s+getClassTarget(ri,ci,mi), 0) : getClassTarget(ri,ci,clsAchMi)
+      );
+      const repActs = REPS_DATA.map((_,ri) =>
+        clsAchMi === -1 ? months.reduce((s,_,mi) => s+getClassActual(ri,ci,mi), 0) : getClassActual(ri,ci,clsAchMi)
+      );
+      const totTgt = repTgts.reduce((s,v) => s+v, 0);
+      const totAct = repActs.reduce((s,v) => s+v, 0);
+      const achPct = totAct>0&&totTgt>0 ? totAct/totTgt : null;
       return `<tr>
         <td style="color:${clsColors[ci]};font-weight:600">${cls.name}</td>
-        ${repActs.map((v,ri) => `<td style="color:${v>0?REPS_DATA[ri].color:'var(--muted)'}">${v>0?fmt(v):'—'}</td>`).join('')}
+        ${repActs.map((v,ri) => `<td style="color:${v>0?REPS_DATA[ri].color:v<0?'#e05252':'var(--muted)'}">${v!==0?fmt(v):'—'}</td>`).join('')}
         <td class="target-cell">${fmt(totTgt)}</td>
         <td style="color:var(--amber)">${totAct>0?fmt(totAct):'—'}</td>
-        <td>${achPct!==null?`<span class="${achPct>=1?'variance-pos':'variance-neg'}">${(achPct*100).toFixed(1)}%</span>`:'—'}</td>
+        <td>${achPct!==null?`<span class="${achPct>=1?'variance-pos':'variance-neg'}" style="${achPct>=0.8&&achPct<1?'color:var(--amber)':''}">${(achPct*100).toFixed(1)}%</span>`:'—'}</td>
       </tr>`;
     }).join('');
   }
