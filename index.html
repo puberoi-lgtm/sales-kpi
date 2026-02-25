@@ -719,8 +719,8 @@ function mkChart(id, config) {
 const CHART_DEFAULTS = {
   plugins: { legend: { labels: { color: '#888', font: { family: 'DM Mono', size: 10 }, boxWidth: 10 } } },
   scales: {
-    x: { ticks: { color: '#666', font: { family: 'DM Mono', size: 10 } }, grid: { color: '#1e1e1e' } },
-    y: { ticks: { color: '#666', font: { family: 'DM Mono', size: 10 }, callback: v => '$' + (v/1000).toFixed(0) + 'k' }, grid: { color: '#1e1e1e' } }
+    x: { ticks: { color: '#666', font: { family: 'DM Mono', size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false } },
+    y: { ticks: { color: '#666', font: { family: 'DM Mono', size: 10 }, callback: v => '$' + (v/1000).toFixed(0) + 'k' }, grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false } }
   }
 };
 
@@ -1439,10 +1439,6 @@ function buildTeamView() {
       </div>
       <div class="chart-wrap tall"><canvas id="ch-team-cls"></canvas></div>
     </div>
-    <div class="chart-card wide">
-      <div class="chart-title">Monthly Team Target vs Achievement — FY2026</div>
-      <div class="chart-wrap tall"><canvas id="ch-team-monthly"></canvas></div>
-    </div>
   </div>
 
   <div class="section-hdr">📋 Monthly Team Performance</div>
@@ -1456,6 +1452,7 @@ function buildTeamView() {
           <th>Team Target</th>
           <th>Achiev %</th>
           <th>vs Target</th>
+          <th>Remarks</th>
         </tr>
       </thead>
       <tbody id="team-monthly-body"></tbody>
@@ -1467,6 +1464,7 @@ function buildTeamView() {
           <td id="team-tot-tgt"></td>
           <td id="team-tot-pct"></td>
           <td id="team-tot-var"></td>
+          <td></td>
         </tr>
       </tfoot>
     </table>
@@ -1682,8 +1680,6 @@ function refreshTeamView() {
     let totByRep = REPS_DATA.map(() => 0);
     let grandTgt = 0, grandAct = 0;
 
-    // Compute per-rep achievement rates for outlier detection
-    // We'll flag a rep month as outlier if their achievement % is >30pp from team avg
     months.forEach((m, mi) => {
       const repActs = REPS_DATA.map((_,ri) => getActual(ri,mi));
       const teamAct = repActs.reduce((s,v) => s+v, 0);
@@ -1693,7 +1689,7 @@ function refreshTeamView() {
       const achPct = teamAct > 0 && teamTgt > 0 ? teamAct/teamTgt : null;
       const isCurrent = mi === currentMi;
 
-      // Outlier: any rep whose individual achievement deviates significantly
+      // Per-rep achievement rates
       const repAchPcts = REPS_DATA.map((_,ri) => {
         const a = getActual(ri,mi), t = getTarget(ri,mi);
         return a > 0 && t > 0 ? a/t : null;
@@ -1701,19 +1697,34 @@ function refreshTeamView() {
       const validPcts = repAchPcts.filter(v => v !== null);
       const teamAvgAch = validPcts.length > 0 ? validPcts.reduce((s,v)=>s+v,0)/validPcts.length : null;
 
+      // Build remarks for this month
+      const remarks = [];
+      REPS_DATA.forEach((rep, ri) => {
+        const repPct = repAchPcts[ri];
+        if (teamAvgAch !== null && repPct !== null && Math.abs(repPct - teamAvgAch) > 0.3) {
+          const dir = repPct > teamAvgAch ? '▲' : '▼';
+          const label = repPct > teamAvgAch ? 'outperforming' : 'underperforming';
+          const color = repPct > teamAvgAch ? 'var(--green)' : '#e05252';
+          remarks.push(`<span style="color:${color};white-space:nowrap">${dir} ${rep.name.split(' ')[0]} ${label} (${(repPct*100).toFixed(0)}% vs avg ${(teamAvgAch*100).toFixed(0)}%)</span>`);
+        }
+        // Flag large negatives: if actual value is significantly negative
+        const act = getActual(ri, mi);
+        if (act < -5000) {
+          remarks.push(`<span style="color:#e05252;white-space:nowrap">⚠ ${rep.name.split(' ')[0]} has large negative value (${fmt(act)})</span>`);
+        }
+      });
+      const remarkCell = remarks.length > 0
+        ? `<td style="font-size:10px;line-height:1.6">${remarks.join('<br>')}</td>`
+        : `<td style="color:var(--muted);font-size:10px">—</td>`;
+
       tbody.innerHTML += `<tr class="${isCurrent?'current-month-row':''}">
         <td>${m} 2026${isCurrent?'<span class="current-month-badge">▶ Now</span>':''}</td>
-        ${repActs.map((v,ri) => {
-          const repPct = repAchPcts[ri];
-          const isOutlier = teamAvgAch !== null && repPct !== null && Math.abs(repPct - teamAvgAch) > 0.3;
-          const outlierStyle = isOutlier ? `;outline:1px solid ${repPct > teamAvgAch ? 'var(--green)' : '#e05252'};border-radius:3px;padding:1px 4px` : '';
-          const outlierTitle = isOutlier ? ` title="${repPct > teamAvgAch ? '⬆ Outperforming' : '⬇ Underperforming'} team avg (${(teamAvgAch*100).toFixed(0)}%)"` : '';
-          return `<td style="color:${v>0?REPS_DATA[ri].color:'var(--muted)'}${outlierStyle}"${outlierTitle}>${v>0?fmt(v):'—'}${isOutlier?(repPct>teamAvgAch?' ⬆':' ⬇'):''}</td>`;
-        }).join('')}
+        ${repActs.map((v,ri) => `<td style="color:${v>0?REPS_DATA[ri].color:v<0?'#e05252':'var(--muted)'}">${v!==0?fmt(v):'—'}</td>`).join('')}
         <td style="color:var(--green);font-weight:600">${teamAct>0?fmt(teamAct):'—'}</td>
         <td style="color:var(--muted)">${fmt(teamTgt)}</td>
         <td>${achPct!==null?`<span class="${achPct>=1?'variance-pos':achPct>=0.8?'':'variance-neg'}" style="${achPct>=0.8&&achPct<1?'color:var(--amber)':''}">${(achPct*100).toFixed(1)}%</span>`:'—'}</td>
         <td>${teamAct>0?`<span class="${teamAct>=teamTgt?'variance-pos':'variance-neg'}">${fmt(teamAct-teamTgt)}</span>`:'—'}</td>
+        ${remarkCell}
       </tr>`;
     });
     REPS_DATA.forEach((_,ri) => { const el=document.getElementById(`team-tot-${ri}`); if(el) el.textContent=fmt(totByRep[ri]); });
@@ -1846,22 +1857,6 @@ function refreshTeamView() {
   }
 
   // ── Monthly stacked: Target vs Actual ────────────────────
-  const teamMonthlyTgt = months.map((_,mi) => Math.round(REPS_DATA.reduce((s,_,ri) => s+getTarget(ri,mi), 0)));
-  const teamMonthlyAct = months.map((_,mi) => { const v=REPS_DATA.reduce((s,_,ri) => s+getActual(ri,mi), 0); return v>0?Math.round(v):null; });
-  mkChart('ch-team-monthly', {
-    type: 'line', data: {
-      labels: months,
-      datasets: [
-        { label: 'Team Target', data: teamMonthlyTgt, borderColor: 'var(--green)', backgroundColor: 'rgba(107,191,51,.1)', borderWidth: 2.5, tension: .4, pointRadius: 3, fill: true },
-        { label: 'Team Invoiced', data: teamMonthlyAct, borderColor: 'var(--amber)', backgroundColor: 'rgba(245,166,35,.1)', borderWidth: 2.5, tension: .4, pointRadius: 5, fill: true, spanGaps: false },
-      ]
-    }, options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false,
-      plugins: { ...CHART_DEFAULTS.plugins, legend: { display: true, position: 'bottom', labels: { color:'#888', font:{family:'DM Mono',size:10}, boxWidth:20, padding:10 } },
-        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: $${ctx.parsed.y?.toLocaleString()??'No data'}` } }
-      },
-      scales: { x:{...CHART_DEFAULTS.scales?.x}, y:{...CHART_DEFAULTS.scales?.y, ticks:{callback:v=>'$'+(Math.abs(v)>=1000?(v/1000).toFixed(0)+'k':v)}} }
-    }
-  });
 }
 
 function setTeamMonthFilter(mi) {
