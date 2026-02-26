@@ -1100,8 +1100,8 @@ function populateEoyPrediction(repIdx, annTgt, ytdAct) {
   const monthsRemaining = 12 - monthsWithData;
   const achRatePct = (achievementRate * 100).toFixed(1);
 
-  // 3-year trend predicted annual total
-  const trendPredicted = Math.round(Array.from({length:12},(_,mi) => PREDICTED_SALES[`${repIdx}-${mi}`]||0).reduce((s,v)=>s+v,0));
+  // 3-year trend predicted annual total — with 10% inflation uplift
+  const trendPredicted = Math.round(Array.from({length:12},(_,mi) => PREDICTED_SALES[`${repIdx}-${mi}`]||0).reduce((s,v)=>s+v,0) * 1.10);
   const trendVsTarget = annTgt > 0 ? trendPredicted / annTgt : null;
   const trendColor = trendVsTarget >= 1 ? 'var(--green)' : trendVsTarget >= 0.85 ? 'var(--amber)' : '#e05252';
 
@@ -1129,7 +1129,7 @@ function populateEoyPrediction(repIdx, annTgt, ytdAct) {
     <div class="eoy-item">
       <div class="eoy-label">🔮 3-Year Trend Forecast</div>
       <div class="eoy-val" style="color:${trendColor}">${fmt(trendPredicted)}</div>
-      <div class="eoy-sub">Based on weighted trend 2022–2025 · ${trendVsTarget !== null ? (trendVsTarget*100).toFixed(1)+'% of target' : ''}</div>
+      <div class="eoy-sub">Based on weighted trend 2022–2025 +10% inflation · ${trendVsTarget !== null ? (trendVsTarget*100).toFixed(1)+'% of target' : ''}</div>
     </div>
   `;
 }
@@ -1199,7 +1199,7 @@ function drawRepCharts(repIdx) {
   const currentMi = now.getMonth();
 
   // ── Chart 1: Monthly total — Target vs Actual vs Predicted ──
-  const predicted = months.map((_, mi) => Math.round(PREDICTED_SALES[`${repIdx}-${mi}`] || 0));
+  const predicted = months.map((_, mi) => Math.round((PREDICTED_SALES[`${repIdx}-${mi}`] || 0) * 1.10));
 
   mkChart(`ch-rep-total-${repIdx}`, {
     type: 'line',
@@ -1218,7 +1218,7 @@ function drawRepCharts(repIdx) {
           fill: true,
         },
         {
-          label: 'Predicted (3yr trend)',
+          label: 'Predicted (3yr trend +10%)',
           data: predicted,
           borderColor: '#a78bfa',
           backgroundColor: 'transparent',
@@ -1519,7 +1519,8 @@ function refreshTeamView() {
   // ── KPI Summary Card ──────────────────────────────────────
   const kpiEl = document.getElementById('team-kpi-strip');
   if (kpiEl) {
-    const trendAnnual = Math.round(Array.from({length:12},(_,mi)=>REPS_DATA.reduce((s,_,ri)=>s+(PREDICTED_SALES[`${ri}-${mi}`]||0),0)).reduce((s,v)=>s+v,0));
+    // Apply 10% inflation uplift to 3yr trend prediction
+    const trendAnnual = Math.round(Array.from({length:12},(_,mi)=>REPS_DATA.reduce((s,_,ri)=>s+(PREDICTED_SALES[`${ri}-${mi}`]||0),0)).reduce((s,v)=>s+v,0) * 1.10);
     const trendPct    = teamYtdTgt > 0 ? trendAnnual / teamYtdTgt : 0;
     const ytdColor    = ytdPct >= 1 ? 'var(--green)' : ytdPct >= 0.8 ? 'var(--amber)' : '#e05252';
     const mtdColor2   = mtdPct >= 1 ? 'var(--green)' : mtdPct >= 0.8 ? 'var(--amber)' : '#e05252';
@@ -1528,12 +1529,18 @@ function refreshTeamView() {
     kpiEl.innerHTML = `
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:4px">
 
-        <!-- Top row: Annual summary -->
-        <div style="display:grid;grid-template-columns:1fr 1px 1fr 1px 1fr;gap:0;margin-bottom:18px">
+        <!-- Top row: Annual summary — 4 columns -->
+        <div style="display:grid;grid-template-columns:1fr 1px 1fr 1px 1fr 1px 1fr;gap:0;margin-bottom:18px">
           <div style="text-align:center;padding:0 16px">
             <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">Annual Target</div>
             <div style="font-size:26px;font-weight:800;font-family:var(--font-head);color:var(--green)">${fmt(teamYtdTgt)}</div>
             <div style="font-size:11px;color:var(--muted);margin-top:3px">FY2026 Full Year</div>
+          </div>
+          <div style="background:var(--border)"></div>
+          <div style="text-align:center;padding:0 16px">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">FY2025 Achieved</div>
+            <div style="font-size:26px;font-weight:800;font-family:var(--font-head);color:#6699cc">${fmt(teamPrev)}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:3px">Prior year reference</div>
           </div>
           <div style="background:var(--border)"></div>
           <div style="text-align:center;padding:0 16px">
@@ -1545,7 +1552,7 @@ function refreshTeamView() {
           <div style="text-align:center;padding:0 16px">
             <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">Predicted Achievement</div>
             <div style="font-size:26px;font-weight:800;font-family:var(--font-head);color:${trendColor}">${fmt(trendAnnual)}</div>
-            <div style="font-size:11px;color:${trendColor};margin-top:3px">${fmtPct(trendPct)} of target · 3yr trend</div>
+            <div style="font-size:11px;color:${trendColor};margin-top:3px">${fmtPct(trendPct)} of target · 3yr trend +10%</div>
           </div>
         </div>
 
