@@ -1538,12 +1538,6 @@ function refreshTeamView() {
           </div>
           <div style="background:var(--border)"></div>
           <div style="text-align:center;padding:0 16px">
-            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">FY2025 Achieved</div>
-            <div style="font-size:26px;font-weight:800;font-family:var(--font-head);color:#6699cc">${fmt(teamPrev)}</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:3px">Prior year reference</div>
-          </div>
-          <div style="background:var(--border)"></div>
-          <div style="text-align:center;padding:0 16px">
             <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">Annual Achievement</div>
             <div style="font-size:26px;font-weight:800;font-family:var(--font-head);color:${ytdColor}">${fmt(teamYtdAct)}</div>
             <div style="font-size:11px;color:${ytdColor};margin-top:3px">${fmtPct(ytdPct)} of target</div>
@@ -1553,6 +1547,12 @@ function refreshTeamView() {
             <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">Predicted Achievement</div>
             <div style="font-size:26px;font-weight:800;font-family:var(--font-head);color:${trendColor}">${fmt(trendAnnual)}</div>
             <div style="font-size:11px;color:${trendColor};margin-top:3px">${fmtPct(trendPct)} of target · 3yr trend +10%</div>
+          </div>
+          <div style="background:var(--border)"></div>
+          <div style="text-align:center;padding:0 16px">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">FY2025 Achieved</div>
+            <div style="font-size:26px;font-weight:800;font-family:var(--font-head);color:#6699cc">${fmt(teamPrev)}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:3px">Prior year reference</div>
           </div>
         </div>
 
