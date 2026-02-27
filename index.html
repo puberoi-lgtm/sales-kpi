@@ -1509,8 +1509,9 @@ function refreshTeamView() {
     s + months.reduce((s2,_,mi) => s2 + getActual(ri,mi), 0), 0);
   const teamYtdTgt = REPS_DATA.reduce((s,_,ri) =>
     s + months.reduce((s2,_,mi) => s2 + getTarget(ri,mi), 0), 0);
-  const teamMtdAct = REPS_DATA.reduce((s,_,ri) => s + getActual(ri,currentMi), 0);
-  const teamMtdTgt = REPS_DATA.reduce((s,_,ri) => s + getTarget(ri,currentMi), 0);
+  const selectedMtdMi = window._teamMtdMonthFilter !== undefined ? window._teamMtdMonthFilter : currentMi;
+  const teamMtdAct = REPS_DATA.reduce((s,_,ri) => s + getActual(ri,selectedMtdMi), 0);
+  const teamMtdTgt = REPS_DATA.reduce((s,_,ri) => s + getTarget(ri,selectedMtdMi), 0);
   const teamPrev   = REPS_DATA.reduce((s,r) => s + r.monthly.reduce((s2,m) => s2 + m.prev, 0), 0);
   const ytdPct = teamYtdTgt > 0 ? teamYtdAct / teamYtdTgt : 0;
   const mtdPct = teamMtdTgt > 0 ? teamMtdAct / teamMtdTgt : 0;
@@ -1586,7 +1587,12 @@ function refreshTeamView() {
 
           <!-- MTD -->
           <div style="background:var(--surface2);border-radius:8px;padding:14px">
-            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:10px;font-weight:600">📆 Month to Date — ${months[currentMi]}</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+              <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600">📆 Month to Date — ${months[selectedMtdMi]}</div>
+              <select onchange="window._teamMtdMonthFilter=parseInt(this.value);refreshTeamView()" style="font-size:10px;background:var(--surface3);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 6px;cursor:pointer">
+                ${months.map((m,i) => `<option value="${i}" ${i===selectedMtdMi?'selected':''}>${m}</option>`).join('')}
+              </select>
+            </div>
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
               <div>
                 <div style="font-size:10px;color:var(--muted)">MTD Target</div>
