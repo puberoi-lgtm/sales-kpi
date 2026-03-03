@@ -515,6 +515,7 @@
     <span id="sync-indicator" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-left:12px">🔴 Live</span>
     <span id="user-info" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-left:16px"></span>
     <button class="theme-toggle" id="theme-toggle-btn" onclick="toggleTheme()">🌙 Dark</button>
+    <button id="change-pw-btn" onclick="openChangePw()" style="display:none;margin-left:10px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:4px 10px;font-family:var(--font-mono);font-size:11px;cursor:pointer;" onmouseover="this.style.color='var(--green)'" onmouseout="this.style.color='var(--muted)'">&#128273; Change Password</button>
     <button id="logout-btn" onclick="doLogout()" style="display:none;margin-left:10px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:4px 10px;font-family:var(--font-mono);font-size:11px;cursor:pointer;" onmouseover="this.style.borderColor='#e05252';this.style.color='#e05252'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">Sign Out</button>
   </div>
 </div> ──────────────────────────────────────────────── -->
@@ -641,37 +642,28 @@ function doLogout() {
 }
 
 // Listen for auth state changes
-function handleAuthChange(user) {
-  // Always ensure views are built first
-  if (!window._initDone) init();
-  const getEl = id => document.getElementById(id);
+window.addEventListener('auth-changed', e => {
+  const user = e.detail.user;
   if (user) {
-    if (getEl('login-screen'))  getEl('login-screen').style.display  = 'none';
-    if (getEl('logout-btn'))    getEl('logout-btn').style.display    = '';
-    if (getEl('change-pw-btn')) getEl('change-pw-btn').style.display = '';
-    const userInfo = getEl('user-info');
+    // Ensure views are built before showing dashboard
+    if (!window._initDone) init();
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('logout-btn').style.display = '';
+    document.getElementById('change-pw-btn').style.display = '';
+    const userInfo = document.getElementById('user-info');
     if (userInfo) userInfo.textContent = '👤 ' + user.email;
     applyAccessControl();
     fbStartListening();
   } else {
-    if (getEl('login-screen'))  getEl('login-screen').style.display  = 'flex';
-    if (getEl('logout-btn'))    getEl('logout-btn').style.display    = 'none';
-    if (getEl('change-pw-btn')) getEl('change-pw-btn').style.display = 'none';
-    const userInfo = getEl('user-info');
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('logout-btn').style.display = 'none';
+    document.getElementById('change-pw-btn').style.display = 'none';
+    const userInfo = document.getElementById('user-info');
     if (userInfo) userInfo.textContent = '';
     const btn = document.querySelector('.login-btn');
     if (btn) { btn.textContent = 'Sign In'; btn.disabled = false; }
   }
-}
-
-window.addEventListener('auth-changed', e => {
-  // If DOM not ready yet, wait for it
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => handleAuthChange(e.detail.user));
-  } else {
-    handleAuthChange(e.detail.user);
-  }
-});
+});;
 
 function fbSave() {
   if (!window._fbSet) return;
@@ -962,7 +954,7 @@ function buildRepView(repIdx) {
   </div><!-- /rpane-kpi -->
 
   <div class="rep-tab-pane" id="rpane-loc-${repIdx}">
-    ${repIdx === 4 ? buildLocationsPane(repIdx) : '<div style="padding:40px;text-align:center;color:var(--muted);font-family:var(--font-mono);font-size:12px">Location data will be available once accounts are configured.</div>'}
+    ${buildLocationsPane(repIdx)}
   </div>
 
   `;
@@ -2332,36 +2324,16 @@ function switchRepTab(ri,tab){
 
 function buildLocationsPane(ri){
   var pC={'MMEM':'#4472C4','Rexel':'#70AD47','Middys':'#ED7D31','L&H':'#9E480E','CNW':'#C00000','Leckys':'#A5A5A5','Delta':'#F5A623','Active':'#17A589','Independants':'#7D3C98'};
-  var parents=[...new Set(MELISSA_BRANCHES.map(function(b){return b.p;}))];
-  var withC=MELISSA_BRANCHES.filter(function(b){return b.ct||b.em||b.ph;}).length;
-  var fBtns=['All'].concat(parents).map(function(p){
-    return '<button class="loc-filter-btn'+(p==='All'?' active':'')+'" onclick="filterLocTable('+ri+',\''+p+'\',this)">'+p+'</button>';
-  }).join('');
-  var rows=MELISSA_BRANCHES.map(function(b){
-    var c=pC[b.p]||'#888';
-    var em=b.em?'<a href="mailto:'+b.em+'" class="contact-btn" title="'+b.em+'">&#9993;</a>':'';
-    var ph=b.ph?'<a href="tel:'+b.ph+'" class="contact-btn">'+b.ph+'</a>':'';
-    var src=(b.b+' '+b.a+' '+b.ct+' '+b.p).toLowerCase().replace(/"/g,'');
-    return '<tr data-parent="'+b.p+'" data-search="'+src+'">'
-      +'<td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+c+';margin-right:7px"></span>'+b.b+'</td>'
-      +'<td><span style="background:'+c+'22;color:'+c+';padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700">'+b.p+'</span></td>'
-      +'<td style="color:var(--muted)">'+(b.a||'&mdash;')+'</td>'
-      +'<td>'+(b.ct||'<span style="color:var(--muted)">&mdash;</span>')+'</td>'
-      +'<td style="white-space:nowrap">'+em+(em&&ph?' ':'')+ph+'</td>'
-      +'</tr>';
-  }).join('');
-  return '<div>'
-    +'<div class="loc-stat-row">'
-      +'<div class="loc-stat"><div class="loc-stat-val">'+MELISSA_BRANCHES.length+'</div><div class="loc-stat-lbl">Total Branches</div></div>'
-      +'<div class="loc-stat"><div class="loc-stat-val">'+parents.length+'</div><div class="loc-stat-lbl">Parent Companies</div></div>'
-      +'<div class="loc-stat"><div class="loc-stat-val" style="color:var(--green)">'+withC+'</div><div class="loc-stat-lbl">With Contact</div></div>'
-    +'</div>'
-    +'<div class="loc-filters"><span style="font-size:10px;color:var(--muted);font-family:var(--font-mono);margin-right:4px">Filter:</span>'+fBtns
-      +'<input type="text" class="loc-search" placeholder="Search branch, address, contact\u2026" oninput="searchLocTable('+ri+',this.value)" /></div>'
-    +'<div class="loc-table-wrap"><table class="loc-table" id="loc-table-'+ri+'">'
-      +'<thead><tr><th>Branch</th><th>Parent</th><th>Address</th><th>Contact</th><th>Actions</th></tr></thead>'
-      +'<tbody id="loc-tbody-'+ri+'">'+rows+'</tbody></table></div></div>';
+  var branches=(typeof ACCOUNTS_DATA!=='undefined'?ACCOUNTS_DATA:[]).filter(function(a){return a.ri===ri;}).map(function(a){return {p:a.p||'',b:a.n||'',a:a.ad||'',ph:a.ph||'',em:a.em||'',ct:a.mg||''};});
+  if(branches.length===0&&ri===4&&typeof MELISSA_BRANCHES!=='undefined')branches=MELISSA_BRANCHES;
+  if(branches.length===0)return '<div style="padding:40px;text-align:center;color:var(--muted);font-family:var(--font-mono);font-size:12px">No location data available.</div>';
+  var parents=[...new Set(branches.map(function(b){return b.p;}))].filter(Boolean);
+  var withC=branches.filter(function(b){return b.ct||b.em||b.ph;}).length;
+  var fBtns=['All'].concat(parents).map(function(p){return '<button class="loc-filter-btn'+(p==='All'?' active':'')+'" onclick="filterLocTable('+ri+',\''+p+'\',this)">'+p+'</button>';}).join('');
+  var rows=branches.map(function(b){var c=pC[b.p]||'#888';var em=b.em?'<a href="mailto:'+b.em+'" class="contact-btn">&#9993;</a>':'';var ph=b.ph?'<a href="tel:'+b.ph+'" class="contact-btn">'+b.ph+'</a>':'';var src=(b.b+' '+b.a+' '+b.ct+' '+b.p).toLowerCase();return '<tr data-parent="'+b.p+'" data-search="'+src+'"><td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+c+';margin-right:7px"></span>'+b.b+'</td><td><span style="background:'+c+'22;color:'+c+';padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700">'+b.p+'</span></td><td style="color:var(--muted)">'+(b.a||'&mdash;')+'</td><td>'+(b.ct||'<span style="color:var(--muted)">&mdash;</span>')+'</td><td>'+em+(em&&ph?' ':'')+ph+'</td></tr>';}).join('');
+  return '<div><div class="loc-stat-row"><div class="loc-stat"><div class="loc-stat-val">'+branches.length+'</div><div class="loc-stat-lbl">Total Branches</div></div><div class="loc-stat"><div class="loc-stat-val">'+parents.length+'</div><div class="loc-stat-lbl">Parent Companies</div></div><div class="loc-stat"><div class="loc-stat-val" style="color:var(--green)">'+withC+'</div><div class="loc-stat-lbl">With Contact</div></div></div><div class="loc-filters">'+fBtns+'<input type="text" class="loc-search" placeholder="Search…" oninput="searchLocTable('+ri+',this.value)" /></div><div class="loc-table-wrap"><table class="loc-table" id="loc-table-'+ri+'"><thead><tr><th>Branch</th><th>Parent</th><th>Address</th><th>Contact</th><th>Actions</th></tr></thead><tbody id="loc-tbody-'+ri+'">'+rows+'</tbody></table></div></div>';
 }
+
 
 function filterLocTable(ri,parent,btn){
   document.querySelectorAll('#rpane-loc-'+ri+' .loc-filter-btn').forEach(function(b){b.classList.remove('active');});
@@ -2485,13 +2457,12 @@ function renderPlanner(ct){
 }
 
 function init() {
-  if (window._initDone) return;
   const container = document.getElementById('views-container');
 
   // Team view
   const teamDiv = document.createElement('div');
   teamDiv.id = 'view-team';
-  teamDiv.className = 'view';
+  teamDiv.className = 'view active';
   teamDiv.innerHTML = buildTeamView();
   container.appendChild(teamDiv);
 
@@ -2519,6 +2490,23 @@ function init() {
 }
 
 if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }
+</script>
+<div id="cpw-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:28px 32px;width:360px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,.5);">
+    <div style="font-family:var(--font-head);font-size:16px;font-weight:700;margin-bottom:6px;">Change Password</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:24px;">Verify your current password, then set a new one.</div>
+    <div style="margin-bottom:14px;"><label style="display:block;font-size:10px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Current Password</label><input type="password" id="cpw-cur" placeholder="Current password" style="width:100%;box-sizing:border-box;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:9px 12px;font-family:var(--font-mono);font-size:12px;outline:none;"/></div>
+    <div style="margin-bottom:14px;"><label style="display:block;font-size:10px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">New Password</label><input type="password" id="cpw-new" placeholder="Min 8 characters" style="width:100%;box-sizing:border-box;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:9px 12px;font-family:var(--font-mono);font-size:12px;outline:none;"/></div>
+    <div style="margin-bottom:20px;"><label style="display:block;font-size:10px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Confirm New Password</label><input type="password" id="cpw-cfm" placeholder="Repeat new password" style="width:100%;box-sizing:border-box;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:9px 12px;font-family:var(--font-mono);font-size:12px;outline:none;"/></div>
+    <div id="cpw-err" style="color:#e05252;font-size:11px;min-height:16px;margin-bottom:12px;text-align:center;"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;"><button onclick="closeChangePw()" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:7px 16px;font-family:var(--font-mono);font-size:11px;cursor:pointer;">Cancel</button><button id="cpw-submit" onclick="doChangePw()" style="background:var(--green);border:none;color:#fff;border-radius:6px;padding:7px 16px;font-family:var(--font-mono);font-size:11px;cursor:pointer;font-weight:600;">Update Password</button></div>
+  </div>
+</div>
+<script>
+function openChangePw(){document.getElementById("cpw-modal").style.display="flex";["cpw-cur","cpw-new","cpw-cfm"].forEach(function(i){document.getElementById(i).value="";});document.getElementById("cpw-err").textContent="";setTimeout(function(){document.getElementById("cpw-cur").focus();},50);}
+function closeChangePw(){document.getElementById("cpw-modal").style.display="none";}
+function doChangePw(){var cur=document.getElementById("cpw-cur").value,nw=document.getElementById("cpw-new").value,cfm=document.getElementById("cpw-cfm").value,err=document.getElementById("cpw-err");if(!cur||!nw||!cfm){err.textContent="Please fill in all fields.";return;}if(nw.length<8){err.textContent="New password must be at least 8 characters.";return;}if(nw!==cfm){err.textContent="Passwords do not match.";return;}var btn=document.getElementById("cpw-submit");btn.textContent="Updating...";btn.disabled=true;err.textContent="";if(!window._fbChangePassword){err.textContent="Not connected. Please refresh.";btn.textContent="Update Password";btn.disabled=false;return;}window._fbChangePassword(cur,nw).then(function(){closeChangePw();btn.textContent="Update Password";btn.disabled=false;}).catch(function(e){btn.textContent="Update Password";btn.disabled=false;if(e.code==="auth/wrong-password"||e.code==="auth/invalid-credential")err.textContent="Current password is incorrect.";else if(e.code==="auth/weak-password")err.textContent="Password too weak.";else err.textContent="Update failed. Please try again.";});}
+document.addEventListener("keydown",function(e){if(e.key==="Escape")closeChangePw();});
 </script>
 </body>
 </html>
