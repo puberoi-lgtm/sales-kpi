@@ -557,34 +557,32 @@ const REP_EMAIL_MAP = {
 };
 
 function getCurrentUserRole() {
-  const email = window._currentUser?.email?.toLowerCase();
-  if (!email) return null;
-  if (ADMIN_EMAILS.includes(email)) return { role: 'admin', repIdx: null };
+  const email = window._currentUser?.email?.toLowerCase().trim();
+  if (!email) { console.warn('[Auth] No user email'); return null; }
+  const adminList = ADMIN_EMAILS.map(e => e.toLowerCase().trim());
+  if (adminList.includes(email)) { console.log('[Auth] Admin:', email); return { role: 'admin', repIdx: null }; }
   const repIdx = REP_EMAIL_MAP[email];
-  if (repIdx !== undefined) return { role: 'rep', repIdx };
+  if (repIdx !== undefined) { console.log('[Auth] Rep:', email, 'idx:', repIdx); return { role: 'rep', repIdx }; }
+  console.warn('[Auth] Unknown email:', email);
   return null;
 }
 
 function applyAccessControl() {
   const access = getCurrentUserRole();
-  if (!access) {
-    if (window._fbLogout) window._fbLogout();
-    return;
-  }
-
+  if (!access) { console.warn('[Auth] No access - signing out'); if (window._fbLogout) window._fbLogout(); return; }
   const tabs = document.getElementById('mainTabs');
-  if (!tabs) return;
-
+  if (!tabs) { console.warn('[Auth] mainTabs not found'); return; }
+  console.log('[Auth] Applying:', access.role, 'repIdx:', access.repIdx);
   if (access.role === 'admin') {
     tabs.querySelectorAll('.tab-btn').forEach(b => b.style.display = '');
     document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
     showView('team');
   } else {
     tabs.querySelectorAll('.tab-btn').forEach(b => b.style.display = 'none');
-    const myTab = document.getElementById(`tab-rep-${access.repIdx}`);
-    if (myTab) myTab.style.display = '';
+    const myTab = document.getElementById('tab-rep-' + access.repIdx);
+    if (myTab) { myTab.style.display = ''; } else { console.warn('[Auth] Tab not found:', access.repIdx); }
     document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
-    showView(`rep-${access.repIdx}`);
+    showView('rep-' + access.repIdx);
   }
 }
 
