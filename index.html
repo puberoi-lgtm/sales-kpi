@@ -2476,12 +2476,13 @@ function renderPlanner(ct){
 }
 
 function init() {
+  if (window._initDone) return;
   const container = document.getElementById('views-container');
 
   // Team view
   const teamDiv = document.createElement('div');
   teamDiv.id = 'view-team';
-  teamDiv.className = 'view active';
+  teamDiv.className = 'view';
   teamDiv.innerHTML = buildTeamView();
   container.appendChild(teamDiv);
 
@@ -2508,7 +2509,7 @@ function init() {
   window._initDone = true;
 }
 
-if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }
+// init() is called from auth-changed handler once user is authenticated
 </script>
 </body>
 </html>
