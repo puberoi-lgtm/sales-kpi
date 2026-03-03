@@ -438,6 +438,24 @@
   .loc-table th{padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em;font-size:10px;white-space:nowrap;position:sticky;top:0;background:var(--surface)}
   .loc-table td{padding:7px 10px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle}
   .loc-table tr:hover td{background:rgba(107,191,51,.05)}
+  .cust-map{width:100%;height:420px;border-radius:10px;border:1px solid var(--border);z-index:1;}
+  .cust-split{display:grid;grid-template-columns:1fr;gap:20px;}
+  .cust-legend{display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-bottom:12px;font-family:var(--font-mono);font-size:11px;color:var(--muted);}
+  .cust-legend-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;}
+  .cust-section-title{font-family:var(--font-head);font-weight:700;font-size:13px;color:var(--text);margin:20px 0 12px;display:flex;align-items:center;gap:8px;}
+  .cust-badge{display:inline-block;padding:1px 8px;border-radius:10px;font-family:var(--font-mono);font-size:10px;font-weight:700;}
+  .cust-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px;}
+  .cust-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;cursor:default;}
+  .cust-card.dormant{border-left:3px solid #e05252;}
+  .cust-card-name{font-weight:600;font-size:12px;color:var(--text);margin-bottom:4px;line-height:1.3;}
+  .cust-card-meta{font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-bottom:8px;}
+  .cust-card-stat{font-family:var(--font-mono);font-size:11px;margin-bottom:3px;}
+  .cust-card-stat span{color:var(--text);font-weight:600;}
+  .cust-contact-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;}
+  .cust-contact-btn{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:5px;font-family:var(--font-mono);font-size:10px;text-decoration:none;border:1px solid var(--border);color:var(--muted);background:transparent;transition:.15s;cursor:pointer;}
+  .cust-contact-btn:hover{border-color:var(--green);color:var(--green);}
+  .cust-perf-bar{height:4px;border-radius:2px;margin-top:6px;background:var(--border);}
+  .cust-perf-fill{height:4px;border-radius:2px;}
   .loc-stat-row{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap}
   .loc-stat{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 16px;min-width:100px}
   .loc-stat-val{font-size:18px;font-weight:800;font-family:var(--font-head)}
@@ -663,7 +681,7 @@ window.addEventListener('auth-changed', e => {
     const btn = document.querySelector('.login-btn');
     if (btn) { btn.textContent = 'Sign In'; btn.disabled = false; }
   }
-});;
+});
 
 function fbSave() {
   if (!window._fbSet) return;
@@ -784,7 +802,7 @@ function buildRepView(repIdx) {
   return `
   <div class="rep-tab-bar">
     <button class="rep-tab-btn active" id="rtab-kpi-${repIdx}" onclick="switchRepTab(${repIdx},'kpi')">📊 KPI</button>
-    <button class="rep-tab-btn" id="rtab-loc-${repIdx}" onclick="switchRepTab(${repIdx},'loc')">📍 Locations</button>
+    <button class="rep-tab-btn" id="rtab-loc-${repIdx}" onclick="switchRepTab(${repIdx},'loc')">📍 Customers</button>
   </div>
   <div class="rep-tab-pane active" id="rpane-kpi-${repIdx}">
   <div class="rep-header">
@@ -2320,18 +2338,95 @@ function switchRepTab(ri,tab){
     if(btn){btn.classList.toggle('active',t===tab);btn.style.borderBottomColor=(t===tab)?REPS_DATA[ri].color:'transparent';}
     if(pane)pane.classList.toggle('active',t===tab);
   });
+  if(tab==='loc')setTimeout(function(){initCustMap(ri);},80);
 }
 
 function buildLocationsPane(ri){
-  var pC={'MMEM':'#4472C4','Rexel':'#70AD47','Middys':'#ED7D31','L&H':'#9E480E','CNW':'#C00000','Leckys':'#A5A5A5','Delta':'#F5A623','Active':'#17A589','Independants':'#7D3C98'};
-  var branches=(typeof ACCOUNTS_DATA!=='undefined'?ACCOUNTS_DATA:[]).filter(function(a){return a.ri===ri;}).map(function(a){return {p:a.p||'',b:a.n||'',a:a.ad||'',ph:a.ph||'',em:a.em||'',ct:a.mg||''};});
-  if(branches.length===0&&ri===4&&typeof MELISSA_BRANCHES!=='undefined')branches=MELISSA_BRANCHES;
-  if(branches.length===0)return '<div style="padding:40px;text-align:center;color:var(--muted);font-family:var(--font-mono);font-size:12px">No location data available.</div>';
-  var parents=[...new Set(branches.map(function(b){return b.p;}))].filter(Boolean);
-  var withC=branches.filter(function(b){return b.ct||b.em||b.ph;}).length;
-  var fBtns=['All'].concat(parents).map(function(p){return '<button class="loc-filter-btn'+(p==='All'?' active':'')+'" onclick="filterLocTable('+ri+',\''+p+'\',this)">'+p+'</button>';}).join('');
-  var rows=branches.map(function(b){var c=pC[b.p]||'#888';var em=b.em?'<a href="mailto:'+b.em+'" class="contact-btn">&#9993;</a>':'';var ph=b.ph?'<a href="tel:'+b.ph+'" class="contact-btn">'+b.ph+'</a>':'';var src=(b.b+' '+b.a+' '+b.ct+' '+b.p).toLowerCase();return '<tr data-parent="'+b.p+'" data-search="'+src+'"><td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+c+';margin-right:7px"></span>'+b.b+'</td><td><span style="background:'+c+'22;color:'+c+';padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700">'+b.p+'</span></td><td style="color:var(--muted)">'+(b.a||'&mdash;')+'</td><td>'+(b.ct||'<span style="color:var(--muted)">&mdash;</span>')+'</td><td>'+em+(em&&ph?' ':'')+ph+'</td></tr>';}).join('');
-  return '<div><div class="loc-stat-row"><div class="loc-stat"><div class="loc-stat-val">'+branches.length+'</div><div class="loc-stat-lbl">Total Branches</div></div><div class="loc-stat"><div class="loc-stat-val">'+parents.length+'</div><div class="loc-stat-lbl">Parent Companies</div></div><div class="loc-stat"><div class="loc-stat-val" style="color:var(--green)">'+withC+'</div><div class="loc-stat-lbl">With Contact</div></div></div><div class="loc-filters">'+fBtns+'<input type="text" class="loc-search" placeholder="Search…" oninput="searchLocTable('+ri+',this.value)" /></div><div class="loc-table-wrap"><table class="loc-table" id="loc-table-'+ri+'"><thead><tr><th>Branch</th><th>Parent</th><th>Address</th><th>Contact</th><th>Actions</th></tr></thead><tbody id="loc-tbody-'+ri+'">'+rows+'</tbody></table></div></div>';
+  var accts=(ACCOUNTS_DATA||[]).filter(function(a){return a.ri===ri;});
+  if(!accts.length)return '<div style="padding:40px;text-align:center;color:var(--muted);font-family:var(--font-mono)">No customer data.</div>';
+  var maxS=Math.max.apply(null,accts.map(function(a){return a.s||0;}))||1;
+  var MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var dormant=accts.filter(function(a){return a.l3===0;}).sort(function(a,b){return (b.s||0)-(a.s||0);});
+  var active=accts.filter(function(a){return a.l3>0;});
+  var mapped=accts.filter(function(a){return a.ad&&a.ad.trim();});
+  var mapId='cust-map-'+ri;
+
+  var o='<div>';
+  // stat bar
+  o+='<div class="loc-stat-row">'
+    +'<div class="loc-stat"><div class="loc-stat-val">'+accts.length+'</div><div class="loc-stat-lbl">Total Customers</div></div>'
+    +'<div class="loc-stat"><div class="loc-stat-val" style="color:var(--green)">'+active.length+'</div><div class="loc-stat-lbl">Active (Q4)</div></div>'
+    +'<div class="loc-stat"><div class="loc-stat-val" style="color:#e05252">'+dormant.length+'</div><div class="loc-stat-lbl">Dormant</div></div>'
+    +'<div class="loc-stat"><div class="loc-stat-val">'+mapped.length+'</div><div class="loc-stat-lbl">On Map</div></div>'
+    +'</div>';
+  // legend + map
+  o+='<div class="cust-legend">'
+    +'<span><span class="cust-legend-dot" style="background:#27ae60"></span>Active (ordered Q4 2025)</span>'
+    +'<span><span class="cust-legend-dot" style="background:#e05252"></span>Dormant — no Q4 orders</span>'
+    +'<span style="color:var(--muted);font-size:10px">Bubble size = 2025 revenue &middot; Hover for details</span>'
+    +'</div>';
+  o+='<div id="'+mapId+'" class="cust-map" style="height:420px;border-radius:10px;border:1px solid var(--border);margin-bottom:24px"></div>';
+
+  // re-engagement section
+  if(dormant.length){
+    o+='<div class="cust-section-title">'
+      +'&#128308; Re-engagement Priority '
+      +'<span class="cust-badge" style="background:#e0525222;color:#e05252">'+dormant.length+' dormant accounts</span>'
+      +'<span style="font-size:10px;font-weight:400;color:var(--muted);margin-left:8px">Sorted by lost revenue &mdash; highest priority first</span>'
+      +'</div>';
+    o+='<div class="cust-cards">';
+    dormant.forEach(function(a){
+      var pct=Math.min(100,Math.round((a.s/maxS)*100));
+      var barC=a.s>50000?'#e05252':a.s>10000?'#f5a623':'#aaa';
+      var lastMo=(a.la>=0&&a.la<12)?MO[a.la]+' 2025':'No orders';
+      var ct='';
+      if(a.em)ct+='<a href="mailto:'+a.em+'" class="cust-contact-btn">&#9993; Email</a>';
+      if(a.ph)ct+='<a href="tel:'+a.ph+'" class="cust-contact-btn">&#9742; '+a.ph+'</a>';
+      if(a.mo)ct+='<a href="tel:'+a.mo+'" class="cust-contact-btn">&#128241; '+a.mo+'</a>';
+      o+='<div class="cust-card dormant">'
+        +'<div class="cust-card-name">'+a.n+'</div>'
+        +'<div class="cust-card-meta">'+(a.p||'')+(a.ad?' &middot; '+a.ad:'')+'</div>'
+        +'<div class="cust-card-stat">2025 Revenue: <span>$'+Math.round(a.s).toLocaleString()+'</span></div>'
+        +'<div class="cust-card-stat">Last order: <span>'+lastMo+'</span></div>'
+        +(a.mg?'<div class="cust-card-stat">Manager: <span>'+a.mg+'</span></div>':'')
+        +'<div class="cust-perf-bar"><div class="cust-perf-fill" style="width:'+pct+'%;background:'+barC+'"></div></div>'
+        +(ct?'<div class="cust-contact-row">'+ct+'</div>':'')
+        +'</div>';
+    });
+    o+='</div>';
+  }
+
+  // full table
+  o+='<div class="cust-section-title">&#128203; All Customers'
+    +'<input type="text" placeholder="Search customers&hellip;" oninput="custSearch('+ri+',this.value)"'
+    +' style="margin-left:12px;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:4px 10px;font-family:var(--font-mono);font-size:11px;outline:none;width:220px"/>'
+    +'</div>';
+  o+='<div class="loc-table-wrap"><table class="loc-table" id="cust-tbl-'+ri+'">'
+    +'<thead><tr>'
+    +'<th>Customer</th><th>Parent Company</th><th style="text-align:right">2025 Rev</th>'
+    +'<th>Q4 Status</th><th>Last Order</th><th>Contact</th>'
+    +'</tr></thead><tbody id="cust-tbody-'+ri+'">';
+  accts.forEach(function(a){
+    var dorm=a.l3===0;
+    var lastMo=(a.la>=0&&a.la<12)?MO[a.la]:'—';
+    var q4=dorm
+      ?'<span class="cust-badge" style="background:#e0525222;color:#e05252">Dormant</span>'
+      :'<span class="cust-badge" style="background:#27ae6022;color:#27ae60">Active</span>';
+    var ct='';
+    if(a.em)ct+='<a href="mailto:'+a.em+'" style="color:var(--green);text-decoration:none" title="'+a.em+'">&#9993;</a> ';
+    if(a.ph)ct+='<a href="tel:'+a.ph+'" style="color:var(--muted);text-decoration:none;font-size:10px">'+a.ph+'</a>';
+    var src=(a.n+' '+(a.p||'')+' '+(a.mg||'')).toLowerCase();
+    o+='<tr data-search="'+src+'">'
+      +'<td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+a.n+'">'+a.n+'</td>'
+      +'<td style="font-size:10px;color:var(--muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(a.p||'—')+'</td>'
+      +'<td style="font-family:var(--font-mono);text-align:right">$'+Math.round(a.s).toLocaleString()+'</td>'
+      +'<td style="text-align:center">'+q4+'</td>'
+      +'<td style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">'+lastMo+'</td>'
+      +'<td style="white-space:nowrap">'+ct+'</td>'
+      +'</tr>';
+  });
+  o+='</tbody></table></div></div>';
+  return o;
 }
 
 
@@ -2508,5 +2603,113 @@ function closeChangePw(){document.getElementById("cpw-modal").style.display="non
 function doChangePw(){var cur=document.getElementById("cpw-cur").value,nw=document.getElementById("cpw-new").value,cfm=document.getElementById("cpw-cfm").value,err=document.getElementById("cpw-err");if(!cur||!nw||!cfm){err.textContent="Please fill in all fields.";return;}if(nw.length<8){err.textContent="New password must be at least 8 characters.";return;}if(nw!==cfm){err.textContent="Passwords do not match.";return;}var btn=document.getElementById("cpw-submit");btn.textContent="Updating...";btn.disabled=true;err.textContent="";if(!window._fbChangePassword){err.textContent="Not connected. Please refresh.";btn.textContent="Update Password";btn.disabled=false;return;}window._fbChangePassword(cur,nw).then(function(){closeChangePw();btn.textContent="Update Password";btn.disabled=false;}).catch(function(e){btn.textContent="Update Password";btn.disabled=false;if(e.code==="auth/wrong-password"||e.code==="auth/invalid-credential")err.textContent="Current password is incorrect.";else if(e.code==="auth/weak-password")err.textContent="Password too weak.";else err.textContent="Update failed. Please try again.";});}
 document.addEventListener("keydown",function(e){if(e.key==="Escape")closeChangePw();});
 </script>
+
+<!-- Leaflet map -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- Customer map styles -->
+<style>
+.cust-map{width:100%;border-radius:10px;border:1px solid var(--border);}
+.cust-legend{display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-bottom:10px;font-family:var(--font-mono);font-size:11px;color:var(--muted);}
+.cust-legend-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:middle;}
+.cust-section-title{font-family:var(--font-head);font-weight:700;font-size:13px;color:var(--text);margin:24px 0 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.cust-badge{display:inline-block;padding:1px 8px;border-radius:10px;font-family:var(--font-mono);font-size:10px;font-weight:700;}
+.cust-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px;margin-bottom:8px;}
+.cust-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;}
+.cust-card.dormant{border-left:3px solid #e05252;}
+.cust-card-name{font-weight:600;font-size:12px;color:var(--text);margin-bottom:4px;line-height:1.3;}
+.cust-card-meta{font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-bottom:8px;}
+.cust-card-stat{font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-bottom:3px;}
+.cust-card-stat span{color:var(--text);font-weight:600;}
+.cust-contact-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;}
+.cust-contact-btn{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:5px;font-family:var(--font-mono);font-size:10px;text-decoration:none;border:1px solid var(--border);color:var(--muted);background:transparent;transition:.15s;cursor:pointer;}
+.cust-contact-btn:hover{border-color:var(--green);color:var(--green);}
+.cust-perf-bar{height:4px;border-radius:2px;margin-top:8px;background:var(--border);}
+.cust-perf-fill{height:4px;border-radius:2px;}
+</style>
+
+<script>
+var _custMaps={};
+
+function initCustMap(ri){
+  var mapId='cust-map-'+ri;
+  var el=document.getElementById(mapId);
+  if(!el||_custMaps[ri])return;
+  if(typeof L==='undefined'){setTimeout(function(){initCustMap(ri);},300);return;}
+
+  var map=L.map(mapId,{zoomControl:true}).setView([-27,133],4);
+  _custMaps[ri]=map;
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    attribution:'&copy; <a href="https://openstreetmap.org">OSM</a>',maxZoom:18
+  }).addTo(map);
+
+  var accts=(ACCOUNTS_DATA||[]).filter(function(a){return a.ri===ri&&a.ad&&a.ad.trim();});
+  if(!accts.length)return;
+
+  var maxS=Math.max.apply(null,accts.map(function(a){return a.s||0;}))||1;
+  var MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var allBounds=[];
+  var remaining=accts.length;
+
+  accts.forEach(function(a){
+    var query=encodeURIComponent(a.ad.trim()+', Australia');
+    fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q='+query,{
+      headers:{'Accept-Language':'en'}
+    })
+    .then(function(r){return r.json();})
+    .then(function(res){
+      remaining--;
+      if(res&&res[0]){
+        var lat=parseFloat(res[0].lat),lng=parseFloat(res[0].lon);
+        var isDorm=a.l3===0;
+        var rad=Math.max(7,Math.min(24,7+17*(a.s/maxS)));
+        var col=isDorm?'#e05252':'#27ae60';
+        var border=isDorm?'#b03030':'#1a8a4a';
+        var lastMo=(a.la>=0&&a.la<12)?MO[a.la]+' 2025':'No orders';
+
+        var circle=L.circleMarker([lat,lng],{
+          radius:rad,fillColor:col,color:border,
+          weight:1.5,opacity:1,fillOpacity:0.8
+        }).addTo(map);
+
+        var pop='<div style="font-size:12px;min-width:190px;line-height:1.6">'
+          +'<strong style="font-size:13px">'+a.n+'</strong><br>'
+          +(a.p?'<span style="color:#888;font-size:10px">'+a.p+'</span><br>':'')
+          +(a.ad?'<span style="color:#888;font-size:10px">'+a.ad+'</span><br>':'')
+          +'<span style="color:'+(isDorm?'#e05252':'#27ae60')+';font-weight:600">'+(isDorm?'⚫ Dormant':'🟢 Active')+'</span><br>'
+          +'2025 Revenue: <strong>$'+Math.round(a.s).toLocaleString()+'</strong><br>'
+          +'Last order: '+lastMo+'<br>'
+          +(a.mg?'Manager: <strong>'+a.mg+'</strong><br>':'')
+          +(a.em?'<a href="mailto:'+a.em+'" style="color:#17a589">'+a.em+'</a><br>':'')
+          +(a.ph?'Phone: '+a.ph+'<br>':'')
+          +(a.mo?'Mobile: '+a.mo+'<br>':'')
+          +'</div>';
+
+        circle.bindPopup(pop,{maxWidth:280});
+        circle.on('mouseover',function(){this.openPopup();});
+
+        allBounds.push([lat,lng]);
+        if(remaining===0&&allBounds.length>0){
+          if(allBounds.length===1)map.setView(allBounds[0],10);
+          else map.fitBounds(allBounds,{padding:[30,30]});
+        }
+      }
+      if(remaining===0&&allBounds.length>1)map.fitBounds(allBounds,{padding:[30,30]});
+    })
+    .catch(function(){remaining--;});
+  });
+}
+
+function custSearch(ri,q){
+  var tbody=document.getElementById('cust-tbody-'+ri);
+  if(!tbody)return;
+  var lq=(q||'').toLowerCase().trim();
+  tbody.querySelectorAll('tr').forEach(function(tr){
+    tr.style.display=(!lq||(tr.dataset.search||'').indexOf(lq)>=0)?'':'none';
+  });
+}
+</script>
+
 </body>
 </html>
