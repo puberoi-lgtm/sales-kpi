@@ -488,28 +488,28 @@
     <span>FY2026 Sales Dashboard</span>
   </div>
   <div class="topbar-tabs" id="mainTabs">
-    <button class="tab-btn active" onclick="showView('team')" id="tab-team">
+    <button class="tab-btn" onclick="showView('team')" id="tab-team" style="display:none">
       <span class="dot" style="background:#6bbf33"></span>Team Overview
     </button>
-    <button class="tab-btn" onclick="showView('rep-0')" id="tab-rep-0">
+    <button class="tab-btn" onclick="showView('rep-0')" id="tab-rep-0" style="display:none">
       <span class="dot" style="background:#4472c4"></span>Robert Schaffer
     </button>
-    <button class="tab-btn" onclick="showView('rep-1')" id="tab-rep-1">
+    <button class="tab-btn" onclick="showView('rep-1')" id="tab-rep-1" style="display:none">
       <span class="dot" style="background:#70ad47"></span>Andrew Mobilia
     </button>
-    <button class="tab-btn" onclick="showView('rep-2')" id="tab-rep-2">
+    <button class="tab-btn" onclick="showView('rep-2')" id="tab-rep-2" style="display:none">
       <span class="dot" style="background:#ed7d31"></span>Alexander Poll
     </button>
-    <button class="tab-btn" onclick="showView('rep-3')" id="tab-rep-3">
+    <button class="tab-btn" onclick="showView('rep-3')" id="tab-rep-3" style="display:none">
       <span class="dot" style="background:#9e480e"></span>Stivi Maticevski
     </button>
-    <button class="tab-btn" onclick="showView('rep-4')" id="tab-rep-4">
+    <button class="tab-btn" onclick="showView('rep-4')" id="tab-rep-4" style="display:none">
       <span class="dot" style="background:#c00000"></span>Melissa Goodridge
     </button>
-    <button class="tab-btn" onclick="showView('accounts')" id="tab-accounts">
+    <button class="tab-btn" onclick="showView('accounts')" id="tab-accounts" style="display:none">
       <span class="dot" style="background:#17a589"></span>Accounts
     </button>
-        <button class="tab-btn" onclick="showView('bulk')" id="tab-bulk">
+        <button class="tab-btn" onclick="showView('bulk')" id="tab-bulk" style="display:none">
       <span class="dot" style="background:#f5a623"></span>Bulk Entry
     </button>
     <span id="sync-indicator" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-left:12px">🔴 Live</span>
@@ -574,13 +574,14 @@ function applyAccessControl() {
   if (!tabs) { console.warn('[Auth] mainTabs not found'); return; }
   console.log('[Auth] Applying:', access.role, 'repIdx:', access.repIdx);
   if (access.role === 'admin') {
-    tabs.querySelectorAll('.tab-btn').forEach(b => b.style.display = '');
+    tabs.querySelectorAll('.tab-btn').forEach(b => b.style.display = 'inline-flex');
     document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
     showView('team');
   } else {
     tabs.querySelectorAll('.tab-btn').forEach(b => b.style.display = 'none');
     const myTab = document.getElementById('tab-rep-' + access.repIdx);
-    if (myTab) { myTab.style.display = ''; } else { console.warn('[Auth] Tab not found:', access.repIdx); }
+    if (myTab) { myTab.style.display = 'inline-flex'; console.log('[Auth] Showing tab for rep', access.repIdx); }
+    else { console.warn('[Auth] Tab not found for repIdx:', access.repIdx); }
     document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
     showView('rep-' + access.repIdx);
   }
