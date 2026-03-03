@@ -641,26 +641,35 @@ function doLogout() {
 }
 
 // Listen for auth state changes
-window.addEventListener('auth-changed', e => {
-  const user = e.detail.user;
+function handleAuthChange(user) {
+  // Always ensure views are built first
+  if (!window._initDone) init();
+  const getEl = id => document.getElementById(id);
   if (user) {
-    // Ensure views are built before showing dashboard
-    if (!window._initDone) init();
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('logout-btn').style.display = '';
-    document.getElementById('change-pw-btn').style.display = '';
-    const userInfo = document.getElementById('user-info');
+    if (getEl('login-screen'))  getEl('login-screen').style.display  = 'none';
+    if (getEl('logout-btn'))    getEl('logout-btn').style.display    = '';
+    if (getEl('change-pw-btn')) getEl('change-pw-btn').style.display = '';
+    const userInfo = getEl('user-info');
     if (userInfo) userInfo.textContent = '👤 ' + user.email;
     applyAccessControl();
     fbStartListening();
   } else {
-    document.getElementById('login-screen').style.display = 'flex';
-    document.getElementById('logout-btn').style.display = 'none';
-    document.getElementById('change-pw-btn').style.display = 'none';
-    const userInfo = document.getElementById('user-info');
+    if (getEl('login-screen'))  getEl('login-screen').style.display  = 'flex';
+    if (getEl('logout-btn'))    getEl('logout-btn').style.display    = 'none';
+    if (getEl('change-pw-btn')) getEl('change-pw-btn').style.display = 'none';
+    const userInfo = getEl('user-info');
     if (userInfo) userInfo.textContent = '';
     const btn = document.querySelector('.login-btn');
     if (btn) { btn.textContent = 'Sign In'; btn.disabled = false; }
+  }
+}
+
+window.addEventListener('auth-changed', e => {
+  // If DOM not ready yet, wait for it
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => handleAuthChange(e.detail.user));
+  } else {
+    handleAuthChange(e.detail.user);
   }
 });
 
