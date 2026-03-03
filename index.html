@@ -2509,7 +2509,7 @@ function init() {
   window._initDone = true;
 }
 
-// init() is called from auth-changed handler once user is authenticated
+if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }
 </script>
 </body>
 </html>
