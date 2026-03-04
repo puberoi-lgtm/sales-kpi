@@ -256,7 +256,7 @@
   .tracker-wrap {
     overflow-x: auto;
     background: var(--surface);
-    font-size: 10px;
+    font-size: 11px;
     border: 1px solid var(--border);
     border-radius: 8px;
     overflow: hidden;
@@ -265,13 +265,13 @@
   .tracker-wrap table { width: 100%; border-collapse: collapse; }
   .tracker-wrap th {
     background: var(--green-dk); color: #fff;
-    font-size: 9.5px; text-transform: uppercase; letter-spacing: .05em;
-    padding: 7px 8px; text-align: right; font-family: var(--font-sec); font-weight: 600;
+    font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
+    padding: 8px 12px; text-align: right; font-family: var(--font-sec); font-weight: 600;
     white-space: nowrap;
   }
   .tracker-wrap th:first-child { text-align: left; }
   .tracker-wrap td {
-    padding: 6px 8px; font-family: var(--font-mono); font-size: 11px;
+    padding: 7px 12px; font-family: var(--font-mono); font-size: 11.5px;
     border-bottom: 1px solid var(--border); text-align: right;
   }
   .tracker-wrap td:first-child { text-align: left; font-weight: 500; color: var(--text); }
@@ -988,80 +988,70 @@ function buildRepView(repIdx) {
     <span><strong>Invoiced figures only.</strong> Achievement is based on invoiced revenue. Open purchase orders (POs) not yet invoiced are <strong>not included</strong> in these figures.</span>
   </div>
 
-  <!-- ── ROW 4: Tracker (left, nudged down) + Results by Class (right) ── -->
-  <div style="display:grid;grid-template-columns:1.25fr 1fr;gap:10px;align-items:start">
+  <!-- ── ROW 4: Monthly Tracker full-width, then Results by Class full-width below ── -->
 
-    <!-- LEFT: Monthly Tracker — invisible tab placeholder keeps table aligned with right -->
-    <div>
-      <div class="section-hdr">📋 Monthly Tracker — Auto-summed from class entries</div>
-      <div style="visibility:hidden;pointer-events:none" aria-hidden="true">
-        <div class="class-tabs"><div class="class-tab active" style="background:#4472C4;color:#fff">placeholder</div></div>
-      </div>
-      <div class="tracker-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Month</th><th>2026 Target</th><th>2025 Actual</th>
-              <th>2026 Invoiced</th><th>Ach%</th><th>vs Tgt ($)</th><th>vs Tgt (%)</th><th>Status</th>
-            </tr>
-          </thead>
-          <tbody id="tracker-body-${repIdx}"></tbody>
-          <tfoot>
-            <tr class="total-row">
-              <td>Total</td>
-              <td id="tot-tgt-${repIdx}"></td>
-              <td>${fmt(annualPrev)}</td>
-              <td id="tot-act-${repIdx}"></td>
-              <td id="tot-ach-${repIdx}"></td>
-              <td id="tot-var-${repIdx}"></td>
-              <td id="tot-vpct-${repIdx}"></td>
-              <td id="tot-stat-${repIdx}"></td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
+  <!-- Monthly Tracker -->
+  <div class="section-hdr">📋 Monthly Tracker — Auto-summed from class entries</div>
+  <div class="tracker-wrap" style="margin-bottom:6px">
+    <table>
+      <thead>
+        <tr>
+          <th>Month</th><th>2026 Target</th><th>2025 Actual</th>
+          <th>2026 Invoiced</th><th>Ach%</th><th>vs Tgt ($)</th><th>vs Tgt (%)</th><th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="tracker-body-${repIdx}"></tbody>
+      <tfoot>
+        <tr class="total-row">
+          <td>Total</td>
+          <td id="tot-tgt-${repIdx}"></td>
+          <td>${fmt(annualPrev)}</td>
+          <td id="tot-act-${repIdx}"></td>
+          <td id="tot-ach-${repIdx}"></td>
+          <td id="tot-var-${repIdx}"></td>
+          <td id="tot-vpct-${repIdx}"></td>
+          <td id="tot-stat-${repIdx}"></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <!-- Results by Class -->
+  <div class="section-hdr">📦 Results by Class</div>
+  <div class="class-tabs" id="cls-tabs-${repIdx}">
+    ${rep.classes.map((cls, ci) => `
+    <div class="class-tab ${ci===0?'active':''}"
+      style="${ci===0?`background:${clsColors[ci]};color:#fff;`:'color:var(--muted)'}"
+      onclick="switchClass(${repIdx},${ci})"
+      id="cls-tab-${repIdx}-${ci}">
+      ${cls.name}
+    </div>`).join('')}
+  </div>
+  ${rep.classes.map((cls, ci) => `
+  <div id="cls-section-${repIdx}-${ci}" style="display:${ci===0?'block':'none'}">
+    <div class="tracker-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Month</th><th>2026 Target</th><th>2025 Actual</th>
+            <th>Enter 2026 Invoiced</th><th>vs Tgt ($)</th><th>vs Tgt (%)</th><th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="cls-body-${repIdx}-${ci}"></tbody>
+        <tfoot>
+          <tr class="total-row">
+            <td>Total</td>
+            <td id="cls-tot-tgt-${repIdx}-${ci}"></td>
+            <td>${fmt(cls.monthly.reduce((s,m)=>s+m.prev,0))}</td>
+            <td id="cls-tot-act-${repIdx}-${ci}"></td>
+            <td id="cls-tot-var-${repIdx}-${ci}"></td>
+            <td id="cls-tot-vpct-${repIdx}-${ci}"></td>
+            <td id="cls-tot-stat-${repIdx}-${ci}"></td>
+          </tr>
+        </tfoot>
+      </table>
     </div>
-
-    <!-- RIGHT: Results by Class -->
-    <div>
-      <div class="section-hdr">📦 Results by Class</div>
-      <div class="class-tabs" id="cls-tabs-${repIdx}">
-        ${rep.classes.map((cls, ci) => `
-        <div class="class-tab ${ci===0?'active':''}"
-          style="${ci===0?`background:${clsColors[ci]};color:#fff;`:'color:var(--muted)'}"
-          onclick="switchClass(${repIdx},${ci})"
-          id="cls-tab-${repIdx}-${ci}">
-          ${cls.name}
-        </div>`).join('')}
-      </div>
-      ${rep.classes.map((cls, ci) => `
-      <div id="cls-section-${repIdx}-${ci}" style="display:${ci===0?'block':'none'}">
-        <div class="tracker-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Month</th><th>2026 Target</th><th>2025 Actual</th>
-                <th>Enter 2026 Invoiced</th><th>vs Tgt ($)</th><th>vs Tgt (%)</th><th>Status</th>
-              </tr>
-            </thead>
-            <tbody id="cls-body-${repIdx}-${ci}"></tbody>
-            <tfoot>
-              <tr class="total-row">
-                <td>Total</td>
-                <td id="cls-tot-tgt-${repIdx}-${ci}"></td>
-                <td>${fmt(cls.monthly.reduce((s,m)=>s+m.prev,0))}</td>
-                <td id="cls-tot-act-${repIdx}-${ci}"></td>
-                <td id="cls-tot-var-${repIdx}-${ci}"></td>
-                <td id="cls-tot-vpct-${repIdx}-${ci}"></td>
-                <td id="cls-tot-stat-${repIdx}-${ci}"></td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-      </div>`).join('')}
-    </div>
-
-  </div><!-- /tracker+results grid -->
+  </div>`).join('')}
 
   </div><!-- /rpane-kpi -->
 
