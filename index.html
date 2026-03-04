@@ -991,10 +991,12 @@ function buildRepView(repIdx) {
   <!-- ── ROW 4: Tracker (left, nudged down) + Results by Class (right) ── -->
   <div style="display:grid;grid-template-columns:1.25fr 1fr;gap:10px;align-items:start">
 
-    <!-- LEFT: Monthly Tracker — spacer pushes table down to align with class table -->
+    <!-- LEFT: Monthly Tracker — invisible tab placeholder keeps table aligned with right -->
     <div>
       <div class="section-hdr">📋 Monthly Tracker — Auto-summed from class entries</div>
-      <div style="height:33px"></div>
+      <div style="visibility:hidden;pointer-events:none" aria-hidden="true">
+        <div class="class-tabs"><div class="class-tab active" style="background:#4472C4;color:#fff">placeholder</div></div>
+      </div>
       <div class="tracker-wrap">
         <table>
           <thead>
@@ -1006,7 +1008,7 @@ function buildRepView(repIdx) {
           <tbody id="tracker-body-${repIdx}"></tbody>
           <tfoot>
             <tr class="total-row">
-              <td>FULL YEAR</td>
+              <td>Total</td>
               <td id="tot-tgt-${repIdx}"></td>
               <td>${fmt(annualPrev)}</td>
               <td id="tot-act-${repIdx}"></td>
@@ -1045,7 +1047,7 @@ function buildRepView(repIdx) {
             <tbody id="cls-body-${repIdx}-${ci}"></tbody>
             <tfoot>
               <tr class="total-row">
-                <td>${cls.name} TOTAL</td>
+                <td>Total</td>
                 <td id="cls-tot-tgt-${repIdx}-${ci}"></td>
                 <td>${fmt(cls.monthly.reduce((s,m)=>s+m.prev,0))}</td>
                 <td id="cls-tot-act-${repIdx}-${ci}"></td>
@@ -1644,7 +1646,7 @@ function buildTeamView() {
       <tbody id="team-monthly-body"></tbody>
       <tfoot>
         <tr class="total-row">
-          <td>FULL YEAR</td>
+          <td>Total</td>
           ${REPS_DATA.map((_, ri) => `<td id="team-tot-${ri}"></td>`).join('')}
           <td id="team-tot-all"></td>
           <td id="team-tot-tgt"></td>
