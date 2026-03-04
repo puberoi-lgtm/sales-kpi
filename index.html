@@ -256,7 +256,7 @@
   .tracker-wrap {
     overflow-x: auto;
     background: var(--surface);
-    font-size: 10.5px;
+    font-size: 10px;
     border: 1px solid var(--border);
     border-radius: 8px;
     overflow: hidden;
@@ -265,12 +265,13 @@
   .tracker-wrap table { width: 100%; border-collapse: collapse; }
   .tracker-wrap th {
     background: var(--green-dk); color: #fff;
-    font-size: 10px; text-transform: uppercase; letter-spacing: .08em;
-    padding: 9px 12px; text-align: right; font-family: var(--font-mono); font-weight: 500;
+    font-size: 9.5px; text-transform: uppercase; letter-spacing: .05em;
+    padding: 7px 8px; text-align: right; font-family: var(--font-sec); font-weight: 600;
+    white-space: nowrap;
   }
   .tracker-wrap th:first-child { text-align: left; }
   .tracker-wrap td {
-    padding: 8px 12px; font-family: var(--font-mono); font-size: 12px;
+    padding: 6px 8px; font-family: var(--font-mono); font-size: 11px;
     border-bottom: 1px solid var(--border); text-align: right;
   }
   .tracker-wrap td:first-child { text-align: left; font-weight: 500; color: var(--text); }
@@ -988,7 +989,7 @@ function buildRepView(repIdx) {
   </div>
 
   <!-- ── ROW 4: Tracker (left, nudged down) + Results by Class (right) ── -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start">
+  <div style="display:grid;grid-template-columns:1.25fr 1fr;gap:10px;align-items:start">
 
     <!-- LEFT: Monthly Tracker — spacer pushes table down to align with class table -->
     <div>
