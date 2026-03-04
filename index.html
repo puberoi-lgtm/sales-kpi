@@ -45,7 +45,7 @@
   window._fbReady = true;
   window.dispatchEvent(new Event('firebase-ready'));
 </script>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg:        #0d0d0d;
@@ -66,7 +66,8 @@
     --cls3:      #ed7d31;
     --cls4:      #9e480e;
     --font-head: 'Syne', sans-serif;
-    --font-mono: 'DM Mono', monospace;
+    --font-mono: 'Inter', sans-serif;
+    --font-code: 'JetBrains Mono', monospace;
   }
   /* ── LIGHT THEME ── */
   body.light {
@@ -83,7 +84,18 @@
     --muted:     #6b7280;
     --faint:     #9ca3af;
   }
-  body.light .topbar { border-bottom-color: #d0d4da; }
+  body.light .topbar { 
+    background: #ffffff !important; 
+    border-bottom-color: #e2e6ea !important;
+    box-shadow: 0 1px 8px rgba(0,0,0,.06);
+  }
+  body.light .topbar-row1 { background: #ffffff; }
+  body.light .topbar-row2 { background: #f8f9fa; border-top-color: #e2e6ea; }
+  body.light .tab-btn { color: #6b7280; }
+  body.light .tab-btn:hover { color: #111; background: rgba(0,0,0,.04); }
+  body.light .tab-btn.active { color: #22863a; border-bottom-color: #22863a; }
+  body.light .topbar-action-btn { color: #6b7280; border-color: #d1d5db; }
+  body.light .topbar-action-btn:hover { border-color: #22863a; color: #22863a; }
   body.light .login-card { box-shadow: 0 4px 20px rgba(0,0,0,.12); }
   body.light .current-month-row td { background: rgba(212,135,10,.1) !important; }
   body.light .actual-input { color: #b06000 !important; }
@@ -935,7 +947,36 @@ function buildRepView(repIdx) {
     <div class="chart-card">
       <div class="chart-title">Target vs Actual by Class</div>
       <div class="chart-wrap tall"><canvas id="ch-rep-class-${repIdx}"></canvas></div>
-    </div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:14px;padding:12px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+        <div style="width:100%;font-size:10px;color:var(--muted);letter-spacing:.06em;margin-bottom:6px">HOW TO READ THIS CHART</div>
+        <div style="display:flex;align-items:center;gap:7px;min-width:170px">
+          <span style="display:inline-block;width:22px;height:3px;background:#4472C4;border-radius:2px"></span>
+          <span style="font-size:11px;color:var(--text)">Server Racks &amp; Acc.</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:7px;min-width:170px">
+          <span style="display:inline-block;width:22px;height:3px;background:#70AD47;border-radius:2px"></span>
+          <span style="font-size:11px;color:var(--text)">Data Products</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:7px;min-width:170px">
+          <span style="display:inline-block;width:22px;height:3px;background:#ED7D31;border-radius:2px"></span>
+          <span style="font-size:11px;color:var(--text)">Cabling &amp; Adapters</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:7px;min-width:170px">
+          <span style="display:inline-block;width:22px;height:3px;background:#9E480E;border-radius:2px"></span>
+          <span style="font-size:11px;color:var(--text)">Others</span>
+        </div>
+        <div style="width:100%;margin-top:6px;padding-top:8px;border-top:1px solid var(--border);display:flex;gap:24px;flex-wrap:wrap">
+          <span style="font-size:10px;color:var(--muted);display:flex;align-items:center;gap:6px">
+            <span style="display:inline-block;width:20px;height:3px;background:#888;border-radius:2px"></span>
+            Solid = Invoiced
+          </span>
+          <span style="font-size:10px;color:var(--muted);display:flex;align-items:center;gap:6px">
+            <span style="display:inline-block;width:20px;border-top:2px dashed #888"></span>
+            Dashed = Target
+          </span>
+        </div>
+      </div>
+
   </div>
 
   <div class="section-hdr">📋 Monthly Tracker — Auto-summed from Results by Class entries</div>
@@ -1356,7 +1397,7 @@ function drawRepCharts(repIdx) {
         ...CHART_DEFAULTS.plugins,
         legend: {
           display: true, position: 'bottom',
-          labels: { color: '#888', font: { family: "'DM Mono', monospace", size: 10 }, boxWidth: 20, padding: 12 }
+          labels: { color: '#888', font: { family: "'Inter', sans-serif", size: 10 }, boxWidth: 20, padding: 12 }
         },
         tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: $${ctx.parsed.y?.toLocaleString() ?? 'No data'}` } }
       },
@@ -1413,25 +1454,29 @@ function drawRepCharts(repIdx) {
           position: 'bottom',
           labels: {
             color: '#888',
-            font: { family: "'DM Mono', monospace", size: 10 },
-            boxWidth: 24,
+            font: { family: "'Inter', sans-serif", size: 11 },
+            boxWidth: 28,
             boxHeight: 2,
-            padding: 16,
+            padding: 14,
             usePointStyle: false,
             filter: item => item.text.includes('Invoiced'),
             generateLabels: chart => {
               const base = Chart.defaults.plugins.legend.labels.generateLabels(chart);
               const invoiced = base.filter(i => i.text.includes('Invoiced'));
-              invoiced.forEach(i => { i.text = i.text.replace(' — Invoiced',''); i.lineWidth = 2.5; i.lineDash = []; });
+              invoiced.forEach(i => {
+                i.text = i.text.replace(' — Invoiced', '');
+                i.lineWidth = 3;
+                i.lineDash = [];
+              });
               return invoiced;
             }
           },
           title: {
             display: true,
-            text: '── Invoiced   ╌╌ Target',
-            color: '#555',
-            font: { family: "'DM Mono', monospace", size: 9 },
-            padding: { bottom: 4 }
+            text: '─── Invoiced (solid)     - - - Target (dashed)',
+            color: '#666',
+            font: { family: "'Inter', sans-serif", size: 10, style: 'normal' },
+            padding: { top: 6, bottom: 2 }
           }
         },
 
