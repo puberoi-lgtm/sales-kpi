@@ -45,7 +45,7 @@
   window._fbReady = true;
   window.dispatchEvent(new Event('firebase-ready'));
 </script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg:        #0d0d0d;
@@ -65,9 +65,10 @@
     --cls2:      #6bbf33;
     --cls3:      #ed7d31;
     --cls4:      #9e480e;
-    --font-head: 'Syne', sans-serif;
-    --font-mono: 'Inter', sans-serif;
+    --font-head: 'Plus Jakarta Sans', sans-serif;
+    --font-mono: 'Plus Jakarta Sans', sans-serif;
     --font-code: 'JetBrains Mono', monospace;
+    --font-sec: Helvetica Neue, Helvetica, Arial, sans-serif;
   }
   /* ── LIGHT THEME ── */
   body.light {
@@ -117,8 +118,8 @@
     background: var(--bg);
     color: var(--text);
     font-family: var(--font-mono);
-    font-size: 13px;
-    line-height: 1.4;
+    font-size: 12px;
+    line-height: 1.35;
     min-height: 100vh;
   }
 
@@ -132,12 +133,12 @@
   }
   .topbar-row1 {
     display: flex; align-items: center; justify-content: space-between;
-    height: 48px; gap: 16px;
+    height: 42px; gap: 14px;
   }
   .topbar-row2 {
     display: flex; align-items: center;
     border-top: 1px solid rgba(255,255,255,.05);
-    height: 36px;
+    height: 32px;
   }
   .topbar-logo {
     display: flex; align-items: center; gap: 10px; flex-shrink: 0;
@@ -165,7 +166,7 @@
   .tab-btn .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
 
   /* ── VIEWS ── */
-  .view { display: none; padding: 20px 24px 40px; max-width: 1400px; margin: 0 auto; }
+  .view { display: none; padding: 14px 20px 28px; max-width: 1400px; margin: 0 auto; }
   .view.active { display: block; }
 
   /* ── REP HEADER ── */
@@ -200,8 +201,8 @@
 
   /* ── SECTION HEADERS ── */
   .section-hdr {
-    display: flex; align-items: center; gap: 10px;
-    font-family: var(--font-head); font-size: 11px; font-weight: 700;
+    display: flex; align-items: center; gap: 8px;
+    font-family: var(--font-head); font-size: 10px; font-weight: 700;
     text-transform: uppercase; letter-spacing: .12em; color: var(--muted);
     margin: 20px 0 10px;
   }
@@ -234,20 +235,21 @@
   }
 
   /* ── CHARTS ROW ── */
-  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; }
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; align-items: start; }
   .chart-card {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 16px;
+    padding: 12px;
   }
   .chart-card.wide { grid-column: 1 / -1; }
   .chart-title {
-    font-size: 11px; text-transform: uppercase; letter-spacing: .08em;
-    color: var(--muted); margin-bottom: 12px;
+    font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
+    font-family: var(--font-sec);
+    color: var(--muted); margin-bottom: 8px;
   }
-  .chart-wrap { position: relative; height: 200px; }
-  .chart-wrap.tall { height: 240px; }
+  .chart-wrap { position: relative; height: 190px; }
+  .chart-wrap.tall { height: 220px; }
 
   /* ── TRACKER TABLE ── */
   .tracker-wrap {
@@ -505,7 +507,7 @@
     <div class="login-logo">
       <svg width="32" height="32" viewBox="0 0 28 28" fill="none">
         <rect width="28" height="28" rx="6" fill="#6bbf33"/>
-        <text x="14" y="20" text-anchor="middle" font-family="Syne,sans-serif" font-weight="800" font-size="14" fill="white">SE</text>
+        <text x="14" y="20" text-anchor="middle" font-family="Plus Jakarta Sans,sans-serif" font-weight="800" font-size="14" fill="white">SE</text>
       </svg>
       SERVEREDGE
     </div>
@@ -532,7 +534,7 @@
     <div class="topbar-logo">
       <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
         <rect width="28" height="28" rx="6" fill="#6bbf33"/>
-        <text x="14" y="20" text-anchor="middle" font-family="Syne,sans-serif" font-weight="800" font-size="14" fill="white">SE</text>
+        <text x="14" y="20" text-anchor="middle" font-family="Plus Jakarta Sans,sans-serif" font-weight="800" font-size="14" fill="white">SE</text>
       </svg>
       <div>
         <div style="font-weight:800;font-size:15px;color:var(--green);letter-spacing:-0.3px">SERVEREDGE</div>
@@ -825,10 +827,10 @@ function mkChart(id, config) {
 }
 
 const CHART_DEFAULTS = {
-  plugins: { legend: { labels: { color: '#888', font: { family: 'DM Mono', size: 10 }, boxWidth: 10 } } },
+  plugins: { legend: { labels: { color: '#888', font: { family: 'Plus Jakarta Sans', size: 10 }, boxWidth: 10 } } },
   scales: {
-    x: { ticks: { color: '#666', font: { family: 'DM Mono', size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false } },
-    y: { ticks: { color: '#666', font: { family: 'DM Mono', size: 10 }, callback: v => '$' + (v/1000).toFixed(0) + 'k' }, grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false } }
+    x: { ticks: { color: '#666', font: { family: 'Plus Jakarta Sans', size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false } },
+    y: { ticks: { color: '#666', font: { family: 'Plus Jakarta Sans', size: 10 }, callback: v => '$' + (v/1000).toFixed(0) + 'k' }, grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false } }
   }
 };
 
@@ -942,7 +944,7 @@ function buildRepView(repIdx) {
   <div class="charts-row" id="rep-charts-${repIdx}">
     <div class="chart-card">
       <div class="chart-title">Monthly Target vs Actual</div>
-      <div class="chart-wrap"><canvas id="ch-rep-total-${repIdx}"></canvas></div>
+      <div class="chart-wrap tall"><canvas id="ch-rep-total-${repIdx}"></canvas></div>
     </div>
     <div class="chart-card">
       <div class="chart-title">Target vs Actual by Class</div>
@@ -1397,7 +1399,7 @@ function drawRepCharts(repIdx) {
         ...CHART_DEFAULTS.plugins,
         legend: {
           display: true, position: 'bottom',
-          labels: { color: '#888', font: { family: "'Inter', sans-serif", size: 10 }, boxWidth: 20, padding: 12 }
+          labels: { color: '#888', font: { family: "'Plus Jakarta Sans', sans-serif", size: 10 }, boxWidth: 20, padding: 12 }
         },
         tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: $${ctx.parsed.y?.toLocaleString() ?? 'No data'}` } }
       },
@@ -1454,7 +1456,7 @@ function drawRepCharts(repIdx) {
           position: 'bottom',
           labels: {
             color: '#888',
-            font: { family: "'Inter', sans-serif", size: 11 },
+            font: { family: "'Plus Jakarta Sans', sans-serif", size: 11 },
             boxWidth: 28,
             boxHeight: 2,
             padding: 14,
@@ -1475,7 +1477,7 @@ function drawRepCharts(repIdx) {
             display: true,
             text: '─── Invoiced (solid)     - - - Target (dashed)',
             color: '#666',
-            font: { family: "'Inter', sans-serif", size: 10, style: 'normal' },
+            font: { family: "'Plus Jakarta Sans', sans-serif", size: 10, style: 'normal' },
             padding: { top: 6, bottom: 2 }
           }
         },
@@ -1793,7 +1795,7 @@ function refreshTeamView() {
       ]},
       options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false,
         plugins: { ...CHART_DEFAULTS.plugins,
-          legend: { display: true, position: 'bottom', labels: { color: '#888', font: { family: 'DM Mono', size: 10 }, boxWidth: 20, padding: 12 } },
+          legend: { display: true, position: 'bottom', labels: { color: '#888', font: { family: 'Plus Jakarta Sans', size: 10 }, boxWidth: 20, padding: 12 } },
           tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: $${ctx.parsed.y?.toLocaleString() ?? 'No data'}` } }
         },
         scales: { x: { ...CHART_DEFAULTS.scales?.x }, y: { ...CHART_DEFAULTS.scales?.y, ticks: { callback: v => '$' + (Math.abs(v)>=1000?(v/1000).toFixed(0)+'k':v) } } }
@@ -1814,7 +1816,7 @@ function refreshTeamView() {
       ]},
       options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false,
         plugins: { ...CHART_DEFAULTS.plugins,
-          legend: { display: true, position: 'bottom', labels: { color: '#888', font: { family: 'DM Mono', size: 10 }, boxWidth: 20, padding: 12 } },
+          legend: { display: true, position: 'bottom', labels: { color: '#888', font: { family: 'Plus Jakarta Sans', size: 10 }, boxWidth: 20, padding: 12 } },
           tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: $${ctx.parsed.y?.toLocaleString() ?? 'No data'}` } }
         },
         scales: { x: { ...CHART_DEFAULTS.scales?.x }, y: { ...CHART_DEFAULTS.scales?.y, ticks: { callback: v => '$' + (Math.abs(v)>=1000?(v/1000).toFixed(0)+'k':v) } } }
@@ -1955,7 +1957,7 @@ function refreshTeamView() {
         { label: '2026 Invoiced', data: repActs, backgroundColor: '#f5a62355', borderColor: '#f5a623', borderWidth: 2, borderRadius: 4 },
       ]
     }, options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false,
-      plugins: { ...CHART_DEFAULTS.plugins, legend: { display: true, position: 'bottom', labels: { color:'#888', font:{family:'DM Mono',size:10}, boxWidth:20, padding:10 } },
+      plugins: { ...CHART_DEFAULTS.plugins, legend: { display: true, position: 'bottom', labels: { color:'#888', font:{family:'Plus Jakarta Sans',size:10}, boxWidth:20, padding:10 } },
         tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: $${ctx.parsed.y?.toLocaleString()??'No data'}` } }
       },
       scales: { x:{...CHART_DEFAULTS.scales?.x}, y:{...CHART_DEFAULTS.scales?.y, ticks:{callback:v=>'$'+(Math.abs(v)>=1000?(v/1000).toFixed(0)+'k':v)}} }
@@ -2003,7 +2005,7 @@ function refreshTeamView() {
       },
       options: { responsive: true, maintainAspectRatio: false,
         plugins: {
-          legend: { position: 'right', labels: { color: '#888', font: { family: 'DM Mono', size: 10 }, boxWidth: 10, padding: 8 } },
+          legend: { position: 'right', labels: { color: '#888', font: { family: 'Plus Jakarta Sans', size: 10 }, boxWidth: 10, padding: 8 } },
           tooltip: { callbacks: {
             label: ctx => {
               const total = ctx.dataset.data.reduce((s,v) => s+v, 0);
@@ -2027,7 +2029,7 @@ function refreshTeamView() {
               if (parseFloat(pct) < 4) return;
               const {x, y} = arc.tooltipPosition();
               ctx2.save();
-              ctx2.font = 'bold 11px DM Mono, monospace';
+              ctx2.font = 'bold 11px Plus Jakarta Sans, sans-serif';
               ctx2.fillStyle = '#fff';
               ctx2.textAlign = 'center';
               ctx2.textBaseline = 'middle';
