@@ -173,9 +173,9 @@
   .rep-header {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 18px 24px;
-    margin-bottom: 18px;
+    border-radius: 8px;
+    padding: 10px 16px;
+    margin-bottom: 10px;
     display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
   }
   .rep-title { font-family: var(--font-head); font-size: 22px; font-weight: 800; }
@@ -253,7 +253,8 @@
 
   /* ── TRACKER TABLE ── */
   .tracker-wrap {
-    background: var(--surface);
+    overflow-x: auto;
+    background: var(--surface); font-size: 11px;
     border: 1px solid var(--border);
     border-radius: 8px;
     overflow: hidden;
@@ -358,7 +359,7 @@
   /* ── CLASS BREAKDOWN TABS ── */
   .class-tabs { display: flex; gap: 4px; margin-bottom: 12px; flex-wrap: wrap; }
   .class-tab {
-    padding: 5px 12px; border-radius: 5px; font-size: 11px;
+    padding: 4px 10px; border-radius: 5px; font-size: 11px;
     cursor: pointer; border: 1px solid transparent;
     font-family: var(--font-mono); transition: all .15s;
     color: var(--muted); background: var(--surface2);
@@ -367,12 +368,12 @@
   .class-tab.active { color: #fff; border-color: transparent; }
 
   /* ── TEAM SUMMARY ── */
-  .team-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 18px; }
+  .team-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 14px; }
   .rep-card {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 16px;
+    padding: 12px 14px;
     position: relative; overflow: hidden;
   }
   .rep-card-name { font-family: var(--font-head); font-size: 15px; font-weight: 700; margin-bottom: 2px; }
@@ -981,6 +982,8 @@ function buildRepView(repIdx) {
 
   </div>
 
+  <div style="display:grid;grid-template-columns:1fr 1.4fr;gap:14px;align-items:start;margin-top:4px">
+    <div>
   <div class="section-hdr">📋 Monthly Tracker — Auto-summed from Results by Class entries</div>
   <div style="background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.25);border-radius:6px;padding:8px 14px;margin-bottom:12px;font-size:11px;color:var(--amber);display:flex;align-items:center;gap:8px">
     <span style="font-size:14px">⚠️</span>
@@ -1011,6 +1014,8 @@ function buildRepView(repIdx) {
     </table>
   </div>
 
+    </div>
+    <div>
   <div class="section-hdr">📦 Results by Class</div>
   <div class="class-tabs" id="cls-tabs-${repIdx}">
     ${rep.classes.map((cls, ci) => `
@@ -1047,6 +1052,8 @@ function buildRepView(repIdx) {
     </div>
   </div>`).join('')}
 
+    </div>
+  </div>
   </div><!-- /rpane-kpi -->
 
   <div class="rep-tab-pane" id="rpane-loc-${repIdx}">
