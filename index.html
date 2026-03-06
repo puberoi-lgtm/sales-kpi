@@ -2958,8 +2958,14 @@ function initMasterMap(){
     </div>
     <div style="font-size:10px;color:var(--muted);text-align:right;line-height:1.8">
       <div style="color:var(--text);font-weight:600;margin-bottom:3px">Dashboard Support</div>
-      <div style="color:var(--green);font-size:10px">puberoi&#64;serveredge.com.au</div>
-      <div style="color:var(--green);font-size:10px">pkumar&#64;serveredge.com.au</div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+        <span style="color:var(--muted);font-size:10px">puberoi&#64;serveredge.com.au</span>
+        <button onclick="copyEmail('puberoi&#64;serveredge.com.au', this)" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:4px;padding:2px 7px;font-size:9px;cursor:pointer;font-family:var(--font-mono)">Copy</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span style="color:var(--muted);font-size:10px">pkumar&#64;serveredge.com.au</span>
+        <button onclick="copyEmail('pkumar&#64;serveredge.com.au', this)" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:4px;padding:2px 7px;font-size:9px;cursor:pointer;font-family:var(--font-mono)">Copy</button>
+      </div>
       
       
     </div>
@@ -2967,6 +2973,21 @@ function initMasterMap(){
 </footer>
 
 <script>
+function copyEmail(email, btn) {
+  var plain = email.replace(/&#64;/g, '&#64;');
+  navigator.clipboard.writeText(plain).then(function() {
+    var orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    btn.style.color = 'var(--green)';
+    btn.style.borderColor = 'var(--green)';
+    setTimeout(function() {
+      btn.textContent = orig;
+      btn.style.color = '';
+      btn.style.borderColor = '';
+    }, 2000);
+  });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
   var overlay    = document.getElementById('forgot-pw-overlay');
   var emailInput = document.getElementById('forgot-pw-email');
