@@ -637,13 +637,15 @@ const state = {
 // ══════════════════════════════════════════════════════════════
 
 // Define who is admin and which rep each email maps to
-const ADMIN_EMAILS = ['pkumar&#64;serveredge.com.au', 'puberoi&#64;serveredge.com.au'];
+const _at = String.fromCharCode(64);
+const _d  = 'serveredge.com.au';
+const ADMIN_EMAILS = ['pkumar'+_at+_d, 'puberoi'+_at+_d];
 const REP_EMAIL_MAP = {
-  'rschaffer&#64;serveredge.com.au': 0,
-  'amobilia&#64;serveredge.com.au':  1,
-  'apoll&#64;serveredge.com.au':     2,
-  'smaticevski&#64;serveredge.com.au': 3,
-  'mgoodridge&#64;serveredge.com.au': 4,
+  ['rschaffer'+_at+_d]: 0,
+  ['amobilia'+_at+_d]:  1,
+  ['apoll'+_at+_d]:     2,
+  ['smaticevski'+_at+_d]: 3,
+  ['mgoodridge'+_at+_d]: 4,
 };
 
 function getCurrentUserRole() {
