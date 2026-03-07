@@ -628,6 +628,7 @@ const state = {
   actuals: {},         // "repIdx-monthIdx" -> value
   classActuals: {},    // "repIdx-clsIdx-monthIdx" -> value
   customTargets: {},   // "repIdx-clsIdx-monthIdx" -> value (admin overrides)
+  prevActuals: {},     // "repIdx-clsIdx-monthIdx" -> value (2025 actuals from Firebase)
   growthRates: REPS_DATA.map(r => [...r.growthRates]), // kept for legacy
 };
 
@@ -789,6 +790,20 @@ function fbStartListening() {
     showSyncIndicator();
   });
 
+  // Listen for 2025 prev actuals (rolling 365 days from last year email)
+  window._fbListen('dashboard/prevActuals', data => {
+    state.prevActuals = data || {};
+    REPS_DATA.forEach((_, ri) => {
+      const repView = document.getElementById(`view-rep-${ri}`);
+      if (repView && repView.classList.contains('active')) {
+        populateTracker(ri);
+        populateClassTrackers(ri);
+        drawRepCharts(ri);
+      }
+    });
+    refreshTeamView();
+  });
+
   // Listen for custom targets (admin overrides)
   window._fbListen('dashboard/customTargets', data => {
     state.customTargets = data || {};
@@ -843,6 +858,19 @@ function getClassActual(repIdx, clsIdx, monthIdx) {
   return state.classActuals[`${repIdx}-${clsIdx}-${monthIdx}`] || 0;
 }
 
+// Get 2025 prev actual — Firebase live data takes priority over hardcoded REPS_DATA
+function getClassPrev(repIdx, clsIdx, monthIdx) {
+  const fbKey = `${repIdx}-${clsIdx}-${monthIdx}`;
+  if (state.prevActuals && state.prevActuals[fbKey] !== undefined) {
+    return state.prevActuals[fbKey] || 0;
+  }
+  return REPS_DATA[repIdx].classes[clsIdx]?.monthly[monthIdx]?.prev || 0;
+}
+
+function getRepPrev(repIdx, monthIdx) {
+  return REPS_DATA[repIdx].classes.reduce((s, _, ci) => s + getClassPrev(repIdx, ci, monthIdx), 0);
+}
+
 // ── Chart registry (to destroy/recreate) ──────────────────
 const charts = {};
 function destroyChart(id) {
@@ -871,7 +899,7 @@ function buildRepView(repIdx) {
   const rep = REPS_DATA[repIdx];
   const months = rep.monthly.map(m => m.month);
   const annualTarget = months.reduce((s, _, mi) => s + getTarget(repIdx, mi), 0);
-  const annualPrev   = rep.monthly.reduce((s, m) => s + m.prev, 0);
+  const annualPrev   = rep.monthly.reduce((s, m, mi) => s + getRepPrev(repIdx, mi), 0);
   const ytdActual    = months.reduce((s, _, mi) => s + getActual(repIdx, mi), 0);
   const stillToGo    = Math.max(annualTarget - ytdActual, 0);
   const monthsEntered = months.filter((_, mi) => getActual(repIdx, mi) > 0).length;
@@ -1055,7 +1083,7 @@ function buildRepView(repIdx) {
           <tr class="total-row">
             <td>Total</td>
             <td id="cls-tot-tgt-${repIdx}-${ci}"></td>
-            <td>${fmt(cls.monthly.reduce((s,m)=>s+m.prev,0))}</td>
+            <td>${fmt(cls.monthly.reduce((s,m,mi)=>s+getRepPrev(ri,mi),0))}</td>
             <td id="cls-tot-act-${repIdx}-${ci}"></td>
             <td id="cls-tot-var-${repIdx}-${ci}"></td>
             <td id="cls-tot-vpct-${repIdx}-${ci}"></td>
@@ -1097,7 +1125,7 @@ function populateTracker(repIdx) {
     const vari = act > 0 ? act - tgt : null;
     const vpct = act > 0 && tgt !== 0 ? (act - tgt) / Math.abs(tgt) : null;
     const achPct = act > 0 && tgt > 0 ? act / tgt : null; // achievement %
-    totTgt += tgt; totAct += act; totPrev += m.prev;
+    totTgt += tgt; totAct += act; totPrev += getRepPrev(repIdx, mi);
 
     const isCurrentMonth = mi === currentMi;
     const rowClass = isCurrentMonth ? 'current-month-row' : '';
@@ -1111,7 +1139,7 @@ function populateTracker(repIdx) {
     tbody.innerHTML += `<tr class="${rowClass}">
       <td>${m.month} 2026${badge}</td>
       <td class="target-cell">${fmt(tgt)}</td>
-      <td class="prev-cell">${fmt(m.prev)}</td>
+      <td class="prev-cell">${fmt(getRepPrev(repIdx, mi))}</td>
       <td><span class="actual-input" style="display:inline-block;width:110px;cursor:default;color:#ffe566">${act > 0 ? fmt(act) : '—'}</span></td>
       <td>${achCell}</td>
       <td>${varCell}</td>
@@ -1196,7 +1224,7 @@ function populateClassTrackers(repIdx) {
       tbody.innerHTML += `<tr class="${rowClass}">
         <td>${m.month} 2026${badge}</td>
         <td class="target-cell">${fmt(tgt)}</td>
-        <td class="prev-cell">${fmt(m.prev)}</td>
+        <td class="prev-cell">${fmt(getRepPrev(repIdx, mi))}</td>
         <td>${actualCell}</td>
         <td>${varCell}</td><td>${pctCell}</td><td>${status}</td>
       </tr>`;
@@ -1229,7 +1257,7 @@ function populateEoyPrediction(repIdx, annTgt, ytdAct) {
   // Use each month's prev (last year actual) to get the seasonal weight
   const prevTotals = rep.monthly.map((m, mi) => {
     // Sum prev across all classes for this month
-    return rep.classes.reduce((s, cls) => s + (cls.monthly[mi]?.prev || 0), 0);
+    return rep.classes.reduce((s, cls, ci) => s + getClassPrev(repIdx, ci, mi), 0);
   });
   const prevAnnualTotal = prevTotals.reduce((s, v) => s + v, 0);
   // Monthly share of last year's total (seasonal weight)
@@ -1702,7 +1730,7 @@ function refreshTeamView() {
     s + months.reduce((s2,_,mi) => s2 + getTarget(ri,mi), 0), 0);
   const teamMtdAct = REPS_DATA.reduce((s,_,ri) => s + getActual(ri,currentMi), 0);
   const teamMtdTgt = REPS_DATA.reduce((s,_,ri) => s + getTarget(ri,currentMi), 0);
-  const teamPrev   = REPS_DATA.reduce((s,r) => s + r.monthly.reduce((s2,m) => s2 + m.prev, 0), 0);
+  const teamPrev   = REPS_DATA.reduce((s,r,ri) => s + r.monthly.reduce((s2,m,mi) => s2 + getRepPrev(ri,mi), 0), 0);
   const ytdPct = teamYtdTgt > 0 ? teamYtdAct / teamYtdTgt : 0;
   const mtdPct = teamMtdTgt > 0 ? teamMtdAct / teamMtdTgt : 0;
   const stillToGo = Math.max(teamYtdTgt - teamYtdAct, 0);
@@ -1852,7 +1880,7 @@ function refreshTeamView() {
   if (cardsEl) {
     cardsEl.innerHTML = REPS_DATA.map((rep, ri) => {
       const annTgt  = months.reduce((s,_,mi) => s + getTarget(ri,mi), 0);
-      const annPrev = rep.monthly.reduce((s,m) => s + m.prev, 0);
+      const annPrev = rep.monthly.reduce((s,m,mi) => s + getRepPrev(ri,mi), 0);
       const ytd     = months.reduce((s,_,mi) => s + getActual(ri,mi), 0);
       const mtd     = getActual(ri, currentMi);
       const mtdTgt  = getTarget(ri, currentMi);
@@ -1970,7 +1998,7 @@ function refreshTeamView() {
   // ── Associate bar chart: Target vs Actual ─────────────────
   const repTgts = REPS_DATA.map((_,ri) => Math.round(months.reduce((s,_,mi) => s+getTarget(ri,mi), 0)));
   const repActs = REPS_DATA.map((_,ri) => { const v=months.reduce((s,_,mi) => s+getActual(ri,mi), 0); return v>0?Math.round(v):null; });
-  const repPrev = REPS_DATA.map(r => Math.round(r.monthly.reduce((s,m) => s+m.prev, 0)));
+  const repPrev = REPS_DATA.map((r,ri) => Math.round(r.monthly.reduce((s,m,mi) => s+getRepPrev(ri,mi), 0)));
   mkChart('ch-team-bar', {
     type: 'bar', data: {
       labels: REPS_DATA.map(r => r.name.split(' ')[0]),
@@ -2195,7 +2223,7 @@ function populateBulkView() {
         tbody.innerHTML += `<tr>
           <td>${m.month} 2026</td>
           <td class="target-cell">${fmt(tgt)}</td>
-          <td class="prev-cell">${fmt(m.prev)}</td>
+          <td class="prev-cell">${fmt(getRepPrev(repIdx, mi))}</td>
           <td>${actualCell}</td>
           <td>${varCell}</td>
           <td>${status}</td>
