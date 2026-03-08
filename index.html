@@ -1227,7 +1227,7 @@ function populateClassTrackers(repIdx) {
       tbody.innerHTML += `<tr class="${rowClass}">
         <td>${m.month} 2026${badge}</td>
         <td class="target-cell">${fmt(tgt)}</td>
-        <td class="prev-cell">${fmt(getRepPrev(repIdx, mi))}</td>
+        <td class="prev-cell">${fmt(getClassPrev(repIdx, ci, mi))}</td>
         <td>${actualCell}</td>
         <td>${varCell}</td><td>${pctCell}</td><td>${status}</td>
       </tr>`;
