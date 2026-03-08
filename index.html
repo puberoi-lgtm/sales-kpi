@@ -1672,6 +1672,7 @@ function buildTeamView() {
           <th>Month</th>
           ${REPS_DATA.map(r => `<th>${r.name.split(' ')[0]}</th>`).join('')}
           <th>Team Total</th>
+          <th style="color:#6699cc">2025 Ach</th>
           <th>Team Target</th>
           <th>Achiev %</th>
           <th>vs Target</th>
@@ -1684,6 +1685,7 @@ function buildTeamView() {
           <td>Total</td>
           ${REPS_DATA.map((_, ri) => `<td id="team-tot-${ri}"></td>`).join('')}
           <td id="team-tot-all"></td>
+          <td id="team-tot-prev" style="color:#6699cc"></td>
           <td id="team-tot-tgt"></td>
           <td id="team-tot-pct"></td>
           <td id="team-tot-var"></td>
@@ -1706,6 +1708,7 @@ function buildTeamView() {
         <tr>
           <th>Class</th>
           ${REPS_DATA.map(r => `<th>${r.name.split(' ')[0]}</th>`).join('')}
+          <th style="color:#6699cc">2025 Ach</th>
           <th>Team Target</th>
           <th>Team Invoiced</th>
           <th>Achiev %</th>
@@ -1920,6 +1923,7 @@ function refreshTeamView() {
       const repActs = REPS_DATA.map((_,ri) => getActual(ri,mi));
       const teamAct = repActs.reduce((s,v) => s+v, 0);
       const teamTgt = REPS_DATA.reduce((s,_,ri) => s+getTarget(ri,mi), 0);
+      const teamPrevMo = REPS_DATA.reduce((s,_,ri) => s+getRepPrev(ri,mi), 0);
       repActs.forEach((v,ri) => totByRep[ri] += v);
       grandTgt += teamTgt; grandAct += teamAct;
       const achPct = teamAct > 0 && teamTgt > 0 ? teamAct/teamTgt : null;
@@ -1957,6 +1961,7 @@ function refreshTeamView() {
         <td>${m} 2026${isCurrent?'<span class="current-month-badge">▶ Now</span>':''}</td>
         ${repActs.map((v,ri) => `<td style="color:${v>0?REPS_DATA[ri].color:v<0?'#e05252':'var(--muted)'}">${v!==0?fmt(v):'—'}</td>`).join('')}
         <td style="color:var(--green);font-weight:600">${teamAct>0?fmt(teamAct):'—'}</td>
+        <td style="color:#6699cc">${teamPrevMo>0?fmt(teamPrevMo):'—'}</td>
         <td style="color:var(--muted)">${fmt(teamTgt)}</td>
         <td>${achPct!==null?`<span class="${achPct>=1?'variance-pos':achPct>=0.8?'':'variance-neg'}" style="${achPct>=0.8&&achPct<1?'color:var(--amber)':''}">${(achPct*100).toFixed(1)}%</span>`:'—'}</td>
         <td>${teamAct>0?`<span class="${teamAct>=teamTgt?'variance-pos':'variance-neg'}">${fmt(teamAct-teamTgt)}</span>`:'—'}</td>
@@ -1964,6 +1969,8 @@ function refreshTeamView() {
       </tr>`;
     });
     REPS_DATA.forEach((_,ri) => { const el=document.getElementById(`team-tot-${ri}`); if(el) el.textContent=fmt(totByRep[ri]); });
+    const teamTotPrev = REPS_DATA.reduce((s,_,ri) => s + REPS_DATA[ri].monthly.reduce((s2,_,mi) => s2+getRepPrev(ri,mi), 0), 0);
+    const prevEl = document.getElementById('team-tot-prev'); if(prevEl) prevEl.textContent = fmt(teamTotPrev);
     const achPct = grandAct>0&&grandTgt>0 ? grandAct/grandTgt : null;
     ['team-tot-all','team-tot-tgt','team-tot-pct','team-tot-var'].forEach((id,i) => {
       const el = document.getElementById(id);
@@ -1992,6 +1999,7 @@ function refreshTeamView() {
       return `<tr>
         <td style="color:${clsColors[ci]};font-weight:600">${cls.name}</td>
         ${repActs.map((v,ri) => `<td style="color:${v>0?REPS_DATA[ri].color:v<0?'#e05252':'var(--muted)'}">${v!==0?fmt(v):'—'}</td>`).join('')}
+        <td style="color:#6699cc">${fmt(clsAchMi===-1 ? months.reduce((s,_,mi)=>s+REPS_DATA.reduce((s2,_,ri)=>s2+getClassPrev(ri,ci,mi),0),0) : REPS_DATA.reduce((s,_,ri)=>s+getClassPrev(ri,ci,clsAchMi),0))}</td>
         <td class="target-cell">${fmt(totTgt)}</td>
         <td style="color:var(--amber)">${totAct>0?fmt(totAct):'—'}</td>
         <td>${achPct!==null?`<span class="${achPct>=1?'variance-pos':'variance-neg'}" style="${achPct>=0.8&&achPct<1?'color:var(--amber)':''}">${(achPct*100).toFixed(1)}%</span>`:'—'}</td>
