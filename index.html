@@ -3095,13 +3095,13 @@ function renderHeatmap(ct){
   var mo25hdrs=MN.map(function(m,i){
     var isActive=i>=_actThr;
     var style=isActive?'color:#17a589;font-weight:700;background:rgba(23,165,137,0.07)':'';
-    var label=(isActive?'<b>':'')+m+' <span style="opacity:.55;font-size:8px">'25</span>'+(isActive?'</b>':'');
+    var label=(isActive?'<b>':'')+m+' <span style="opacity:.55;font-size:8px">\'25</span>'+(isActive?'</b>':'');
     return '<th style="'+style+'">'+label+'</th>';
   }).join('');
 
   var mo26hdrs=cols2026.map(function(mi){
     return '<th style="color:#e8a838;font-weight:700;background:rgba(232,168,56,0.07)">'
-      +'<b>'+MN[mi]+' <span style="opacity:.55;font-size:8px">'26</span></b></th>';
+      +'<b>'+MN[mi]+' <span style="opacity:.55;font-size:8px">\'26</span></b></th>';
   }).join('');
 
   // 2026 column note row (rep-level totals since no per-account data)
@@ -3131,7 +3131,7 @@ function renderHeatmap(ct){
     +' · <span style="color:#e05252">'+dormCt+' dormant</span>'
     +' · <em style="opacity:.5">'
     +(function(){var _ms=MN.slice(_actThr);return _ms.length?_ms[0]+(_ms.length>1?'–'+_ms[_ms.length-1]:'')+' 2025 active':'All 2025 data >3mo old';}())
-    +(cols2026.length?' · <span style="color:#e8a838">'+cols2026.map(function(m){return MN[m]+' '26';}).join(', ')+' shown (rep totals only)</span>':'')
+    +(cols2026.length?' · <span style="color:#e8a838">'+cols2026.map(function(m){return MN[m]+" '26";}).join(', ')+' shown (rep totals only)</span>':'')
     +'</em></div>'
     +'<div class="heatmap-wrap"><table class="heatmap-table">'
     +'<thead><tr><th>Account</th><th>Parent</th><th style="min-width:90px">Rep</th>'
