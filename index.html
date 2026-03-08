@@ -860,11 +860,15 @@ function getClassActual(repIdx, clsIdx, monthIdx) {
 
 // Get 2025 prev actual — Firebase live data takes priority over hardcoded REPS_DATA
 function getClassPrev(repIdx, clsIdx, monthIdx) {
+  // REPS_DATA is source of truth (built from NetSuite pivot)
+  // Firebase prevActuals only used if REPS_DATA has no value
+  const repsVal = REPS_DATA[repIdx].classes[clsIdx]?.monthly[monthIdx]?.prev;
+  if (repsVal !== undefined && repsVal !== null) return repsVal;
   const fbKey = `${repIdx}-${clsIdx}-${monthIdx}`;
   if (state.prevActuals && state.prevActuals[fbKey] !== undefined) {
     return state.prevActuals[fbKey] || 0;
   }
-  return REPS_DATA[repIdx].classes[clsIdx]?.monthly[monthIdx]?.prev || 0;
+  return 0;
 }
 
 function getRepPrev(repIdx, monthIdx) {
