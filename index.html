@@ -903,11 +903,7 @@ function buildRepView(repIdx) {
   const rep = REPS_DATA[repIdx];
   const months = rep.monthly.map(m => m.month);
   const annualTarget = months.reduce((s, _, mi) => s + getTarget(repIdx, mi), 0);
-  // For Melissa (ri=4), Jan+Feb prev show in cells but excluded from annual total
-  const annualPrev   = rep.monthly.reduce((s, m, mi) => {
-    if (repIdx === 4 && mi < 2) return s;
-    return s + getRepPrev(repIdx, mi);
-  }, 0);
+  const annualPrev   = rep.monthly.reduce((s, m, mi) => s + getRepPrev(repIdx, mi), 0);
   const ytdActual    = months.reduce((s, _, mi) => s + getActual(repIdx, mi), 0);
   const stillToGo    = Math.max(annualTarget - ytdActual, 0);
   const monthsEntered = months.filter((_, mi) => getActual(repIdx, mi) > 0).length;
@@ -1737,7 +1733,7 @@ function refreshTeamView() {
     s + months.reduce((s2,_,mi) => s2 + getTarget(ri,mi), 0), 0);
   const teamMtdAct = REPS_DATA.reduce((s,_,ri) => s + getActual(ri,currentMi), 0);
   const teamMtdTgt = REPS_DATA.reduce((s,_,ri) => s + getTarget(ri,currentMi), 0);
-  const teamPrev   = REPS_DATA.reduce((s,r,ri) => s + r.monthly.reduce((s2,m,mi) => (ri===4&&mi<2)?s2:s2+getRepPrev(ri,mi), 0), 0);
+  const teamPrev   = REPS_DATA.reduce((s,r,ri) => s + r.monthly.reduce((s2,m,mi) => s2+getRepPrev(ri,mi), 0), 0);
   const ytdPct = teamYtdTgt > 0 ? teamYtdAct / teamYtdTgt : 0;
   const mtdPct = teamMtdTgt > 0 ? teamMtdAct / teamMtdTgt : 0;
   const stillToGo = Math.max(teamYtdTgt - teamYtdAct, 0);
@@ -1887,7 +1883,7 @@ function refreshTeamView() {
   if (cardsEl) {
     cardsEl.innerHTML = REPS_DATA.map((rep, ri) => {
       const annTgt  = months.reduce((s,_,mi) => s + getTarget(ri,mi), 0);
-      const annPrev = rep.monthly.reduce((s,m,mi) => (ri===4&&mi<2)?s:s+getRepPrev(ri,mi), 0);
+      const annPrev = rep.monthly.reduce((s,m,mi) => s+getRepPrev(ri,mi), 0);
       const ytd     = months.reduce((s,_,mi) => s + getActual(ri,mi), 0);
       const mtd     = getActual(ri, currentMi);
       const mtdTgt  = getTarget(ri, currentMi);
@@ -2005,7 +2001,7 @@ function refreshTeamView() {
   // ── Associate bar chart: Target vs Actual ─────────────────
   const repTgts = REPS_DATA.map((_,ri) => Math.round(months.reduce((s,_,mi) => s+getTarget(ri,mi), 0)));
   const repActs = REPS_DATA.map((_,ri) => { const v=months.reduce((s,_,mi) => s+getActual(ri,mi), 0); return v>0?Math.round(v):null; });
-  const repPrev = REPS_DATA.map((r,ri) => Math.round(r.monthly.reduce((s,m,mi) => (ri===4&&mi<2)?s:s+getRepPrev(ri,mi), 0)));
+  const repPrev = REPS_DATA.map((r,ri) => Math.round(r.monthly.reduce((s,m,mi) => s+getRepPrev(ri,mi), 0)));
   mkChart('ch-team-bar', {
     type: 'bar', data: {
       labels: REPS_DATA.map(r => r.name.split(' ')[0]),
