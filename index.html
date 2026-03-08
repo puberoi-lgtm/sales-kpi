@@ -1083,7 +1083,7 @@ function buildRepView(repIdx) {
           <tr class="total-row">
             <td>Total</td>
             <td id="cls-tot-tgt-${repIdx}-${ci}"></td>
-            <td>${fmt(cls.monthly.reduce((s,m,mi)=>s+getRepPrev(ri,mi),0))}</td>
+            <td>${fmt(cls.monthly.reduce((s,m,mi)=>s+getClassPrev(repIdx,ci,mi),0))}</td>
             <td id="cls-tot-act-${repIdx}-${ci}"></td>
             <td id="cls-tot-var-${repIdx}-${ci}"></td>
             <td id="cls-tot-vpct-${repIdx}-${ci}"></td>
