@@ -2861,7 +2861,7 @@ function buildLocationsPane(ri){
   // stat bar
   o+='<div class="loc-stat-row">'
     +'<div class="loc-stat"><div class="loc-stat-val">'+accts.length+'</div><div class="loc-stat-lbl">Total Customers</div></div>'
-    +'<div class="loc-stat"><div class="loc-stat-val" style="color:var(--green)">'+active.length+'</div><div class="loc-stat-lbl">Active (3mo)</div></div>'
+    +'<div class="loc-stat"><div class="loc-stat-val" style="color:var(--green)">'+active.length+'</div><div class="loc-stat-lbl">Active (Oct–Dec)</div></div>'
     +'<div class="loc-stat"><div class="loc-stat-val" style="color:#e05252">'+dormant.length+'</div><div class="loc-stat-lbl">Dormant</div></div>'
     +'<div class="loc-stat"><div class="loc-stat-val">'+mapped.length+'</div><div class="loc-stat-lbl">On Map</div></div>'
     +'</div>';
@@ -2943,8 +2943,8 @@ function buildLocationsPane(ri){
     var dorm=a.la>=0&&(12+new Date().getMonth()-a.la)>3;
     var lastMo=(a.la>=0&&a.la<12)?MO[a.la]:'—';
     var q4=dorm
-      ?'<span class="cust-badge" style="background:#e0525222;color:#e05252">Dormant</span>'
-      :'<span class="cust-badge" style="background:#27ae6022;color:#27ae60">Active</span>';
+      ?'<span class="cust-badge" style="background:#e0525222;color:#e05252" title="No order since Oct 2025 or earlier">Dormant</span>'
+      :'<span class="cust-badge" style="background:#27ae6022;color:#27ae60" title="Ordered in Oct–Dec 2025">Active</span>';
 
     var src=(a.n+' '+(a.p||'')+' '+(a.mg||'')).toLowerCase();
     o+='<tr data-search="'+src+'">'
@@ -2986,7 +2986,7 @@ function buildAccountsView(){
   el.innerHTML='<div class="acct-toolbar">'
     +'<select onchange="_acctState.rep=this.value;buildAccountsView()">'+repOpts+'</select>'
     +'<button class="acct-filter-btn'+(_acctState.filter==='all'?' active':'')+'" onclick="_acctState.filter=\'all\';buildAccountsView()">All</button>'
-    +'<button class="acct-filter-btn'+(_acctState.filter==='dormant'?' active':'')+'" onclick="_acctState.filter=\'dormant\';buildAccountsView()">\u26a1 Dormant (No Q4)</button>'
+    +'<button class="acct-filter-btn'+(_acctState.filter==='dormant'?' active':'')+'" onclick="_acctState.filter=\'dormant\';buildAccountsView()">\u26a1 Dormant</button>'
     +'<button class="acct-filter-btn'+(_acctState.filter==='active'?' active':'')+'" onclick="_acctState.filter=\'active\';buildAccountsView()">Active</button>'
     +'<input type="text" placeholder="Search account, manager, address\u2026" value="'+_acctState.search+'" oninput="_acctState.search=this.value;buildAccountsView()" />'
     +'</div>'
@@ -3022,12 +3022,12 @@ function renderHeatmap(ct){
   var rows=sorted.map(function(a){
     var rc=RC[a.ri];var isDorm=a.la>=0&&(12+new Date().getMonth()-a.la)>3;
     var cells=a.m.map(function(v,mi){
-      var hl=mi>=9?'outline:1px solid rgba(255,255,255,.25);outline-offset:-1px;':'';
+      var hl=mi>=9?'outline:1px solid rgba(23,165,137,0.4);outline-offset:-1px;':'';
       var txt=v>0?('$'+(v>=1000?(v/1000).toFixed(0)+'k':v)):'\u2013';
       return '<td><span class="hm-cell" style="background:'+heatColor(v,mx)+';'+hl+'">'+txt+'</span></td>';
     }).join('');
     return '<tr>'
-      +'<td title="'+a.n+'"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:'+rc+';margin-right:6px;vertical-align:middle"></span>'+(isDorm?'<span class="dormant-badge" style="margin-right:4px">!</span>':'')+a.n.substring(0,30)+(a.n.length>30?'\u2026':'')+'</td>'
+      +'<td title="'+a.n+'"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:'+rc+';margin-right:6px;vertical-align:middle"></span>'+(isDorm?'<span class="dormant-badge" style="margin-right:4px" title="No order since '+(a.la>=0?["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][a.la]+" 2025":"never")+'">!</span>':'')+a.n.substring(0,30)+(a.n.length>30?'\u2026':'')+'</td>'
       +'<td style="font-size:9px;color:var(--muted)">'+a.p.substring(0,18)+'</td>'
       +cells
       +'<td style="font-weight:700;color:'+rc+'">$'+(a.s>=1000?(a.s/1000).toFixed(0)+'k':a.s)+'</td>'
@@ -3042,10 +3042,10 @@ function renderHeatmap(ct){
   ct.innerHTML='<div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-bottom:8px">'
     +accts.length+' accounts &middot; Total 2025: <b style="color:var(--text)">$'+(total/1000).toFixed(0)+'k</b>'
     +' &middot; <span style="color:#e05252">'+dormCt+' dormant</span>'
-    +' &middot; <em style="opacity:.5">Oct&ndash;Dec outlined</em></div>'
+    +' &middot; <em style="opacity:.5">Oct–Dec 2025 = last 3 months of data</em></div>'
     +'<div class="heatmap-wrap"><table class="heatmap-table">'
     +'<thead><tr><th>Account</th><th>Parent</th><th style="min-width:90px">Rep</th>'
-    +MN.map(function(m,i){return '<th style="'+(i>=9?'color:#17a589;font-weight:700':'')+'">'+(i>=9?'<b>'+m+'</b>':m)+'</th>';}).join('')
+    +MN.map(function(m,i){return '<th style="'+(i>=9?'color:#17a589;font-weight:700;background:rgba(23,165,137,0.07)':'')+'">'+(i>=9?'<b>'+m+'</b>':m)+'</th>';}).join('')
     +'<th>Total</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
 }
 function renderPlanner(ct){
@@ -3066,7 +3066,7 @@ function renderPlanner(ct){
     return '<div class="planner-card" style="border-left:3px solid '+rc+'">'
       +'<div class="planner-card-header">'
         +'<div><div class="planner-card-name">'+a.n+'</div>'+(a.p?'<span class="planner-card-parent" style="background:'+rc+'22;color:'+rc+'">'+a.p+'</span>':'')+'</div>'
-        +'<span class="dormant-badge">No Q4</span>'
+        +'<span class="dormant-badge">Dormant</span>'
       +'</div>'
       +(a.mg?'<div class="planner-card-stat">Manager: <span>'+a.mg+'</span></div>':'')
       +(a.ad?'<div class="planner-card-stat" style="font-size:9px;color:var(--muted)">'+a.ad+'</div>':'')
@@ -3494,7 +3494,7 @@ function buildMasterMapView(){
     +'<div class="kpi-card"><div class="kpi-label">Total Accounts</div><div class="kpi-val">'+total+'</div></div>'
     +'<div class="kpi-card"><div class="kpi-label">On Map</div><div class="kpi-val">'+withAddr+'</div></div>'
     +'<div class="kpi-card"><div class="kpi-label" style="color:#e05252">Dormant</div><div class="kpi-val" style="color:#e05252">'+dormant+'</div></div>'
-    +'<div class="kpi-card"><div class="kpi-label" style="color:var(--green)">Active (3mo)</div><div class="kpi-val" style="color:var(--green)">'+(total-dormant)+'</div></div>'
+    +'<div class="kpi-card"><div class="kpi-label" style="color:var(--green)">Active (Oct–Dec)</div><div class="kpi-val" style="color:var(--green)">'+(total-dormant)+'</div></div>'
     +'</div>'
     +'<div style="margin-bottom:12px;display:flex;flex-wrap:wrap;align-items:center;gap:4px">'
     +legendItems
