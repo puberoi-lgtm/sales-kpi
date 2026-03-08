@@ -2895,7 +2895,7 @@ function buildLocationsPane(ri){
   // stat bar
   o+='<div class="loc-stat-row">'
     +'<div class="loc-stat"><div class="loc-stat-val">'+accts.length+'</div><div class="loc-stat-lbl">Total Customers</div></div>'
-    +'<div class="loc-stat"><div class="loc-stat-val" style="color:var(--green)">'+active.length+'</div><div class="loc-stat-lbl">Active (Oct–Dec)</div></div>'
+    +'<div class="loc-stat"><div class="loc-stat-val" style="color:var(--green)">'+active.length+'</div><div class="loc-stat-lbl">Active (last 3mo)</div></div>'
     +'<div class="loc-stat"><div class="loc-stat-val" style="color:#e05252">'+dormant.length+'</div><div class="loc-stat-lbl">Dormant</div></div>'
     +'<div class="loc-stat"><div class="loc-stat-val">'+mapped.length+'</div><div class="loc-stat-lbl">On Map</div></div>'
     +'</div>';
@@ -2978,7 +2978,7 @@ function buildLocationsPane(ri){
     var lastMo=(a.la>=0&&a.la<12)?MO[a.la]:'—';
     var q4=dorm
       ?'<span class="cust-badge" style="background:#e0525222;color:#e05252" title="No order since Oct 2025 or earlier">Dormant</span>'
-      :'<span class="cust-badge" style="background:#27ae6022;color:#27ae60" title="Ordered in Oct–Dec 2025">Active</span>';
+      :'<span class="cust-badge" style="background:#27ae6022;color:#27ae60" title="Ordered in last 3 months">Active</span>';
 
     var src=(a.n+' '+(a.p||'')+' '+(a.mg||'')).toLowerCase();
     o+='<tr data-search="'+src+'">'
@@ -3056,7 +3056,7 @@ function renderHeatmap(ct){
   var rows=sorted.map(function(a){
     var rc=RC[a.ri];var isDorm=isAcctDormant(a);
     var cells=a.m.map(function(v,mi){
-      var hl=mi>=9?'outline:1px solid rgba(23,165,137,0.4);outline-offset:-1px;':'';
+      var _actThr=9+new Date().getMonth();var hl=mi>=_actThr?'outline:2px solid rgba(23,165,137,0.6);outline-offset:-2px;':'';
       var txt=v>0?('$'+(v>=1000?(v/1000).toFixed(0)+'k':v)):'\u2013';
       return '<td><span class="hm-cell" style="background:'+heatColor(v,mx)+';'+hl+'">'+txt+'</span></td>';
     }).join('');
@@ -3076,10 +3076,10 @@ function renderHeatmap(ct){
   ct.innerHTML='<div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-bottom:8px">'
     +accts.length+' accounts &middot; Total 2025: <b style="color:var(--text)">$'+(total/1000).toFixed(0)+'k</b>'
     +' &middot; <span style="color:#e05252">'+dormCt+' dormant</span>'
-    +' &middot; <em style="opacity:.5">Oct–Dec 2025 = last 3 months of data</em></div>'
+    +' &middot; <em style="opacity:.5">'+function(){var _at=9+new Date().getMonth();var _MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];var _ms=_MN.slice(_at);return _ms.length?_ms[0]+(_ms.length>1?'–'+_ms[_ms.length-1]:'')+' 2025 (last 3mo of data)':'(all 2025 data is >3mo old)';}()+'</em></div>'
     +'<div class="heatmap-wrap"><table class="heatmap-table">'
     +'<thead><tr><th>Account</th><th>Parent</th><th style="min-width:90px">Rep</th>'
-    +MN.map(function(m,i){return '<th style="'+(i>=9?'color:#17a589;font-weight:700;background:rgba(23,165,137,0.07)':'')+'">'+(i>=9?'<b>'+m+'</b>':m)+'</th>';}).join('')
+    +MN.map(function(m,i){var _at=9+new Date().getMonth();return '<th style="'+(i>=_at?'color:#17a589;font-weight:700;background:rgba(23,165,137,0.07)':'')+'">'+(i>=_at?'<b>'+m+'</b>':m)+'</th>';}).join('')
     +'<th>Total</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
 }
 function renderPlanner(ct){
@@ -3527,7 +3527,7 @@ function buildMasterMapView(){
     +'<div class="kpi-card"><div class="kpi-label">Total Accounts</div><div class="kpi-val">'+total+'</div></div>'
     +'<div class="kpi-card"><div class="kpi-label">On Map</div><div class="kpi-val">'+withAddr+'</div></div>'
     +'<div class="kpi-card"><div class="kpi-label" style="color:#e05252">Dormant</div><div class="kpi-val" style="color:#e05252">'+dormant+'</div></div>'
-    +'<div class="kpi-card"><div class="kpi-label" style="color:var(--green)">Active (Oct–Dec)</div><div class="kpi-val" style="color:var(--green)">'+(total-dormant)+'</div></div>'
+    +'<div class="kpi-card"><div class="kpi-label" style="color:var(--green)">Active (last 3mo)</div><div class="kpi-val" style="color:var(--green)">'+(total-dormant)+'</div></div>'
     +'</div>'
     +'<div style="margin-bottom:12px;display:flex;flex-wrap:wrap;align-items:center;gap:4px">'
     +legendItems
