@@ -631,7 +631,8 @@ const state = {
   actuals: {},         // "repIdx-monthIdx" -> value
   classActuals: {},    // "repIdx-clsIdx-monthIdx" -> value
   customTargets: {},   // "repIdx-clsIdx-monthIdx" -> value (admin overrides)
-  prevActuals: {},     // "repIdx-clsIdx-monthIdx" -> value (2025 actuals from Firebase)
+  prevActuals: {},
+  acctLastActive: {},  // accountName_sanitised -> { mi, yr } for 2026 orders     // "repIdx-clsIdx-monthIdx" -> value (2025 actuals from Firebase)
   growthRates: REPS_DATA.map(r => [...r.growthRates]), // kept for legacy
 };
 
@@ -806,6 +807,23 @@ function fbStartListening() {
     });
     refreshTeamView();
   });
+  // Listen for per-account 2026 last-active data (set by Apps Script)
+  window._fbListen('dashboard/acctLastActive', data => {
+    state.acctLastActive = data || {};
+    // Update la field on ACCOUNTS_DATA for accounts that have 2026 activity
+    if (data) {
+      ACCOUNTS_DATA.forEach(function(a) {
+        var key = a.n.replace(/[.#$\[\]/]/g, '_');
+        var rec = data[key];
+        if (rec && rec.yr === 2026) {
+          // 2026 months: encode as 12 + mi so Jan2026=12, Feb2026=13 etc
+          a.la2026 = rec.mi; // store separately, use in dormant calc
+        }
+      });
+    }
+    buildAccountsView && buildAccountsView();
+  });
+
 
   // Listen for custom targets (admin overrides)
   window._fbListen('dashboard/customTargets', data => {
@@ -2847,13 +2865,29 @@ function switchRepTab(ri,tab){
   if(tab==='loc')setTimeout(function(){initCustMap(ri);},80);
 }
 
+
+// ── Account dormant helpers ───────────────────────────────────
+function getAcctMonthsAgo(a) {
+  var curMi = new Date().getMonth(); // 0=Jan, 1=Feb, 2=Mar...
+  // If we have 2026 data for this account, use it
+  if (a.la2026 !== undefined) {
+    return curMi - a.la2026; // months since last 2026 order
+  }
+  // Fall back to 2025 la field
+  if (a.la < 0) return 99; // never active
+  return 12 + curMi - a.la; // months since last 2025 order
+}
+function isAcctDormant(a) { return getAcctMonthsAgo(a) > 3; }
+function isAcctActive(a)  { return a.la >= 0 && getAcctMonthsAgo(a) <= 3; }
+function isAcctNever(a)   { return a.la < 0 && a.la2026 === undefined; }
+
 function buildLocationsPane(ri){
   var accts=(ACCOUNTS_DATA||[]).filter(function(a){return a.ri===ri;});
   if(!accts.length)return '<div style="padding:40px;text-align:center;color:var(--muted);font-family:var(--font-mono)">No customer data.</div>';
   var maxS=Math.max.apply(null,accts.map(function(a){return a.s||0;}))||1;
   var MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  var dormant=accts.filter(function(a){return a.la>=0&&(12+new Date().getMonth()-a.la)>3;}).sort(function(a,b){return (b.s||0)-(a.s||0);});
-  var active=accts.filter(function(a){return a.la>=0&&(12+new Date().getMonth()-a.la)<=3;});
+  var dormant=accts.filter(function(a){return isAcctDormant(a);}).sort(function(a,b){return (b.s||0)-(a.s||0);});
+  var active=accts.filter(function(a){return isAcctActive(a);});
   var mapped=accts.filter(function(a){return a.ad&&a.ad.trim();});
   var mapId='cust-map-'+ri;
 
@@ -2940,7 +2974,7 @@ function buildLocationsPane(ri){
     +'<th>Status</th><th>Last Order</th>'
     +'</tr></thead><tbody id="cust-tbody-'+ri+'">';
   accts.forEach(function(a){
-    var dorm=a.la>=0&&(12+new Date().getMonth()-a.la)>3;
+    var dorm=isAcctDormant(a);
     var lastMo=(a.la>=0&&a.la<12)?MO[a.la]:'—';
     var q4=dorm
       ?'<span class="cust-badge" style="background:#e0525222;color:#e05252" title="No order since Oct 2025 or earlier">Dormant</span>'
@@ -3002,8 +3036,8 @@ function getFilteredAccounts(){
   var RN=['Robert Schaffer','Andrew Mobilia','Alexander Poll','Stivi Maticevski','Melissa Goodridge'];
   return ACCOUNTS_DATA.filter(function(a){
     if(_acctState.rep!=='all'&&RN[a.ri]!==_acctState.rep)return false;
-    if(_acctState.filter==='dormant'&&!(a.la>=0&&(12+new Date().getMonth()-a.la)>3))return false;
-    if(_acctState.filter==='active'&&!(a.la>=0&&(12+new Date().getMonth()-a.la)<=3))return false;
+    if(_acctState.filter==='dormant'&&!(isAcctDormant(a)))return false;
+    if(_acctState.filter==='active'&&!(isAcctActive(a)))return false;
     if(q&&!(a.n.toLowerCase().includes(q)||(a.p||'').toLowerCase().includes(q)||(a.ad||'').toLowerCase().includes(q)||(a.mg||'').toLowerCase().includes(q)))return false;
     return true;
   });
@@ -3018,9 +3052,9 @@ function renderHeatmap(ct){
   var RC=['#4472C4','#70AD47','#ED7D31','#9E480E','#C00000'];
   var MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   var total=sorted.reduce(function(s,a){return s+a.s;},0);
-  var dormCt=accts.filter(function(a){return a.la>=0&&(12+new Date().getMonth()-a.la)>3;}).length;
+  var dormCt=accts.filter(function(a){return isAcctDormant(a);}).length;
   var rows=sorted.map(function(a){
-    var rc=RC[a.ri];var isDorm=a.la>=0&&(12+new Date().getMonth()-a.la)>3;
+    var rc=RC[a.ri];var isDorm=isAcctDormant(a);
     var cells=a.m.map(function(v,mi){
       var hl=mi>=9?'outline:1px solid rgba(23,165,137,0.4);outline-offset:-1px;':'';
       var txt=v>0?('$'+(v>=1000?(v/1000).toFixed(0)+'k':v)):'\u2013';
@@ -3050,7 +3084,7 @@ function renderHeatmap(ct){
 }
 function renderPlanner(ct){
   var accts=getFilteredAccounts();
-  var dormant=accts.filter(function(a){return a.la>=0&&(12+new Date().getMonth()-a.la)>3;});
+  var dormant=accts.filter(function(a){return isAcctDormant(a);});
   var withC=dormant.filter(function(a){return a.em||a.ph||a.mo;});
   var noC=dormant.filter(function(a){return !a.em&&!a.ph&&!a.mo;});
   var RC=['#4472C4','#70AD47','#ED7D31','#9E480E','#C00000'];
@@ -3228,10 +3262,9 @@ function initCustMap(ri){
     var lat=parseFloat(parts[0]),lng=parseFloat(parts[1]);
     if(isNaN(lat)||isNaN(lng))return;
 
-    var _mAgoA=12+currentMi-a.la;
-    var isNeverActive=a.la<0;
-    var isActive=!isNeverActive&&_mAgoA<=3;
-    var isDormant=!isNeverActive&&_mAgoA>3;
+    var isNeverActive=isAcctNever(a);
+    var isActive=isAcctActive(a);
+    var isDormant=isAcctDormant(a);
 
     // Colour logic
     var fillColor,fillOpacity,strokeColor;
@@ -3476,7 +3509,7 @@ function buildMasterMapView(){
   accts.forEach(function(a){if(a.ri>=0&&a.ri<5)perRep[a.ri]++;});
   var total=accts.length;
   var withAddr=accts.filter(function(a){return a.ad&&a.ad.trim();}).length;
-  var dormant=accts.filter(function(a){return a.la>=0&&(12+new Date().getMonth()-a.la)>3;}).length;
+  var dormant=accts.filter(function(a){return isAcctDormant(a);}).length;
 
   var legendItems=repNames.map(function(n,i){
     return '<span style="display:inline-flex;align-items:center;gap:5px;margin-right:14px">'
@@ -3542,7 +3575,7 @@ function initMasterMap(){
         if(res&&res[0]){
           var lat=parseFloat(res[0].lat),lng=parseFloat(res[0].lon);
           var col=repColors[a.ri]||'#888';
-          var isDorm=a.la>=0&&(12+new Date().getMonth()-a.la)>3;
+          var isDorm=isAcctDormant(a);
           var rad=Math.max(6,Math.min(22,6+16*(a.s/maxS)));
           var lastMo=(a.la>=0&&a.la<12)?MO[a.la]+' 2025':'No orders';
 
