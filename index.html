@@ -867,6 +867,25 @@ function getRepPrev(repIdx, monthIdx) {
   return REPS_DATA[repIdx].classes.reduce((s, _, ci) => s + getClassPrev(repIdx, ci, monthIdx), 0);
 }
 
+
+
+
+
+
+const ACCT_PREV2025 = {"1":{"0":{"0":137212.07,"2":24201.5,"3":704.42,"1":49700.42},"1":{"2":41728.53,"0":108403.42,"1":74678.86,"3":1557.93},"2":{"0":146088.53,"1":72238.26,"2":16043.83,"3":419.67},"3":{"2":26867.56,"1":52906.82,"0":110243.5,"3":288.72},"4":{"2":28989.81,"1":82555.53,"0":169894.19,"3":474.29},"5":{"1":71060.81,"0":126447.78,"2":30387.92,"3":666.46},"6":{"0":181422.55,"2":45696.86,"1":118535.39,"3":804.53},"7":{"0":223146.78,"2":30612.38,"1":134401.91,"3":912.98},"8":{"0":253206.76,"1":106287.24,"2":28825.71,"3":84.44},"9":{"2":36398.62,"0":189175.75,"1":120657.95,"3":341.66},"10":{"1":120253.4,"0":235557.83,"2":33501.19},"11":{"2":27911.53,"0":139172.66,"1":78077.51,"3":16.0}},"3":{"0":{"2":21483.97,"0":42082.24,"1":36779.74,"3":415.42},"1":{"0":56510.78,"1":52581.0,"2":15891.22,"3":10607.26},"2":{"0":60724.46,"2":17608.64,"1":46954.61,"3":654.07},"3":{"1":63286.13,"2":16666.29,"0":41698.45,"3":1991.45},"4":{"1":55998.24,"0":87893.67,"2":17774.66,"3":170.83},"5":{"1":36023.24,"0":87882.58,"2":11524.2,"3":8.8},"6":{"0":69345.55,"2":12157.94,"1":66469.39,"3":3012.3},"7":{"2":12082.13,"1":35078.23,"0":45315.49,"3":3400.3},"8":{"1":62802.9,"0":67230.45,"2":17966.88,"3":555.22},"9":{"0":65943.88,"2":16415.2,"1":51327.78,"3":319.07},"10":{"2":20951.46,"1":50857.91,"0":67017.4},"11":{"0":49424.11,"1":58454.64,"2":18866.89,"3":3411.11}},"2":{"0":{"1":45391.8,"2":5748.37,"0":23685.1,"3":156.51},"1":{"2":9630.11,"0":48509.24,"1":55690.11,"3":1116.96},"2":{"2":11400.31,"1":58932.06,"0":36928.84,"3":42.66},"3":{"2":7829.38,"0":34692.07,"1":65167.15,"3":356.22},"4":{"2":9379.47,"1":46901.46,"0":43955.8,"3":489.1},"5":{"1":49603.31,"0":41153.37,"2":16819.8,"3":475.58},"6":{"0":45282.27,"2":11687.91,"1":58842.34,"3":704.47},"7":{"0":57467.54,"1":49352.18,"2":20250.01},"8":{"2":18932.24,"1":90384.0,"0":44445.07,"3":7863.15},"9":{"0":46815.95,"2":13943.09,"1":51969.97,"3":2918.26},"10":{"1":73417.97,"0":53251.61,"2":17476.98,"3":2888.89},"11":{"2":8398.26,"1":45271.3,"0":46387.17}},"0":{"0":{"2":26106.08,"1":88104.87,"0":87150.4,"3":2211.61},"1":{"1":97409.61,"2":25929.78,"0":114904.0,"3":334.77},"2":{"0":116423.33,"2":24911.57,"1":99851.72,"3":925.12},"3":{"3":1434.0,"1":83128.24,"2":29143.58,"0":115642.09},"4":{"1":105415.27,"0":153848.02,"2":36551.65,"3":2237.44},"5":{"0":143523.73,"1":111128.48,"2":47976.56,"3":3876.9},"6":{"1":163886.09,"0":109769.73,"2":23562.74,"3":3440.91},"7":{"1":129545.15,"0":159107.34,"2":36042.94,"3":242.24},"8":{"0":106101.92,"1":93251.28,"2":59778.76,"3":-792.03},"9":{"0":167313.38,"2":34204.18,"1":125714.5,"3":226.6},"10":{"2":32609.14,"1":140971.07,"0":130124.7,"3":1395.45},"11":{"0":81553.81,"2":23554.61,"1":97368.1}},"4":{"0":{"2":4637.16,"1":15169.26,"0":5499.84},"1":{"0":16529.31,"2":5275.2,"1":13681.36},"2":{"0":17856.61,"2":3683.79,"1":6534.83,"3":177.92},"3":{"0":15684.39,"1":5838.51,"2":3297.11,"3":89.02},"4":{"2":4076.01,"3":452.32,"1":20392.37,"0":18132.81},"5":{"0":11118.09,"1":6234.4,"2":2496.29,"3":146.08},"6":{"0":33144.18,"2":8326.78,"1":123737.74,"3":717.88},"7":{"0":26051.13,"2":4476.97,"1":24635.47,"3":437.12},"8":{"0":25553.67,"2":3425.08,"1":13976.74},"9":{"1":51272.32,"0":50354.13,"2":5617.43,"3":179.42},"10":{"1":16424.02,"0":11853.97,"2":4538.88},"11":{"2":2856.55,"0":7002.8,"1":6478.8}}};
+
+
+function getAcctPrev(repIdx, monthIdx) {
+  const m = ACCT_PREV2025[repIdx] && ACCT_PREV2025[repIdx][monthIdx];
+  if (!m) return 0;
+  return Object.values(m).reduce((s,v)=>s+v,0);
+}
+function getAcctPrevClass(repIdx, clsIdx, monthIdx) {
+  const m = ACCT_PREV2025[repIdx] && ACCT_PREV2025[repIdx][monthIdx];
+  if (!m) return 0;
+  return m[clsIdx] || 0;
+}
+
 // ── Chart registry (to destroy/recreate) ──────────────────
 const charts = {};
 function destroyChart(id) {
@@ -1032,7 +1051,7 @@ function buildRepView(repIdx) {
     <table>
       <thead>
         <tr>
-          <th>Month</th><th>2026 Target</th><th>2025 Actual</th>
+          <th>Month</th><th>2026 Target</th><th>2025 Actual</th><th style="color:#a78bfa">Acct Ach 2025</th><th style="color:#a78bfa">Acct Ach 2025</th>
           <th>2026 Invoiced</th><th>Ach%</th><th>vs Tgt ($)</th><th>vs Tgt (%)</th><th>Status</th>
         </tr>
       </thead>
@@ -1069,7 +1088,7 @@ function buildRepView(repIdx) {
       <table>
         <thead>
           <tr>
-            <th>Month</th><th>2026 Target</th><th>2025 Actual</th>
+            <th>Month</th><th>2026 Target</th><th>2025 Actual</th><th style="color:#a78bfa">Acct Ach 2025</th>
             <th>Enter 2026 Invoiced</th><th>vs Tgt ($)</th><th>vs Tgt (%)</th><th>Status</th>
           </tr>
         </thead>
@@ -1135,6 +1154,7 @@ function populateTracker(repIdx) {
       <td>${m.month} 2026${badge}</td>
       <td class="target-cell">${fmt(tgt)}</td>
       <td class="prev-cell">${fmt(getRepPrev(repIdx, mi))}</td>
+      <td style="color:#a78bfa;font-family:var(--font-mono)">${getAcctPrev(repIdx,mi)>0?fmt(getAcctPrev(repIdx,mi)):'—'}</td>
       <td><span class="actual-input" style="display:inline-block;width:110px;cursor:default;color:#ffe566">${act > 0 ? fmt(act) : '—'}</span></td>
       <td>${achCell}</td>
       <td>${varCell}</td>
@@ -1148,6 +1168,9 @@ function populateTracker(repIdx) {
   const totVpct = totAct > 0 && totTgt !== 0 ? (totAct - totTgt) / Math.abs(totTgt) : null;
   document.getElementById(`tot-tgt-${repIdx}`).textContent = fmt(totTgt);
   document.getElementById(`tot-act-${repIdx}`).textContent = fmt(totAct);
+  const totAcctPrev = rep.monthly.reduce((s,m,mi)=>s+getAcctPrev(repIdx,mi),0);
+  const totAcctEl = document.getElementById(`tot-acctprev-${repIdx}`);
+  if(totAcctEl) totAcctEl.textContent = totAcctPrev>0?fmt(totAcctPrev):'—';
   const totAchPct = totAct > 0 && totTgt > 0 ? totAct / totTgt : null;
   const totAchEl = document.getElementById(`tot-ach-${repIdx}`);
   if (totAchEl) totAchEl.innerHTML = totAchPct !== null ? `<span class="${totAchPct>=1?'variance-pos':totAchPct>=0.8?'':'variance-neg'}" style="${totAchPct>=0.8&&totAchPct<1?'color:var(--amber)':''}">${(totAchPct*100).toFixed(1)}%</span>` : '—';
@@ -1220,6 +1243,7 @@ function populateClassTrackers(repIdx) {
         <td>${m.month} 2026${badge}</td>
         <td class="target-cell">${fmt(tgt)}</td>
         <td class="prev-cell">${fmt(getClassPrev(repIdx, ci, mi))}</td>
+        <td style="color:#a78bfa;font-family:var(--font-mono)">${getAcctPrevClass(repIdx,ci,mi)>0?fmt(getAcctPrevClass(repIdx,ci,mi)):'—'}</td>
         <td>${actualCell}</td>
         <td>${varCell}</td><td>${pctCell}</td><td>${status}</td>
       </tr>`;
@@ -3114,5 +3138,6 @@ document.addEventListener('DOMContentLoaded', function() {
   document.addEventListener('keydown', function(e) { if (e.key === 'Escape') overlay.style.display = 'none'; });
 });
 </script>
-</body>
+
+        </body>
 </html>
