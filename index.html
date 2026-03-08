@@ -605,6 +605,9 @@
       <button class="tab-btn admin-only" onclick="showView('mastermap')" id="tab-mastermap" style="display:none">
         <span class="dot" style="background:#8e44ad"></span>Map
       </button>
+      <button class="tab-btn admin-only" onclick="showView('reps-admin')" id="tab-reps-admin" style="display:none">
+        <span class="dot" style="background:#e91e8c"></span>Reps
+      </button>
     </div>
   </div>
 </div> ──────────────────────────────────────────────── -->
@@ -653,7 +656,7 @@ function getCurrentUserRole() {
   const email = window._currentUser?.email?.toLowerCase().trim();
   if (!email) { console.warn('[Auth] No user email'); return null; }
   const adminList = ADMIN_EMAILS.map(e => e.toLowerCase().trim());
-  if (adminList.includes(email)) { console.log('[Auth] Admin:', email); return { role: 'admin', repIdx: null }; }
+  if (adminList.includes(email)) { console.log('[Auth] Admin:', email); window._isAdmin=true; return { role: 'admin', repIdx: null }; }
   const repIdx = REP_EMAIL_MAP[email];
   if (repIdx !== undefined) { console.log('[Auth] Rep:', email, 'idx:', repIdx); return { role: 'rep', repIdx }; }
   console.warn('[Auth] Unknown email:', email);
@@ -2530,6 +2533,8 @@ function showView(id) {
     setTimeout(function(){ initMasterMap(); }, 80);
   } else if (id === 'accounts') {
     buildAccountsView();
+  } else if (id === 'reps-admin') {
+    buildRepsAdminView();
   } else if (id === 'bulk') {
     populateBulkView();
   } else {
@@ -2540,6 +2545,292 @@ function showView(id) {
       drawRepCharts(repIdx);
     }, 50);
   }
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// REPS ADMIN VIEW
+// ══════════════════════════════════════════════════════════════
+function buildRepsAdminView() {
+  var el = document.getElementById('reps-admin-content');
+  if (!el) return;
+
+  var MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var COLORS = ['#4472C4','#70AD47','#ED7D31','#9E480E','#C00000','#8e44ad','#e91e8c','#00bcd4','#ff9800','#607d8b'];
+
+  function repRow(ri, rep) {
+    var isVisible = !rep.hidden;
+    var monthTargets = rep.monthly.map(function(m, mi) {
+      return '<td style="padding:2px 4px">'
+        + '<input type="number" value="' + Math.round(m.target) + '" min="0" step="1000"'
+        + ' style="width:72px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:10px;border-radius:3px;padding:2px 4px;font-family:var(--font-mono)"'
+        + ' onchange="updateRepMonthTarget(' + ri + ',' + mi + ',this.value)">'
+        + '</td>';
+    }).join('');
+
+    return '<tr id="rep-admin-row-' + ri + '" style="border-bottom:1px solid var(--border);opacity:' + (isVisible ? '1' : '0.4') + '">'
+      // Colour swatch
+      + '<td style="padding:6px 8px;width:32px">'
+      + '<input type="color" value="' + rep.color + '" title="Rep colour"'
+      + ' style="width:28px;height:28px;border:none;border-radius:4px;cursor:pointer;background:none;padding:0"'
+      + ' onchange="updateRepColor(' + ri + ',this.value)">'
+      + '</td>'
+      // Name
+      + '<td style="padding:6px 8px;min-width:160px">'
+      + '<input type="text" value="' + rep.name + '"'
+      + ' style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:12px;border-radius:3px;padding:4px 8px;width:150px;font-family:var(--font-head)"'
+      + ' onchange="updateRepName(' + ri + ',this.value)">'
+      + '</td>'
+      // Short name (tab label)
+      + '<td style="padding:6px 8px;width:90px">'
+      + '<input type="text" value="' + (rep.shortName || rep.name.split(' ')[0]) + '" maxlength="12"'
+      + ' style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:12px;border-radius:3px;padding:4px 8px;width:80px;font-family:var(--font-head)"'
+      + ' onchange="updateRepShortName(' + ri + ',this.value)">'
+      + '</td>'
+      // Region
+      + '<td style="padding:6px 8px;width:80px">'
+      + '<input type="text" value="' + (rep.region || '') + '" maxlength="20"'
+      + ' style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:11px;border-radius:3px;padding:4px 8px;width:70px;font-family:var(--font-mono)"'
+      + ' onchange="updateRepRegion(' + ri + ',this.value)">'
+      + '</td>'
+      // Email
+      + '<td style="padding:6px 8px;min-width:180px">'
+      + '<input type="text" value="' + (rep.email || '') + '" placeholder="rep[at]serveredge.com.au"'
+      + ' style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:10px;border-radius:3px;padding:4px 8px;width:170px;font-family:var(--font-mono)"'
+      + ' onchange="updateRepEmail(' + ri + ',this.value)">'
+      + '</td>'
+      // Growth %
+      + '<td style="padding:6px 8px;width:70px">'
+      + '<input type="number" value="' + Math.round(((rep.growth||1.2)-1)*100) + '" min="0" max="100" step="1"'
+      + ' style="width:60px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:11px;border-radius:3px;padding:4px 6px;font-family:var(--font-mono)"'
+      + ' onchange="updateRepGrowth(' + ri + ',this.value)">%'
+      + '</td>'
+      // Monthly targets
+      + monthTargets
+      // Show/hide toggle
+      + '<td style="padding:6px 8px;text-align:center">'
+      + '<button onclick="toggleRepVisible(' + ri + ')" title="' + (isVisible ? 'Hide rep' : 'Show rep') + '"'
+      + ' style="background:' + (isVisible ? '#27ae6033' : '#e0525233') + ';color:' + (isVisible ? 'var(--green)' : '#e05252') + ';border:none;border-radius:4px;padding:4px 10px;font-size:10px;cursor:pointer;font-family:var(--font-mono)">'
+      + (isVisible ? '● Visible' : '○ Hidden') + '</button>'
+      + '</td>'
+      + '</tr>';
+  }
+
+  var moHeaders = MO.map(function(m){ return '<th style="padding:4px 2px;font-size:9px;color:var(--muted);font-weight:400;min-width:80px">'+m+' Target</th>'; }).join('');
+
+  var rows = REPS_DATA.map(function(rep, ri){ return repRow(ri, rep); }).join('');
+
+  el.innerHTML = '<div style="max-width:100%;overflow-x:auto">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'
+    + '<div>'
+    + '<div style="font-size:18px;font-weight:800;font-family:var(--font-head);margin-bottom:4px">Rep Management</div>'
+    + '<div style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">Edit rep details, monthly targets, visibility. Changes apply immediately.</div>'
+    + '</div>'
+    + '<div style="display:flex;gap:8px">'
+    + '<button onclick="addNewRep()" style="background:#27ae6022;border:1px solid #27ae60;color:var(--green);border-radius:6px;padding:8px 16px;font-family:var(--font-mono);font-size:11px;cursor:pointer">+ Add Rep</button>'
+    + '<button onclick="saveRepsToFirebase()" style="background:var(--accent);border:none;color:#fff;border-radius:6px;padding:8px 16px;font-family:var(--font-mono);font-size:11px;cursor:pointer">💾 Save to Firebase</button>'
+    + '</div>'
+    + '</div>'
+    + '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:2px;padding:6px 12px;margin-bottom:12px;font-family:var(--font-mono);font-size:10px;color:var(--amber)">'
+    + '⚠ Target changes here take effect for ALL months shown. To adjust from current month only, use the account-level reassign on the Accounts tab.'
+    + '</div>'
+    + '<table style="width:100%;border-collapse:collapse;font-size:11px">'
+    + '<thead><tr style="border-bottom:2px solid var(--border)">'
+    + '<th style="padding:8px;text-align:left;width:32px"></th>'
+    + '<th style="padding:8px;text-align:left">Full Name</th>'
+    + '<th style="padding:8px;text-align:left">Tab Label</th>'
+    + '<th style="padding:8px;text-align:left">Region</th>'
+    + '<th style="padding:8px;text-align:left">Email</th>'
+    + '<th style="padding:8px;text-align:left">Growth</th>'
+    + moHeaders
+    + '<th style="padding:8px;text-align:center">Visibility</th>'
+    + '</tr></thead>'
+    + '<tbody>' + rows + '</tbody>'
+    + '</table>'
+    + '<div style="margin-top:24px;padding:16px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">'
+    + '<div style="font-size:12px;font-weight:700;margin-bottom:12px;font-family:var(--font-head)">Reassignment Log</div>'
+    + '<div id="reassign-log" style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">Loading...</div>'
+    + '</div>'
+    + '</div>';
+
+  renderReassignLog();
+}
+
+function renderReassignLog() {
+  var el = document.getElementById('reassign-log');
+  if (!el) return;
+  var reassignments = JSON.parse(localStorage.getItem('acct_reassign') || '{}');
+  var keys = Object.keys(reassignments);
+  if (!keys.length) { el.innerHTML = 'No reassignments recorded.'; return; }
+  var MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var RN = ['Robert','Andrew','Alexander','Stivi','Melissa'];
+  var rows = keys.map(function(k) {
+    var r = reassignments[k];
+    var dt = new Date(r.ts).toLocaleDateString();
+    return '<div style="padding:4px 0;border-bottom:1px solid var(--border)">'
+      + '<span style="color:var(--text)">' + k + '</span> '
+      + '<span style="color:#e05252">' + (RN[r.oldRi]||'?') + '</span>'
+      + ' → <span style="color:var(--green)">' + (RN[r.newRi]||'?') + '</span>'
+      + ' <span>from ' + (MO[r.moFrom]||'?') + '</span>'
+      + ' <span style="opacity:.5">(' + dt + ' by ' + (r.by||'admin') + ')</span>'
+      + ' <button onclick="undoReassign(\'' + k.replace(/'/g,"\\'") + '\')" style="margin-left:8px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:3px;padding:1px 6px;font-size:9px;cursor:pointer">Undo</button>'
+      + '</div>';
+  }).join('');
+  el.innerHTML = rows;
+}
+
+function undoReassign(acctName) {
+  var reassignments = JSON.parse(localStorage.getItem('acct_reassign') || '{}');
+  var r = reassignments[acctName];
+  if (!r) return;
+  // Reverse the target changes
+  var a = ACCOUNTS_DATA.find(function(x){return x.n===acctName;});
+  if (a) {
+    a.ri = r.oldRi;
+    var growthOld = [1.2,1.2,1.2,1.2,1.3][r.oldRi];
+    var growthNew = [1.2,1.2,1.2,1.2,1.3][r.newRi];
+    for (var mi = r.moFrom; mi < 12; mi++) {
+      var mv = (a.m || [])[mi] || 0;
+      REPS_DATA[r.oldRi].monthly[mi].target += mv * growthOld;
+      REPS_DATA[r.newRi].monthly[mi].target = Math.max(0, REPS_DATA[r.newRi].monthly[mi].target - mv * growthNew);
+    }
+  }
+  delete reassignments[acctName];
+  localStorage.setItem('acct_reassign', JSON.stringify(reassignments));
+  if (window._fbRemove) window._fbRemove('reassignments/' + acctName.replace(/[.#$/\[\]]/g,'_'));
+  refreshTeamView();
+  buildRepsAdminView();
+}
+
+function updateRepName(ri, val) {
+  if (!val.trim()) return;
+  REPS_DATA[ri].name = val.trim();
+  // Update nav tab text
+  var tabEl = document.getElementById('tab-rep-' + ri);
+  if (tabEl) {
+    var dot = tabEl.querySelector('.dot');
+    tabEl.textContent = val.trim().split(' ')[0];
+    if (dot) tabEl.prepend(dot);
+  }
+  refreshTeamView();
+}
+
+function updateRepShortName(ri, val) {
+  if (!val.trim()) return;
+  REPS_DATA[ri].shortName = val.trim();
+  var tabEl = document.getElementById('tab-rep-' + ri);
+  if (tabEl) {
+    var dot = tabEl.querySelector('.dot');
+    tabEl.textContent = val.trim();
+    if (dot) tabEl.prepend(dot);
+  }
+}
+
+function updateRepRegion(ri, val) {
+  REPS_DATA[ri].region = val.trim();
+  refreshTeamView();
+}
+
+function updateRepEmail(ri, val) {
+  REPS_DATA[ri].email = val.trim().toLowerCase();
+}
+
+function updateRepGrowth(ri, val) {
+  var pct = parseFloat(val);
+  if (isNaN(pct)) return;
+  REPS_DATA[ri].growth = 1 + pct / 100;
+}
+
+function updateRepColor(ri, val) {
+  REPS_DATA[ri].color = val;
+  var dot = document.querySelector('#tab-rep-' + ri + ' .dot');
+  if (dot) dot.style.background = val;
+  var row = document.getElementById('rep-admin-row-' + ri);
+  if (row) row.style.borderLeft = '3px solid ' + val;
+  refreshTeamView();
+}
+
+function updateRepMonthTarget(ri, mi, val) {
+  var v = parseFloat(val);
+  if (isNaN(v) || v < 0) return;
+  REPS_DATA[ri].monthly[mi].target = v;
+  refreshTeamView();
+}
+
+function toggleRepVisible(ri) {
+  REPS_DATA[ri].hidden = !REPS_DATA[ri].hidden;
+  // Show/hide the rep tab
+  var tabEl = document.getElementById('tab-rep-' + ri);
+  if (tabEl) tabEl.style.display = REPS_DATA[ri].hidden ? 'none' : '';
+  // Re-render the admin view
+  buildRepsAdminView();
+  refreshTeamView();
+}
+
+function addNewRep() {
+  var name = prompt('New rep full name:');
+  if (!name || !name.trim()) return;
+  var region = prompt('Region (e.g. VIC, NSW):') || '';
+  var email = prompt('Login email (e.g. newrep[at]serveredge.com.au):') || '';
+  var growthPct = parseFloat(prompt('Growth target % (e.g. 20):') || '20');
+
+  var newRi = REPS_DATA.length;
+  var COLORS = ['#4472C4','#70AD47','#ED7D31','#9E480E','#C00000','#8e44ad','#e91e8c','#00bcd4','#ff9800','#607d8b'];
+  var color = COLORS[newRi % COLORS.length];
+  var monthly = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map(function(m){
+    return {month:m, target:0, prev:0};
+  });
+
+  REPS_DATA.push({
+    name: name.trim(),
+    shortName: name.trim().split(' ')[0],
+    region: region,
+    email: email.toLowerCase(),
+    color: color,
+    growth: 1 + growthPct / 100,
+    monthly: monthly,
+    classes: [],
+    hidden: false
+  });
+
+  // Add nav tab
+  var mainTabs = document.getElementById('mainTabs');
+  if (mainTabs) {
+    var btn = document.createElement('button');
+    btn.className = 'tab-btn admin-only';
+    btn.id = 'tab-rep-' + newRi;
+    btn.onclick = function(){ showView('rep-' + newRi); };
+    btn.innerHTML = '<span class="dot" style="background:' + color + '"></span>' + name.trim().split(' ')[0];
+    // Insert before the Accounts tab divider
+    var acctTab = document.getElementById('tab-accounts');
+    if (acctTab) mainTabs.insertBefore(btn, acctTab);
+    else mainTabs.appendChild(btn);
+  }
+
+  buildRepsAdminView();
+}
+
+function saveRepsToFirebase() {
+  if (!window._fbSet) { alert('Firebase not connected'); return; }
+  var toSave = REPS_DATA.map(function(r) {
+    return {
+      name: r.name,
+      shortName: r.shortName || r.name.split(' ')[0],
+      region: r.region || '',
+      email: r.email || '',
+      color: r.color,
+      growth: r.growth || 1.2,
+      hidden: r.hidden || false,
+      monthly: r.monthly
+    };
+  });
+  window._fbSet('repsConfig', toSave).then(function(){
+    var f = document.createElement('div');
+    f.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#27ae60;color:#fff;padding:10px 18px;border-radius:6px;font-family:var(--font-mono);font-size:12px;z-index:9999';
+    f.textContent = '✓ Rep config saved to Firebase';
+    document.body.appendChild(f);
+    setTimeout(function(){f.remove();}, 3000);
+  });
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -2561,10 +2852,8 @@ function buildLocationsPane(ri){
   if(!accts.length)return '<div style="padding:40px;text-align:center;color:var(--muted);font-family:var(--font-mono)">No customer data.</div>';
   var maxS=Math.max.apply(null,accts.map(function(a){return a.s||0;}))||1;
   var MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  var _curMiRe=new Date().getMonth();var _dormThRe=_curMiRe-2;
-  var dormant=accts.filter(function(a){return a.la>=0&&a.la<_dormThRe;}).sort(function(a,b){return (b.s||0)-(a.s||0);});
-  var _cmiA=new Date().getMonth();var _dtA=_cmiA-2;
-  var active=accts.filter(function(a){return a.la>=_dtA;});
+  var dormant=accts.filter(function(a){return a.la>=0&&(12+new Date().getMonth()-a.la)>3;}).sort(function(a,b){return (b.s||0)-(a.s||0);});
+  var active=accts.filter(function(a){return a.la>=0&&(12+new Date().getMonth()-a.la)<=3;});
   var mapped=accts.filter(function(a){return a.ad&&a.ad.trim();});
   var mapId='cust-map-'+ri;
 
@@ -2572,7 +2861,7 @@ function buildLocationsPane(ri){
   // stat bar
   o+='<div class="loc-stat-row">'
     +'<div class="loc-stat"><div class="loc-stat-val">'+accts.length+'</div><div class="loc-stat-lbl">Total Customers</div></div>'
-    +'<div class="loc-stat"><div class="loc-stat-val" style="color:var(--green)">'+active.length+'</div><div class="loc-stat-lbl">Active (Q4)</div></div>'
+    +'<div class="loc-stat"><div class="loc-stat-val" style="color:var(--green)">'+active.length+'</div><div class="loc-stat-lbl">Active (3mo)</div></div>'
     +'<div class="loc-stat"><div class="loc-stat-val" style="color:#e05252">'+dormant.length+'</div><div class="loc-stat-lbl">Dormant</div></div>'
     +'<div class="loc-stat"><div class="loc-stat-val">'+mapped.length+'</div><div class="loc-stat-lbl">On Map</div></div>'
     +'</div>';
@@ -2625,6 +2914,7 @@ function buildLocationsPane(ri){
         +'<div style="display:flex;gap:6px;margin-top:8px;align-items:center">'
           +'<select id="sel-'+cid+'" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:4px;padding:3px 6px;font-size:10px;font-family:var(--font-mono)">'
             +'<option value="">Snooze...</option>'
+            +'<option value="1">1 day</option>'
             +'<option value="3">3 days</option>'
             +'<option value="7">1 week</option>'
             +'<option value="15">15 days</option>'
@@ -2647,12 +2937,10 @@ function buildLocationsPane(ri){
   o+='<div class="loc-table-wrap"><table class="loc-table" id="cust-tbl-'+ri+'">'
     +'<thead><tr>'
     +'<th>Customer</th><th>Parent Company</th><th style="text-align:right">2025 Rev</th>'
-    +'<th>Q4 Status</th><th>Last Order</th>'
+    +'<th>Status</th><th>Last Order</th>'
     +'</tr></thead><tbody id="cust-tbody-'+ri+'">';
   accts.forEach(function(a){
-    var now2=new Date();var curMi2=now2.getMonth();
-    var dormThresh2=curMi2-2;
-    var dorm=a.la>=0&&a.la<dormThresh2;
+    var dorm=a.la>=0&&(12+new Date().getMonth()-a.la)>3;
     var lastMo=(a.la>=0&&a.la<12)?MO[a.la]:'—';
     var q4=dorm
       ?'<span class="cust-badge" style="background:#e0525222;color:#e05252">Dormant</span>'
@@ -2714,8 +3002,8 @@ function getFilteredAccounts(){
   var RN=['Robert Schaffer','Andrew Mobilia','Alexander Poll','Stivi Maticevski','Melissa Goodridge'];
   return ACCOUNTS_DATA.filter(function(a){
     if(_acctState.rep!=='all'&&RN[a.ri]!==_acctState.rep)return false;
-    var _fm=new Date().getMonth();if(_acctState.filter==='dormant'&&!(a.la>=0&&a.la<(_fm-2)))return false;
-    if(_acctState.filter==='active'&&!(a.la>=(_fm-2)))return false;
+    if(_acctState.filter==='dormant'&&!(a.la>=0&&(12+new Date().getMonth()-a.la)>3))return false;
+    if(_acctState.filter==='active'&&!(a.la>=0&&(12+new Date().getMonth()-a.la)<=3))return false;
     if(q&&!(a.n.toLowerCase().includes(q)||(a.p||'').toLowerCase().includes(q)||(a.ad||'').toLowerCase().includes(q)||(a.mg||'').toLowerCase().includes(q)))return false;
     return true;
   });
@@ -2730,9 +3018,9 @@ function renderHeatmap(ct){
   var RC=['#4472C4','#70AD47','#ED7D31','#9E480E','#C00000'];
   var MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   var total=sorted.reduce(function(s,a){return s+a.s;},0);
-  var _cmiDC=new Date().getMonth();var dormCt=accts.filter(function(a){return a.la>=0&&a.la<(_cmiDC-2);}).length;
+  var dormCt=accts.filter(function(a){return a.la>=0&&(12+new Date().getMonth()-a.la)>3;}).length;
   var rows=sorted.map(function(a){
-    var rc=RC[a.ri];var _cmiIsDorm=new Date().getMonth();var isDorm=a.la>=0&&a.la<(_cmiIsDorm-2);
+    var rc=RC[a.ri];var isDorm=a.la>=0&&(12+new Date().getMonth()-a.la)>3;
     var cells=a.m.map(function(v,mi){
       var hl=mi>=9?'outline:1px solid rgba(255,255,255,.25);outline-offset:-1px;':'';
       var txt=v>0?('$'+(v>=1000?(v/1000).toFixed(0)+'k':v)):'\u2013';
@@ -2743,6 +3031,12 @@ function renderHeatmap(ct){
       +'<td style="font-size:9px;color:var(--muted)">'+a.p.substring(0,18)+'</td>'
       +cells
       +'<td style="font-weight:700;color:'+rc+'">$'+(a.s>=1000?(a.s/1000).toFixed(0)+'k':a.s)+'</td>'
+      +(window._isAdmin?'<td class="rep-assign-cell">'
+        +'<select class="rep-assign-sel" data-acct="'+encodeURIComponent(a.n)+'" onchange="reassignAccount(this)" style="background:var(--surface2);border:1px solid var(--border);color:'+rc+';font-size:9px;border-radius:3px;padding:2px 4px">'
+        +['Robert','Andrew','Alexander','Stivi','Melissa'].map(function(r,ri2){
+            return '<option value="'+ri2+'"'+(ri2===a.ri?' selected':'')+'>'+r+'</option>';
+          }).join('')
+        +'</select></td>':'<td style="font-size:9px;color:'+rc+'">'+['Robert','Andrew','Alexander','Stivi','Melissa'][a.ri]+'</td>')
       +'</tr>';
   }).join('');
   ct.innerHTML='<div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-bottom:8px">'
@@ -2750,14 +3044,13 @@ function renderHeatmap(ct){
     +' &middot; <span style="color:#e05252">'+dormCt+' dormant</span>'
     +' &middot; <em style="opacity:.5">Oct&ndash;Dec outlined</em></div>'
     +'<div class="heatmap-wrap"><table class="heatmap-table">'
-    +'<thead><tr><th>Account</th><th>Parent</th>'
+    +'<thead><tr><th>Account</th><th>Parent</th><th style="min-width:90px">Rep</th>'
     +MN.map(function(m,i){return '<th style="'+(i>=9?'color:#17a589;font-weight:700':'')+'">'+(i>=9?'<b>'+m+'</b>':m)+'</th>';}).join('')
     +'<th>Total</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
 }
 function renderPlanner(ct){
   var accts=getFilteredAccounts();
-  var _cmiD=new Date().getMonth();var _dtD=_cmiD-2;
-  var dormant=accts.filter(function(a){return a.la>=0&&a.la<_dtD;});
+  var dormant=accts.filter(function(a){return a.la>=0&&(12+new Date().getMonth()-a.la)>3;});
   var withC=dormant.filter(function(a){return a.em||a.ph||a.mo;});
   var noC=dormant.filter(function(a){return !a.em&&!a.ph&&!a.mo;});
   var RC=['#4472C4','#70AD47','#ED7D31','#9E480E','#C00000'];
@@ -2823,7 +3116,15 @@ function init() {
   bulkDiv.innerHTML = buildBulkView();
   container.appendChild(bulkDiv);
 
+  // Reps admin view
+  var raDiv = document.createElement('div');
+  raDiv.id = 'view-reps-admin';
+  raDiv.className = 'view';
+  raDiv.innerHTML = '<div id="reps-admin-content" style="padding:24px">Loading…</div>';
+  container.appendChild(raDiv);
+
   // Initial render
+  applyStoredReassignments();
   refreshTeamView();
   // Master Map view (admin only)
   var mmDiv = document.createElement('div');
@@ -2897,6 +3198,7 @@ function initCustMap(ri){
 
   var viewToggle=document.getElementById('map-toggle-'+ri);
   var viewMode=viewToggle?viewToggle.value:'revenue';
+  var currentMi=new Date().getMonth(); // local definition for dormant calc
 
   var REP_COLORS=['#1a6fb5','#3a7d2c','#c9680a','#7a3a0a','#b5181f'];
   var REP_NAMES=['Robert','Andrew','Alexander','Stivi','Melissa'];
@@ -2905,12 +3207,8 @@ function initCustMap(ri){
   _custMaps[ri]=map;
 
   // Dark-friendly tile layer
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_matter_nolabels/{z}/{x}/{y}{r}.png',{
-    attribution:'&copy; <a href="https://carto.com">CARTO</a>',maxZoom:18
-  }).addTo(map);
-  // Label overlay
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_matter_only_labels/{z}/{x}/{y}{r}.png',{
-    attribution:'',maxZoom:18,pane:'tooltipPane'
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    attribution:'&copy; <a href="https://openstreetmap.org">OpenStreetMap</a>',maxZoom:18
   }).addTo(map);
 
   var accts=(ACCOUNTS_DATA||[]).filter(function(a){
@@ -2930,10 +3228,10 @@ function initCustMap(ri){
     var lat=parseFloat(parts[0]),lng=parseFloat(parts[1]);
     if(isNaN(lat)||isNaN(lng))return;
 
-    var dormThresh=currentMi-2; // last 3 months window
+    var _mAgoA=12+currentMi-a.la;
     var isNeverActive=a.la<0;
-    var isActive=!isNeverActive&&a.la>=dormThresh;
-    var isDormant=!isNeverActive&&!isActive;
+    var isActive=!isNeverActive&&_mAgoA<=3;
+    var isDormant=!isNeverActive&&_mAgoA>3;
 
     // Colour logic
     var fillColor,fillOpacity,strokeColor;
@@ -3019,6 +3317,102 @@ function toggleMapView(ri){
   initCustMap(ri);
 }
 
+
+function reassignAccount(sel) {
+  var acctName = decodeURIComponent(sel.dataset.acct);
+  var newRi = parseInt(sel.value);
+  var a = ACCOUNTS_DATA.find(function(x){return x.n===acctName;});
+  if(!a || a.ri===newRi) return;
+
+  var oldRi = a.ri;
+  var oldRepName = ['Robert Schaffer','Andrew Mobilia','Alexander Poll','Stivi Maticevski','Melissa Goodridge'][oldRi];
+  var newRepName = ['Robert Schaffer','Andrew Mobilia','Alexander Poll','Stivi Maticevski','Melissa Goodridge'][newRi];
+  var nowMi = new Date().getMonth(); // current month index (0=Jan)
+
+  // Confirm
+  if(!confirm('Reassign "'+acctName+'" from '+oldRepName+' to '+newRepName+'?\n\nTargets will adjust from '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][nowMi]+' onwards.')) {
+    // Reset select
+    sel.value = oldRi;
+    return;
+  }
+
+  // Update ACCOUNTS_DATA
+  a.ri = newRi;
+
+  // Calculate monthly target impact based on account's 2025 monthly actuals
+  // We pro-rate the account's contribution to each rep's monthly target
+  // from nowMi onwards
+  var acctMonthlyRevenue = a.m || [];
+  var annualTotal = acctMonthlyRevenue.reduce(function(s,v){return s+v;},0) || 0;
+  var growthOld = [1.2,1.2,1.2,1.2,1.3][oldRi];
+  var growthNew = [1.2,1.2,1.2,1.2,1.3][newRi];
+
+  for(var mi=nowMi; mi<12; mi++){
+    var monthRevenue = acctMonthlyRevenue[mi] || 0;
+    if(monthRevenue === 0 && annualTotal > 0){
+      // distribute evenly if month had no data
+      monthRevenue = annualTotal / 12;
+    }
+    var tgtImpact = monthRevenue;
+    // Remove from old rep
+    REPS_DATA[oldRi].monthly[mi].target = Math.max(0,
+      (REPS_DATA[oldRi].monthly[mi].target || 0) - tgtImpact * growthOld
+    );
+    // Add to new rep
+    REPS_DATA[newRi].monthly[mi].target = 
+      (REPS_DATA[newRi].monthly[mi].target || 0) + tgtImpact * growthNew;
+  }
+
+  // Persist reassignment to Firebase
+  var reassignments = JSON.parse(localStorage.getItem('acct_reassign')||'{}');
+  reassignments[acctName] = {
+    oldRi: oldRi, newRi: newRi, 
+    moFrom: nowMi,
+    ts: Date.now(),
+    by: window._currentUser&&window._currentUser.email
+  };
+  localStorage.setItem('acct_reassign', JSON.stringify(reassignments));
+
+  if(window._fbSet){
+    window._fbSet('reassignments/'+acctName.replace(/[.#$/\[\]]/g,'_'), {
+      oldRi:oldRi, newRi:newRi, moFrom:nowMi, ts:Date.now(),
+      by:(window._currentUser&&window._currentUser.email)||''
+    });
+  }
+
+  // Re-render
+  refreshTeamView();
+  buildAccountsView();
+
+  // Show confirmation
+  var flash = document.createElement('div');
+  flash.style.cssText='position:fixed;bottom:24px;right:24px;background:#27ae60;color:#fff;padding:10px 18px;border-radius:6px;font-family:var(--font-mono);font-size:12px;z-index:9999';
+  flash.textContent = '✓ '+acctName.substring(0,25)+' reassigned to '+newRepName;
+  document.body.appendChild(flash);
+  setTimeout(function(){flash.remove();},3000);
+}
+
+// Load saved reassignments on startup
+function applyStoredReassignments(){
+  var reassignments = JSON.parse(localStorage.getItem('acct_reassign')||'{}');
+  Object.keys(reassignments).forEach(function(acctName){
+    var r = reassignments[acctName];
+    var a = ACCOUNTS_DATA.find(function(x){return x.n===acctName;});
+    if(!a) return;
+    a.ri = r.newRi;
+    var growthOld = [1.2,1.2,1.2,1.2,1.3][r.oldRi];
+    var growthNew = [1.2,1.2,1.2,1.2,1.3][r.newRi];
+    for(var mi=r.moFrom; mi<12; mi++){
+      var monthRevenue = (a.m||[])[mi] || 0;
+      REPS_DATA[r.oldRi].monthly[mi].target = Math.max(0,
+        (REPS_DATA[r.oldRi].monthly[mi].target||0) - monthRevenue * growthOld
+      );
+      REPS_DATA[r.newRi].monthly[mi].target =
+        (REPS_DATA[r.newRi].monthly[mi].target||0) + monthRevenue * growthNew;
+    }
+  });
+}
+
 function custSearch(ri,q){
   var tbody=document.getElementById('cust-tbody-'+ri);
   if(!tbody)return;
@@ -3082,8 +3476,7 @@ function buildMasterMapView(){
   accts.forEach(function(a){if(a.ri>=0&&a.ri<5)perRep[a.ri]++;});
   var total=accts.length;
   var withAddr=accts.filter(function(a){return a.ad&&a.ad.trim();}).length;
-  var _cmiL=new Date().getMonth();
-  var dormant=accts.filter(function(a){return a.la>=0&&a.la<(_cmiL-2);}).length;
+  var dormant=accts.filter(function(a){return a.la>=0&&(12+new Date().getMonth()-a.la)>3;}).length;
 
   var legendItems=repNames.map(function(n,i){
     return '<span style="display:inline-flex;align-items:center;gap:5px;margin-right:14px">'
@@ -3101,7 +3494,7 @@ function buildMasterMapView(){
     +'<div class="kpi-card"><div class="kpi-label">Total Accounts</div><div class="kpi-val">'+total+'</div></div>'
     +'<div class="kpi-card"><div class="kpi-label">On Map</div><div class="kpi-val">'+withAddr+'</div></div>'
     +'<div class="kpi-card"><div class="kpi-label" style="color:#e05252">Dormant</div><div class="kpi-val" style="color:#e05252">'+dormant+'</div></div>'
-    +'<div class="kpi-card"><div class="kpi-label" style="color:var(--green)">Active (Q4)</div><div class="kpi-val" style="color:var(--green)">'+(total-dormant)+'</div></div>'
+    +'<div class="kpi-card"><div class="kpi-label" style="color:var(--green)">Active (3mo)</div><div class="kpi-val" style="color:var(--green)">'+(total-dormant)+'</div></div>'
     +'</div>'
     +'<div style="margin-bottom:12px;display:flex;flex-wrap:wrap;align-items:center;gap:4px">'
     +legendItems
@@ -3149,7 +3542,7 @@ function initMasterMap(){
         if(res&&res[0]){
           var lat=parseFloat(res[0].lat),lng=parseFloat(res[0].lon);
           var col=repColors[a.ri]||'#888';
-          var _cmiOld=new Date().getMonth();var isDorm=a.la>=0&&a.la<(_cmiOld-2);
+          var isDorm=a.la>=0&&(12+new Date().getMonth()-a.la)>3;
           var rad=Math.max(6,Math.min(22,6+16*(a.s/maxS)));
           var lastMo=(a.la>=0&&a.la<12)?MO[a.la]+' 2025':'No orders';
 
