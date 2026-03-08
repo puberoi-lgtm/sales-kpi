@@ -1033,8 +1033,7 @@ function buildRepView(repIdx) {
   <!-- Monthly Tracker -->
   <div class="section-hdr">📋 Monthly Tracker — Auto-summed from class entries</div>
   ${repIdx === 4 ? `<div id="melissa-2026-ytd-banner" style="display:none;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.25);border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:11px;color:var(--muted)">
-    <span style="color:#60a5fa;font-weight:600">ℹ 2026 YTD Sales (Jan–Mar 9, context only)</span>
-    &nbsp;·&nbsp; These sales are not counted toward your annual target.
+    <span style="color:#60a5fa;font-weight:600">ℹ 2026 YTD Sales (Jan–Feb context)</span>
     &nbsp;&nbsp;<span style="font-family:var(--font-mono);font-size:12px;color:#ffe566" id="melissa-2026-ytd-amount"></span>
   </div>` : ''}
   <div class="tracker-wrap" style="margin-bottom:6px">
@@ -1135,7 +1134,7 @@ function populateTracker(repIdx) {
     const rowClass = isCurrentMonth ? 'current-month-row' : '';
     const badge = isCurrentMonth ? '<span class="current-month-badge">▶ Now</span>' : '';
 
-    const status = act > 0 ? (act >= tgt ? `<span class="status-on">✅ On Target</span>` : `<span class="status-off">⚠️ Below Target</span>`) : `<span class="status-pend">Pending</span>`;
+    const status = tgt === 0 ? `<span class="status-pend" style="color:var(--muted)">Not qualified</span>` : act > 0 ? (act >= tgt ? `<span class="status-on">✅ On Target</span>` : `<span class="status-off">⚠️ Below Target</span>`) : `<span class="status-pend">Pending</span>`;
     const varCell = vari !== null ? `<span class="${vari >= 0 ? 'variance-pos' : 'variance-neg'}">${fmt(vari)}</span>` : '—';
     const pctCell = vpct !== null ? `<span class="${vpct >= 0 ? 'variance-pos' : 'variance-neg'}">${fmtPct(vpct)}</span>` : '—';
     const achCell = achPct !== null ? `<span class="${achPct >= 1 ? 'variance-pos' : achPct >= 0.8 ? '' : 'variance-neg'}" style="${achPct >= 0.8 && achPct < 1 ? 'color:var(--amber)' : ''}">${(achPct * 100).toFixed(1)}%</span>` : '—';
@@ -1162,7 +1161,7 @@ function populateTracker(repIdx) {
   if (totAchEl) totAchEl.innerHTML = totAchPct !== null ? `<span class="${totAchPct>=1?'variance-pos':totAchPct>=0.8?'':'variance-neg'}" style="${totAchPct>=0.8&&totAchPct<1?'color:var(--amber)':''}">${(totAchPct*100).toFixed(1)}%</span>` : '—';
   document.getElementById(`tot-var-${repIdx}`).innerHTML = totVar !== null ? `<span class="${totVar>=0?'variance-pos':'variance-neg'}">${fmt(totVar)}</span>` : '—';
   document.getElementById(`tot-vpct-${repIdx}`).innerHTML = totVpct !== null ? `<span class="${totVpct>=0?'variance-pos':'variance-neg'}">${fmtPct(totVpct)}</span>` : '—';
-  const s = totAct > 0 ? (totAct >= totTgt ? `<span class="status-on">✅ On Target</span>` : `<span class="status-off">⚠️ Below Target</span>`) : `<span class="status-pend">Pending</span>`;
+  const s = totTgt === 0 ? `<span class="status-pend" style="color:var(--muted)">Not qualified</span>` : totAct > 0 ? (totAct >= totTgt ? `<span class="status-on">✅ On Target</span>` : `<span class="status-off">⚠️ Below Target</span>`) : `<span class="status-pend">Pending</span>`;
   document.getElementById(`tot-stat-${repIdx}`).innerHTML = s;
 
   // KPI cards
@@ -1214,7 +1213,7 @@ function populateClassTrackers(repIdx) {
       const isCurrentMonth = mi === currentMi;
       const rowClass = isCurrentMonth ? 'current-month-row' : '';
       const badge = isCurrentMonth ? '<span class="current-month-badge">▶ Now</span>' : '';
-      const status = act > 0 ? (act >= tgt ? `<span class="status-on">✅ On Target</span>` : `<span class="status-off">⚠️ Below Target</span>`) : `<span class="status-pend">Pending</span>`;
+      const status = tgt === 0 ? `<span class="status-pend" style="color:var(--muted)">Not qualified</span>` : act > 0 ? (act >= tgt ? `<span class="status-on">✅ On Target</span>` : `<span class="status-off">⚠️ Below Target</span>`) : `<span class="status-pend">Pending</span>`;
       const varCell = vari !== null ? `<span class="${vari>=0?'variance-pos':'variance-neg'}">${fmt(vari)}</span>` : '—';
       const pctCell = vpct !== null ? `<span class="${vpct>=0?'variance-pos':'variance-neg'}">${fmtPct(vpct)}</span>` : '—';
 
@@ -1240,7 +1239,7 @@ function populateClassTrackers(repIdx) {
     if (el(`cls-tot-act-${repIdx}-${ci}`)) el(`cls-tot-act-${repIdx}-${ci}`).textContent = fmt(totAct);
     if (el(`cls-tot-var-${repIdx}-${ci}`)) el(`cls-tot-var-${repIdx}-${ci}`).innerHTML = totVar !== null ? `<span class="${totVar>=0?'variance-pos':'variance-neg'}">${fmt(totVar)}</span>` : '—';
     if (el(`cls-tot-vpct-${repIdx}-${ci}`)) el(`cls-tot-vpct-${repIdx}-${ci}`).innerHTML = totVpct !== null ? `<span class="${totVpct>=0?'variance-pos':'variance-neg'}">${fmtPct(totVpct)}</span>` : '—';
-    const s = totAct > 0 ? (totAct >= totTgt ? `<span class="status-on">✅ On Target</span>` : `<span class="status-off">⚠️ Below Target</span>`) : `<span class="status-pend">Pending</span>`;
+    const s = totTgt === 0 ? `<span class="status-pend" style="color:var(--muted)">Not qualified</span>` : totAct > 0 ? (totAct >= totTgt ? `<span class="status-on">✅ On Target</span>` : `<span class="status-off">⚠️ Below Target</span>`) : `<span class="status-pend">Pending</span>`;
     if (el(`cls-tot-stat-${repIdx}-${ci}`)) el(`cls-tot-stat-${repIdx}-${ci}`).innerHTML = s;
   });
 }
@@ -2218,7 +2217,7 @@ function populateBulkView() {
         const act = getClassActual(ri, ci, mi);
         const vari = act > 0 ? act - tgt : null;
         const varCell = vari !== null ? `<span class="${vari>=0?'variance-pos':'variance-neg'}">${fmt(vari)}</span>` : '—';
-        const status = act > 0 ? (act >= tgt ? `<span class="status-on">✅ On Target</span>` : `<span class="status-off">⚠️ Below Target</span>`) : `<span class="status-pend">Pending</span>`;
+        const status = tgt === 0 ? `<span class="status-pend" style="color:var(--muted)">Not qualified</span>` : act > 0 ? (act >= tgt ? `<span class="status-on">✅ On Target</span>` : `<span class="status-off">⚠️ Below Target</span>`) : `<span class="status-pend">Pending</span>`;
         const actualCell = isAdmin
           ? `<input class="actual-input" type="text" inputmode="numeric" placeholder="0"
               value="${act > 0 ? act : ''}"
@@ -2563,7 +2562,7 @@ function buildLocationsPane(ri){
   o+='<div class="loc-table-wrap"><table class="loc-table" id="cust-tbl-'+ri+'">'
     +'<thead><tr>'
     +'<th>Customer</th><th>Parent Company</th><th style="text-align:right">2025 Rev</th>'
-    +'<th>Q4 Status</th><th>Last Order</th><th>Contact</th>'
+    +'<th>Q4 Status</th><th>Last Order</th>'
     +'</tr></thead><tbody id="cust-tbody-'+ri+'">';
   accts.forEach(function(a){
     var dorm=a.l3===0;
@@ -2571,9 +2570,7 @@ function buildLocationsPane(ri){
     var q4=dorm
       ?'<span class="cust-badge" style="background:#e0525222;color:#e05252">Dormant</span>'
       :'<span class="cust-badge" style="background:#27ae6022;color:#27ae60">Active</span>';
-    var ct='';
-    if(a.em)ct+='<a href="mailto:'+a.em+'" style="color:var(--green);text-decoration:none" title="'+a.em+'">&#9993;</a> ';
-    if(a.ph)ct+='<a href="tel:'+a.ph+'" style="color:var(--muted);text-decoration:none;font-size:10px">'+a.ph+'</a>';
+
     var src=(a.n+' '+(a.p||'')+' '+(a.mg||'')).toLowerCase();
     o+='<tr data-search="'+src+'">'
       +'<td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+a.n+'">'+a.n+'</td>'
@@ -2581,7 +2578,6 @@ function buildLocationsPane(ri){
       +'<td style="font-family:var(--font-mono);text-align:right">$'+Math.round(a.s).toLocaleString()+'</td>'
       +'<td style="text-align:center">'+q4+'</td>'
       +'<td style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">'+lastMo+'</td>'
-      +'<td style="white-space:nowrap">'+ct+'</td>'
       +'</tr>';
   });
   o+='</tbody></table></div></div>';
