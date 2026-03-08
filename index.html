@@ -3106,18 +3106,18 @@ function renderHeatmap(ct){
   var mo25hdrs=MN.map(function(m,i){
     var isActive=i>=_actThr;
     var sty=isActive?'color:#17a589;font-weight:700;background:rgba(23,165,137,0.07)':'';
-    return '<th style="'+sty+'">'+(isActive?'<b>':'')+m+' <span style="opacity:.5;font-size:8px;font-weight:400">'25</span>'+(isActive?'</b>':'')+'</th>';
+    return '<th style="'+sty+'">'+(isActive?'<b>':'')+m+' <span style="opacity:.5;font-size:8px;font-weight:400">&#39;25</span>'+(isActive?'</b>':'')+'</th>';
   }).join('');
 
   var mo26hdrs=cols2026.map(function(mi){
     return '<th style="color:#e8a838;font-weight:700;background:rgba(232,168,56,0.07)" title="Rep-level total only">'
-      +'<b>'+MN[mi]+' <span style="opacity:.5;font-size:8px;font-weight:400">'26</span></b></th>';
+      +'<b>'+MN[mi]+' <span style="opacity:.5;font-size:8px;font-weight:400">&#39;26</span></b></th>';
   }).join('');
 
   // Active months label
   var activeLabel=(function(){
     var ms=MN.slice(_actThr);
-    return ms.length?(ms[0]+(ms.length>1?'–'+ms[ms.length-1]:'')+' '25 active'):'All '25 data >3mo old';
+    return ms.length?(ms[0]+(ms.length>1?'–'+ms[ms.length-1]:'')+" '25 active"):"All '25 data >3mo old";
   }());
   var col26label=cols2026.length
     ?' · <span style="color:#e8a838">'+cols2026.map(function(m){return MN[m]+" '26";}).join(', ')+' = rep totals (no per-account breakdown)</span>'
