@@ -3007,11 +3007,9 @@ function renderPlanner(ct){
         +'<div><div class="planner-card-name">'+a.n+'</div>'+(a.p?'<span class="planner-card-parent" style="background:'+rc+'22;color:'+rc+'">'+a.p+'</span>':'')+'</div>'
         +'<span class="dormant-badge">Dormant</span>'
       +'</div>'
-      +(a.ad?'<div class="planner-card-stat" style="font-size:9px;color:var(--muted)">'+a.ad+'</div>':'')
       +'<div class="planner-card-stat">2025 revenue: <span>$'+(a.s/1000).toFixed(1)+'k</span></div>'
       +'<div class="planner-card-stat">Last order: <span>'+last+'</span> &middot; Peak: <span>'+peak+'</span></div>'
       +'<div class="planner-contact-row">'+em+ph+mo
-      +(!a.em&&!a.ph&&!a.mo?'<span style="font-family:var(--font-mono);font-size:10px;color:var(--muted);font-style:italic">No contact info on file</span>':'')
       +'</div></div>';
   }
   var lost=dormant.reduce(function(s,a){return s+a.s;},0);
