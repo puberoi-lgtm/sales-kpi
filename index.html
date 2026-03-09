@@ -2930,7 +2930,7 @@ var _acctState={rep:'all',filter:'all',search:'',tab:'heatmap',company:'all',pag
 function buildAccountsView(){
   var el=document.getElementById('accounts-content');if(!el)return;
   var RN=['Robert Schaffer','Andrew Mobilia','Alexander Poll','Stivi Maticevski','Melissa Goodridge'];
-  var repOpts='<option value="all"'+('all'===_acctState.rep?' selected':'')+'>All Reps</option>'+RN.map(function(r){return '<option value="'+r+'"'+(r===_acctState.rep?' selected':'')+'>'+r+'</option>';}).join('');
+  var repOpts='<option value="all"'+('all'===_acctState.rep?' selected':'')+'>All Reps</option>'+RN.map(function(r){return '<option value="'+r+'"'+(r===_acctState.rep?' selected':'')+'>'+r+'</option>';}).join('')+'<option value="unassigned"'+('unassigned'===_acctState.rep?' selected':'')+'>Unassigned</option>';
   // Build unique company list
   var companies=['all'].concat(Array.from(new Set(ACCOUNTS_DATA.map(function(a){return a.p||'';}).filter(Boolean))).sort());
   var coOpts=companies.map(function(c){return '<option value="'+c+'"'+(c===_acctState.company?' selected':'')+'>'+( c==='all'?'All Companies':c)+'</option>';}).join('');
@@ -2951,7 +2951,8 @@ function getFilteredAccounts(){
   var q=_acctState.search.toLowerCase();
   var RN=['Robert Schaffer','Andrew Mobilia','Alexander Poll','Stivi Maticevski','Melissa Goodridge'];
   return ACCOUNTS_DATA.filter(function(a){
-    if(_acctState.rep!=='all'&&RN[a.ri]!==_acctState.rep)return false;
+    if(_acctState.rep==='unassigned'){if(a.ri!==-1)return false;}
+    else if(_acctState.rep!=='all'&&RN[a.ri]!==_acctState.rep)return false;
     if(_acctState.company!=='all'&&(a.p||'')!==_acctState.company)return false;
     if(_acctState.filter==='dormant'&&!isAcctDormant(a))return false;
     if(_acctState.filter==='active'&&!isAcctActive(a))return false;
