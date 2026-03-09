@@ -153,7 +153,7 @@
     display: flex; align-items: center; gap: 10px; flex-shrink: 0;
   }
   .topbar-right {
-    display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+    display: flex; align-items: center; gap: 8px; flex-shrink: 1; min-width: 0; overflow: hidden;
   }
   .topbar-action-btn {
     background: transparent; border: 1px solid var(--border);
@@ -587,50 +587,91 @@
     .view { padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
   }
 
-  @media (max-width: 480px) {
-    /* Team overview big stat cards */
-    .team-stat-grid { grid-template-columns: 1fr !important; gap: 8px !important; }
-    .team-ytd-row   { grid-template-columns: 1fr !important; gap: 8px !important; }
+  @media (max-width: 768px) {
 
-    /* KPI cards - 2 col on mobile */
-    .kpi-row { grid-template-columns: repeat(2,1fr) !important; }
+    /* ── Base ── */
+    body { overflow-x: hidden; }
+    .view { padding: 10px 10px 80px !important; max-width: 100vw !important; box-sizing: border-box; overflow-x: hidden; }
 
-    /* EOY box - stack vertically */
-    .eoy-card { grid-template-columns: 1fr !important; }
-    .eoy-item { border-right: none !important; border-bottom: 1px solid var(--border); }
-    .eoy-item:last-child { border-bottom: none; }
+    /* ── Topbar ── */
+    .topbar { padding: 0 8px; }
+    .topbar-row1 { height: auto; padding: 6px 0; flex-wrap: nowrap; gap: 6px; }
+    .topbar-logo { flex-shrink: 1; min-width: 0; }
+    .topbar-logo > div > div:last-child { display: none; }
+    .topbar-logo > div > div:first-child { font-size: 12px; }
+    #sync-indicator { display: none !important; }
+    #user-info { display: none !important; }
+    .topbar-right { gap: 4px; }
+    .topbar-action-btn { font-size: 10px !important; padding: 3px 6px !important; }
+    .theme-toggle { font-size: 10px !important; padding: 3px 6px !important; }
+    .topbar-row2 { overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; padding: 0; scrollbar-width: none; }
+    .topbar-row2::-webkit-scrollbar { display: none; }
+    .tab-btn { font-size: 11px; padding: 8px 10px; }
 
-    /* Rep header badges wrap */
+    /* ── Rep header ── */
+    .rep-header { padding: 12px !important; }
+    .rep-title { font-size: 20px !important; }
     .rep-badges { flex-wrap: wrap; gap: 6px; }
 
-    /* Charts full width */
-    .charts-row { grid-template-columns: 1fr !important; }
+    /* ── KPI cards: 2 col ── */
+    .kpi-row { grid-template-columns: repeat(2, 1fr) !important; gap: 6px !important; }
+    .kpi-card { padding: 10px 10px !important; }
+    .kpi-value { font-size: 15px !important; }
+    .kpi-label { font-size: 9px !important; }
 
-    /* Tracker table scrollable */
-    .tracker-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    .tracker-wrap td, .tracker-wrap th { font-size: 10px; padding: 5px 6px; white-space: nowrap; }
+    /* ── EOY box: stack ── */
+    .eoy-card { grid-template-columns: 1fr 1fr !important; }
+    .eoy-item { border-right: none !important; border-bottom: 1px solid var(--border); padding: 10px 12px !important; }
+    .eoy-item:last-child { border-bottom: none; }
+    .eoy-item .eoy-val { font-size: 15px !important; }
+    .eoy-item .eoy-label { font-size: 9px !important; }
 
-    /* Font sizes */
-    .kpi-value { font-size: 16px !important; }
-    .eoy-item .eoy-val { font-size: 16px; }
-    .rep-title { font-size: 18px !important; }
+    /* ── Charts: stack ── */
+    .charts-row { grid-template-columns: 1fr !important; gap: 10px !important; }
+    .charts-row > div { min-width: 0 !important; width: 100% !important; }
 
-    /* Nav tabs scrollable */
-    .topbar-row2 { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    /* ── Tracker table: scroll ── */
+    .tracker-wrap { overflow-x: auto !important; -webkit-overflow-scrolling: touch; max-width: 100vw; }
+    .tracker-wrap table { min-width: 600px; }
+    .tracker-wrap td, .tracker-wrap th { font-size: 10px !important; padding: 5px 6px !important; white-space: nowrap; }
 
-    /* Heatmap scrollable */
-    .heatmap-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    /* ── Team overview cards: stack ── */
+    .team-stat-grid { grid-template-columns: 1fr !important; gap: 8px !important; }
+    .team-big-cards > div[style*="background:var(--border)"] { display: none !important; }
+    .team-big-cards > div[style*="text-align:center"] { padding: 12px 10px !important; border-bottom: 1px solid var(--border); }
+    .team-big-cards > div[style*="text-align:center"]:last-child { border-bottom: none; }
+    .team-ytd-row { grid-template-columns: 1fr !important; gap: 8px !important; }
 
-    /* Accounts toolbar wrap */
-    .acct-toolbar { flex-wrap: wrap; gap: 6px; }
-    .acct-toolbar input { width: 100% !important; }
+    /* ── Associate summary cards: stack ── */
+    [style*="grid-template-columns: repeat(2"] { grid-template-columns: 1fr !important; }
+    [style*="grid-template-columns:repeat(2"] { grid-template-columns: 1fr !important; }
+    [style*="grid-template-columns: 1fr 1fr"] { grid-template-columns: 1fr !important; }
+    [style*="grid-template-columns:1fr 1fr"] { grid-template-columns: 1fr !important; }
+
+    /* ── Heatmap: scroll ── */
+    .heatmap-wrap { overflow-x: auto !important; -webkit-overflow-scrolling: touch; max-width: 100vw; }
+    .heatmap-table { min-width: 700px; }
+
+    /* ── Accounts toolbar: wrap ── */
+    .acct-toolbar { flex-wrap: wrap !important; gap: 6px !important; }
+    .acct-toolbar select, .acct-toolbar input { width: 100% !important; box-sizing: border-box; }
+    .acct-toolbar button { flex: 1; min-width: 60px; }
+
+    /* ── Section headers ── */
+    .section-hdr { font-size: 10px !important; }
+
+    /* ── Footer ── */
+    .footer { padding: 12px 10px; font-size: 10px; }
+
+    /* ── Safe area ── */
+    .view { padding-bottom: calc(20px + env(safe-area-inset-bottom)) !important; }
   }
 
 </style>
 </head>
 <body>
 
-<!-- ── LOGIN SCREEN ───────────────────────────────────────── -->
+
 <div id="login-screen">
   <div class="login-card">
     <div class="login-logo">
@@ -676,7 +717,7 @@
   <div style="font-size:10px;color:#555">Support:  · </div>
 </div>
 
-<!-- ── TOP NAV ─────────────────────────────────────────────── -->
+
 <div class="topbar">
   <!-- Row 1: Logo + right-side controls -->
   <div class="topbar-row1">
@@ -1062,7 +1103,7 @@ function buildRepView(repIdx) {
   </div>
   <div class="rep-tab-pane active" id="rpane-kpi-${repIdx}">
 
-  <!-- ── ROW 1: Rep header ── -->
+  
   <div class="rep-header">
     <div>
       <div class="rep-title" style="color:${rep.color}">${rep.name}</div>
@@ -1089,7 +1130,7 @@ function buildRepView(repIdx) {
     </div>
   </div>
 
-  <!-- ── ROW 2: KPI cards ── -->
+  
   <div class="kpi-row">
     <div class="kpi-card" style="--accent-color:${rep.color}">
       <div class="kpi-label">2026 Annual Target</div>
@@ -1122,7 +1163,7 @@ function buildRepView(repIdx) {
     <div class="eoy-item"><div class="eoy-label">EOY Projection</div><div class="eoy-val" style="color:var(--muted);font-size:14px">Enter actuals to see projection</div></div>
   </div>
 
-  <!-- ── ROW 3: Charts full-width ── -->
+  
   <div class="section-hdr">📊 Performance Charts — CY2026</div>
   <div class="team-stat-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px" id="rep-charts-${repIdx}">
     <div class="chart-card">
@@ -1146,13 +1187,13 @@ function buildRepView(repIdx) {
     </div>
   </div>
 
-  <!-- ── Warning banner full-width ── -->
+  
   <div style="background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.25);border-radius:6px;padding:7px 12px;font-size:11px;color:var(--amber);display:flex;align-items:center;gap:8px;margin-bottom:12px">
     <span>⚠️</span>
     <span><strong>Invoiced figures only.</strong> Achievement is based on invoiced revenue. Open purchase orders (POs) not yet invoiced are <strong>not included</strong> in these figures.</span>
   </div>
 
-  <!-- ── ROW 4: Monthly Tracker full-width, then Results by Class full-width below ── -->
+  
 
   <!-- Monthly Tracker -->
   <div class="section-hdr">📋 Monthly Tracker — Auto-summed from class entries</div>
@@ -1887,7 +1928,7 @@ function refreshTeamView() {
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:4px">
 
         <!-- Top row: Annual summary — 4 columns -->
-        <div style="display:grid;grid-template-columns:1fr 1px 1fr 1px 1fr 1px 1fr;gap:0;margin-bottom:18px">
+        <div class="team-big-cards" style="display:grid;grid-template-columns:${window.innerWidth<768?'1fr 1fr':'1fr 1px 1fr 1px 1fr 1px 1fr'};gap:${window.innerWidth<768?'1px':'0'};margin-bottom:18px;width:100%;box-sizing:border-box;overflow:hidden">
           <div style="text-align:center;padding:0 16px">
             <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">2026 Annual Target</div>
             <div style="font-size:26px;font-weight:800;font-family:var(--font-head);color:var(--green)">${fmt(teamYtdTgt)}</div>
@@ -2972,7 +3013,7 @@ function buildAccountsView(){
     +'<button class="acct-filter-btn'+(_acctState.filter==='all'?' active':'')+'" onclick="_acctState.filter=\'all\';_acctState.page=0;window._hmPage=0;buildAccountsView()">All</button>'
     +'<button class="acct-filter-btn'+(_acctState.filter==='dormant'?' active':'')+'" onclick="_acctState.filter=\'dormant\';_acctState.page=0;window._hmPage=0;buildAccountsView()">\u26a1 Dormant</button>'
     +'<button class="acct-filter-btn'+(_acctState.filter==='active'?' active':'')+'" onclick="_acctState.filter=\'active\';_acctState.page=0;window._hmPage=0;buildAccountsView()">Active</button>'
-    +'<input type="text" placeholder="Search accounts\u2026" value="'+_acctState.search+'" oninput="_acctState.search=this.value;_acctState.page=0;window._hmPage=0;buildAccountsView()" />'
+    +'<input type="text" placeholder="Search accounts\u2026" value="'+_acctState.search+'" id="acct-search-input" oninput="_acctState.search=this.value;_acctState.page=0;window._hmPage=0;clearTimeout(window._acctSearchTimer);window._acctSearchTimer=setTimeout(function(){var v=document.getElementById('acct-search-input');var s=v?v.selectionStart:-1;buildAccountsView();var v2=document.getElementById('acct-search-input');if(v2){v2.focus();if(s>=0)v2.setSelectionRange(s,s);}},50)" />'
     +'<button onclick="openAddAccountModal(-1)" class="admin-only" style="margin-left:auto;background:var(--green);color:#fff;border:none;border-radius:6px;padding:7px 16px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-main);white-space:nowrap">+ Add Account</button>'
     +'</div>'
     
@@ -3608,6 +3649,10 @@ document.addEventListener('keydown', function(e){
 
 <script>
 if ('serviceWorker' in navigator) {
+  // Unregister all old service workers first, then register fresh
+  navigator.serviceWorker.getRegistrations().then(regs => {
+    regs.forEach(r => r.unregister());
+  });
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
       .then(r => console.log('SW registered:', r.scope))
