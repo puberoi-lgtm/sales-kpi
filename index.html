@@ -3457,21 +3457,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
         
 <!-- Add Account Modal -->
-<div id="add-account-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10001;align-items:center;justify-content:center">
-  <div style="background:var(--card-bg);border-radius:12px;padding:28px 32px;width:420px;max-width:95vw;box-shadow:0 8px 40px rgba(0,0,0,0.4)">
-    <h3 style="margin:0 0 20px;font-family:var(--font-main);color:var(--text)">Add New Account</h3>
+<div id="add-account-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10001;align-items:center;justify-content:center;flex-direction:column">
+  <div style="background:#1e1e1e;border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:28px 32px;width:420px;max-width:95vw;box-shadow:0 8px 40px rgba(0,0,0,0.6)">
+    <h3 style="margin:0 0 20px;font-family:var(--font-sec),sans-serif;font-size:16px;color:#f0f0f0">Add New Account</h3>
     <div style="display:flex;flex-direction:column;gap:12px">
       <div>
-        <label style="font-size:11px;color:var(--muted);font-family:var(--font-main)">ACCOUNT NAME *</label>
-        <input id="aa-name" placeholder="e.g. MM Electrical Ringwood" style="width:100%;box-sizing:border-box;margin-top:4px;padding:8px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-family:var(--font-main);font-size:13px">
+        <label style="font-size:11px;color:var(--muted);font-family:var(--font-sec),sans-serif">ACCOUNT NAME *</label>
+        <input id="aa-name" placeholder="e.g. MM Electrical Ringwood" style="width:100%;box-sizing:border-box;margin-top:4px;padding:8px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-family:var(--font-sec),sans-serif;font-size:13px">
       </div>
       <div>
-        <label style="font-size:11px;color:var(--muted);font-family:var(--font-main)">PARENT COMPANY</label>
-        <input id="aa-parent" placeholder="e.g. MM Electrical" style="width:100%;box-sizing:border-box;margin-top:4px;padding:8px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-family:var(--font-main);font-size:13px">
+        <label style="font-size:11px;color:var(--muted);font-family:var(--font-sec),sans-serif">PARENT COMPANY</label>
+        <input id="aa-parent" placeholder="e.g. MM Electrical" style="width:100%;box-sizing:border-box;margin-top:4px;padding:8px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-family:var(--font-sec),sans-serif;font-size:13px">
       </div>
       <div>
-        <label style="font-size:11px;color:var(--muted);font-family:var(--font-main)">ASSIGNED REP *</label>
-        <select id="aa-rep" style="width:100%;box-sizing:border-box;margin-top:4px;padding:8px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-family:var(--font-main);font-size:13px">
+        <label style="font-size:11px;color:var(--muted);font-family:var(--font-sec),sans-serif">ASSIGNED REP *</label>
+        <select id="aa-rep" style="width:100%;box-sizing:border-box;margin-top:4px;padding:8px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-family:var(--font-sec),sans-serif;font-size:13px">
           <option value="0">Robert Schaffer</option>
           <option value="1">Andrew Mobilia</option>
           <option value="2">Alexander Poll</option>
@@ -3480,14 +3480,14 @@ document.addEventListener('DOMContentLoaded', function() {
         </select>
       </div>
       <div>
-        <label style="font-size:11px;color:var(--muted);font-family:var(--font-main)">REGION</label>
-        <input id="aa-region" placeholder="e.g. VIC" style="width:100%;box-sizing:border-box;margin-top:4px;padding:8px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-family:var(--font-main);font-size:13px">
+        <label style="font-size:11px;color:var(--muted);font-family:var(--font-sec),sans-serif">REGION</label>
+        <input id="aa-region" placeholder="e.g. VIC" style="width:100%;box-sizing:border-box;margin-top:4px;padding:8px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-family:var(--font-sec),sans-serif;font-size:13px">
       </div>
     </div>
     <div id="aa-error" style="color:#f87171;font-size:12px;margin-top:10px;display:none"></div>
     <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end">
-      <button onclick="closeAddAccountModal()" style="padding:8px 20px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;font-family:var(--font-main)">Cancel</button>
-      <button onclick="saveNewAccount()" style="padding:8px 20px;border-radius:6px;border:none;background:var(--green);color:#fff;font-weight:600;cursor:pointer;font-family:var(--font-main)">Save Account</button>
+      <button onclick="closeAddAccountModal()" style="padding:8px 20px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;font-family:var(--font-sec),sans-serif">Cancel</button>
+      <button onclick="saveNewAccount()" style="padding:8px 20px;border-radius:6px;border:none;background:var(--green);color:#fff;font-weight:600;cursor:pointer;font-family:var(--font-sec),sans-serif">Save Account</button>
     </div>
   </div></div>
 
@@ -3497,7 +3497,7 @@ var _addAccountRepIdx = 0;
 function openAddAccountModal(ri) {
   _addAccountRepIdx = ri < 0 ? 0 : ri;
   document.getElementById('aa-rep').value = _addAccountRepIdx;
-  ['aa-name','aa-parent','aa-region','aa-address','aa-phone','aa-email','aa-manager','aa-mobile','aa-notes'].forEach(function(id){
+  ['aa-name','aa-parent','aa-region'].forEach(function(id){
     document.getElementById(id).value = '';
   });
   document.getElementById('aa-error').style.display = 'none';
