@@ -184,12 +184,12 @@
   .rep-accent-bar { height: 3px; border-radius: 2px; width: 40px; margin-top: 6px; }
 
   /* ── KPI CARDS ── */
-  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
+  .kpi-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 14px; }
   .kpi-card {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 14px 16px;
+    padding: 10px 12px;
     position: relative; overflow: hidden;
   }
   .kpi-card::before {
@@ -197,7 +197,7 @@
     background: var(--accent-color, var(--green));
   }
   .kpi-label { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 6px; }
-  .kpi-value { font-family: var(--font-head); font-size: 24px; font-weight: 800; line-height: 1; }
+  .kpi-value { font-family: var(--font-head); font-size: 20px; font-weight: 800; line-height: 1; }
   .kpi-sub { font-size: 10px; color: var(--muted); margin-top: 4px; }
 
   /* ── SECTION HEADERS ── */
@@ -602,9 +602,7 @@
       <button class="tab-btn admin-only" onclick="showView('bulk')" id="tab-bulk" style="display:none">
         <span class="dot" style="background:#f5a623"></span>Bulk Entry
       </button>
-      <button class="tab-btn admin-only" onclick="showView('mastermap')" id="tab-mastermap" style="display:none">
-        <span class="dot" style="background:#8e44ad"></span>Map
-      </button>
+      
       <button class="tab-btn admin-only" onclick="showView('reps-admin')" id="tab-reps-admin" style="display:none">
         <span class="dot" style="background:#e91e8c"></span>Reps
       </button>
@@ -976,14 +974,14 @@ function buildRepView(repIdx) {
       <div class="kpi-label">Annual Target</div>
       <div class="kpi-value" style="color:var(--green)" id="kpi-anntgt-${repIdx}">${fmt(annualTarget)}</div>
     </div>
-    <div class="kpi-card" style="--accent-color:#888">
-      <div class="kpi-label">Achieved FY2025</div>
-      <div class="kpi-value" style="color:#6699cc">${fmt(annualPrev)}</div>
-    </div>
     <div class="kpi-card" style="--accent-color:#a78bfa">
       <div class="kpi-label">Acct Ach 2025</div>
       <div class="kpi-value" style="color:#a78bfa">${fmt(annualAcctPrev)}</div>
-      <div style="font-size:9px;color:var(--muted);margin-top:2px">2026-allocated accounts · target base</div>
+      <div style="font-size:9px;color:var(--muted);margin-top:2px">2026-allocated · target base</div>
+    </div>
+    <div class="kpi-card" style="--accent-color:#888">
+      <div class="kpi-label">Achieved FY2025</div>
+      <div class="kpi-value" style="color:#6699cc">${fmt(annualPrev)}</div>
     </div>
     <div class="kpi-card" style="--accent-color:var(--amber)">
       <div class="kpi-label">YTD Invoiced</div>
@@ -2556,10 +2554,6 @@ function showView(id) {
 
   if (id === 'team') {
     refreshTeamView();
-  } else if (id === 'mastermap') {
-    setTimeout(function(){ initMasterMap(); }, 80);
-  } else if (id === 'mastermap') {
-    setTimeout(function(){ initMasterMap(); }, 80);
   } else if (id === 'accounts') {
     buildAccountsView();
   } else if (id === 'reps-admin') {
@@ -3183,13 +3177,6 @@ function init() {
 
   // Initial render
   applyStoredReassignments();
-  refreshTeamView();
-  // Master Map view (admin only)
-  var mmDiv = document.createElement('div');
-  mmDiv.id = 'view-mastermap';
-  mmDiv.className = 'view';
-  mmDiv.innerHTML = buildMasterMapView();
-  container.appendChild(mmDiv);
 
   window._initDone = true;
 }
@@ -3524,153 +3511,7 @@ function reEngSnooze(ri, name) {
 }
 
 
-function buildMasterMapView(){
-  var repColors=['#4472C4','#70AD47','#ED7D31','#9E480E','#C00000'];
-  var repNames=['Robert Schaffer','Andrew Mobilia','Alexander Poll','Stivi Maticevski','Melissa Goodridge'];
-  var stats=['','','','',''];
-  var accts=ACCOUNTS_DATA||[];
-  var perRep=[0,0,0,0,0];
-  accts.forEach(function(a){if(a.ri>=0&&a.ri<5)perRep[a.ri]++;});
-  var total=accts.length;
-  var withAddr=accts.filter(function(a){return a.ad&&a.ad.trim();}).length;
-  var dormant=accts.filter(function(a){return isAcctDormant(a);}).length;
 
-  var legendItems=repNames.map(function(n,i){
-    return '<span style="display:inline-flex;align-items:center;gap:5px;margin-right:14px">'
-      +'<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'+repColors[i]+'"></span>'
-      +'<span style="font-family:var(--font-mono);font-size:11px;color:var(--text)">'+n+' ('+perRep[i]+')</span>'
-      +'</span>';
-  }).join('');
-
-  return '<div>'
-    +'<div class="rep-header"><div>'
-    +'<div class="rep-title" style="color:#8e44ad">&#127759; Master Customer Map</div>'
-    +'<div class="rep-subtitle">All reps &middot; '+total+' accounts &middot; '+withAddr+' mapped &middot; '+dormant+' dormant</div>'
-    +'</div></div>'
-    +'<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px">'
-    +'<div class="kpi-card"><div class="kpi-label">Total Accounts</div><div class="kpi-val">'+total+'</div></div>'
-    +'<div class="kpi-card"><div class="kpi-label">On Map</div><div class="kpi-val">'+withAddr+'</div></div>'
-    +'<div class="kpi-card"><div class="kpi-label" style="color:#e05252">Dormant</div><div class="kpi-val" style="color:#e05252">'+dormant+'</div></div>'
-    +'<div class="kpi-card"><div class="kpi-label" style="color:var(--green)">Active (Oct–Feb)</div><div class="kpi-val" style="color:var(--green)">'+(total-dormant)+'</div></div>'
-    +'</div>'
-    +'<div style="margin-bottom:12px;display:flex;flex-wrap:wrap;align-items:center;gap:4px">'
-    +legendItems
-    +'<span style="margin-left:8px;font-family:var(--font-mono);font-size:10px;color:var(--muted)">&#9679; Solid = Active &nbsp; &#9675; Hollow = Dormant &nbsp; Size = revenue</span>'
-    +'</div>'
-    +'<div id="master-map" style="width:100%;height:560px;border-radius:10px;border:1px solid var(--border);margin-bottom:24px"></div>'
-    +'<div style="font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-bottom:20px">&#9432; Showing accounts with addresses only. Hover a bubble to see customer details.</div>'
-    +'</div>';
-}
-
-var _masterMapInit=false;
-function initMasterMap(){
-  if(_masterMapInit)return;
-  if(typeof L==='undefined'){setTimeout(initMasterMap,300);return;}
-  var el=document.getElementById('master-map');
-  if(!el)return;
-  _masterMapInit=true;
-
-  var map=L.map('master-map',{zoomControl:true}).setView([-27,133],4);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-    attribution:'&copy; <a href="https://openstreetmap.org">OSM</a>',maxZoom:18
-  }).addTo(map);
-
-  var repColors=['#4472C4','#70AD47','#ED7D31','#9E480E','#C00000'];
-  var repNames=['Robert Schaffer','Andrew Mobilia','Alexander Poll','Stivi Maticevski','Melissa Goodridge'];
-  var MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-
-  var accts=(ACCOUNTS_DATA||[]).filter(function(a){return a.ad&&a.ad.trim();});
-  if(!accts.length)return;
-
-  var maxS=Math.max.apply(null,accts.map(function(a){return a.s||0;}))||1;
-  var allBounds=[];
-  var remaining=accts.length;
-
-  // Use hardcoded lat/lng from ad field (format: "lat,lng")
-  accts.forEach(function(a){
-    if(!a.ad||!a.ad.trim())return;
-    var parts=a.ad.trim().split(',');
-    if(parts.length<2)return;
-    var lat=parseFloat(parts[0]),lng=parseFloat(parts[1]);
-    if(isNaN(lat)||isNaN(lng))return;
-
-    var col=repColors[a.ri]||'#888';
-    var isDorm=isAcctDormant(a);
-    var rad=Math.max(6,Math.min(22,6+16*(a.s/maxS)));
-    var lastMo=(a.la>=0&&a.la<12)?MO[a.la]+' 2025':'No orders';
-
-    var circle=L.circleMarker([lat,lng],{
-      radius:rad,
-      fillColor:col,
-      color:isDorm?'#fff':col,
-      weight:isDorm?1.5:0,
-      opacity:isDorm?0.7:1,
-      fillOpacity:isDorm?0.35:0.8
-    }).addTo(map);
-
-    var repName=repNames[a.ri]||'Unknown';
-    var pop='<div style="font-size:12px;min-width:200px;line-height:1.7">'
-      +'<strong style="font-size:13px">'+a.n+'</strong><br>'
-      +'<span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:700;background:'+col+'22;color:'+col+'">'+repName+'</span><br>'
-      +(a.p&&a.p!==a.n?'<span style="color:#888;font-size:10px">'+a.p+'</span><br>':'')
-      +'<span style="color:'+(isDorm?'#e05252':'#27ae60')+';font-weight:600">'+(isDorm?'⚫ Dormant':'🟢 Active')+'</span><br>'
-      +'2025 Revenue: <strong>$'+Math.round(a.s).toLocaleString()+'</strong><br>'
-      +'Last order: '+lastMo+'<br>'
-      +(a.em?'<a href="mailto:'+a.em+'" style="color:#17a589">'+a.em+'</a><br>':'')
-      +(a.ph?'Phone: '+a.ph+'<br>':'')
-      +'</div>';
-
-    circle.bindPopup(pop,{maxWidth:300});
-    circle.on('mouseover',function(){this.openPopup();});
-    allBounds.push([lat,lng]);
-  });
-  if(allBounds.length>1)map.fitBounds(allBounds,{padding:[30,30]});
-}
-</script>
-
-
-<!-- ── FORGOT PASSWORD MODAL ── -->
-<div id="forgot-pw-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:10000;align-items:center;justify-content:center">
-  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px 32px;width:380px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,.5)">
-    <div style="font-family:var(--font-head);font-weight:800;font-size:16px;margin-bottom:6px">Reset Password</div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:18px;line-height:1.6">Enter your Serveredge email address and we'll send you a link to reset your password.</div>
-    <div style="margin-bottom:14px">
-      <label style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px">Email Address</label>
-      <input type="email" id="forgot-pw-email" placeholder="you&#64;serveredge.com.au"
-        style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:9px 12px;font-family:var(--font-mono);font-size:12px;outline:none;box-sizing:border-box">
-    </div>
-    <div id="forgot-pw-msg" style="font-size:11px;margin-bottom:12px;min-height:16px"></div>
-    <div style="display:flex;gap:8px">
-      <button id="forgot-pw-send" style="flex:1;background:var(--green);color:#000;border:none;border-radius:6px;padding:9px;font-family:var(--font-head);font-size:12px;font-weight:700;cursor:pointer">Send Reset Link</button>
-      <button id="forgot-pw-cancel" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:9px 16px;font-family:var(--font-mono);font-size:11px;cursor:pointer">Cancel</button>
-    </div>
-  </div>
-</div>
-
-<!-- ── GLOBAL FOOTER ── -->
-<footer id="app-footer" style="display:none;border-top:1px solid var(--border);margin-top:32px;padding:16px 24px 20px;max-width:1400px;margin-left:auto;margin-right:auto">
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px">
-    <div style="font-size:10px;color:var(--muted);line-height:1.7;max-width:500px">
-      <span style="color:var(--text);font-weight:600">© 2026 Serveredge.</span>
-      This dashboard and all its contents are the exclusive property of Serveredge. Any unauthorised access, use, reproduction or distribution of this material is strictly prohibited and may be subject to legal action.
-    </div>
-    <div style="font-size:10px;color:var(--muted);text-align:right;line-height:1.8">
-      <div style="color:var(--text);font-weight:600;margin-bottom:3px">Dashboard Support</div>
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-        <span style="color:var(--muted);font-size:10px">puberoi&#64;serveredge.com.au</span>
-        <button onclick="copyEmail('puberoi&#64;serveredge.com.au', this)" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:4px;padding:2px 7px;font-size:9px;cursor:pointer;font-family:var(--font-mono)">Copy</button>
-      </div>
-      <div style="display:flex;align-items:center;gap:6px">
-        <span style="color:var(--muted);font-size:10px">pkumar&#64;serveredge.com.au</span>
-        <button onclick="copyEmail('pkumar&#64;serveredge.com.au', this)" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:4px;padding:2px 7px;font-size:9px;cursor:pointer;font-family:var(--font-mono)">Copy</button>
-      </div>
-      
-      
-    </div>
-  </div>
-</footer>
-
-<script>
 function copyEmail(email, btn) {
   var plain = email.replace(/&#64;/g, '&#64;');
   navigator.clipboard.writeText(plain).then(function() {
