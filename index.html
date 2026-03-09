@@ -167,7 +167,7 @@
   .tab-btn .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
 
   /* ── VIEWS ── */
-  .view { display: none; padding: 14px 20px 28px; max-width: 1400px; margin: 0 auto; }
+  .view { display: none; padding: 16px 24px 32px; max-width: 1440px; margin: 0 auto; }
   .view.active { display: block; }
 
   /* ── REP HEADER ── */
@@ -175,8 +175,8 @@
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 10px 16px;
-    margin-bottom: 10px;
+    padding: 12px 18px;
+    margin-bottom: 12px;
     display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
   }
   .rep-title { font-family: var(--font-head); font-size: 22px; font-weight: 800; }
@@ -184,13 +184,14 @@
   .rep-accent-bar { height: 3px; border-radius: 2px; width: 40px; margin-top: 6px; }
 
   /* ── KPI CARDS ── */
-  .kpi-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 14px; }
+  .kpi-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 14px; align-items: stretch; }
   .kpi-card {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 10px 12px;
+    padding: 12px 14px;
     position: relative; overflow: hidden;
+    display: flex; flex-direction: column; justify-content: center;
   }
   .kpi-card::before {
     content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
@@ -202,11 +203,10 @@
 
   /* ── SECTION HEADERS ── */
   .section-hdr {
-    display: flex; align-items: center; gap: 8px;
-    font-family: var(--font-head); font-size: 10px; font-weight: 700;
-    text-transform: uppercase; letter-spacing: .12em; color: var(--muted);
-    margin: 20px 0 10px;
+    display: flex; align-items: center; margin: 14px 0 8px; font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-family: var(--font-sec);
   }
+
   .section-hdr::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 
   /* ── GROWTH SLIDERS ── */
@@ -242,6 +242,7 @@
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 12px;
+    display: flex; flex-direction: column;
   }
   .chart-card.wide { grid-column: 1 / -1; }
   .chart-title {
@@ -249,8 +250,8 @@
     font-family: var(--font-sec);
     color: var(--muted); margin-bottom: 8px;
   }
-  .chart-wrap { position: relative; height: 190px; }
-  .chart-wrap.tall { height: 210px; }
+  .chart-wrap { position: relative; height: 200px; }
+  .chart-wrap.tall { height: 200px; }
 
   /* ── TRACKER TABLE ── */
   .tracker-wrap {
@@ -262,17 +263,19 @@
     overflow: hidden;
     margin-bottom: 18px;
   }
-  .tracker-wrap table { width: 100%; border-collapse: collapse; }
+  .tracker-wrap table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  .tracker-wrap th:nth-child(1), .tracker-wrap td:nth-child(1) { width: 130px; }
+  .tracker-wrap th:not(:first-child), .tracker-wrap td:not(:first-child) { width: auto; min-width: 90px; }
   .tracker-wrap th {
     background: var(--green-dk); color: #fff;
     font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
-    padding: 8px 12px; text-align: right; font-family: var(--font-sec); font-weight: 600;
+    padding: 7px 10px; text-align: right; font-family: var(--font-sec); font-weight: 600;
     white-space: nowrap;
   }
   .tracker-wrap th:first-child { text-align: left; }
   .tracker-wrap td {
-    padding: 7px 12px; font-family: var(--font-mono); font-size: 11.5px;
-    border-bottom: 1px solid var(--border); text-align: right;
+    padding: 6px 10px; font-family: var(--font-mono); font-size: 11px;
+    border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap;
   }
   .tracker-wrap td:first-child { text-align: left; font-weight: 500; color: var(--text); }
   .tracker-wrap tr:nth-child(even) td { background: rgba(255,255,255,.018); }
@@ -286,7 +289,7 @@
   .actual-input {
     background: rgba(255,240,0,.08); border: 1px solid rgba(255,240,0,.25);
     color: #ffe566; border-radius: 4px; padding: 3px 6px;
-    width: 110px; font-family: var(--font-mono); font-size: 12px; text-align: right;
+    width: 100px; font-family: var(--font-mono); font-size: 12px; text-align: right;
     outline: none; transition: border-color .15s;
   }
   .actual-input:focus { border-color: rgba(255,240,0,.7); background: rgba(255,240,0,.14); }
@@ -1107,7 +1110,7 @@ function buildRepView(repIdx) {
         <thead>
           <tr>
             <th>Month</th><th>2026 Target</th><th style="color:#a78bfa">Acct Ach 2025</th><th>2025 Actual</th>
-            <th>Enter 2026 Invoiced</th><th>vs Tgt ($)</th><th>vs Tgt (%)</th><th>Status</th>
+            <th>2026 Invoiced</th><th>vs Tgt ($)</th><th>vs Tgt (%)</th><th>Status</th>
           </tr>
         </thead>
         <tbody id="cls-body-${repIdx}-${ci}"></tbody>
