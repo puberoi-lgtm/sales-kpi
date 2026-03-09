@@ -1773,7 +1773,7 @@ function refreshTeamView() {
     s + months.reduce((s2,_,mi) => s2 + getTarget(ri,mi), 0), 0);
   const teamMtdAct = REPS_DATA.reduce((s,_,ri) => s + getActual(ri,currentMi), 0);
   const teamMtdTgt = REPS_DATA.reduce((s,_,ri) => s + getTarget(ri,currentMi), 0);
-  const teamPrev   = REPS_DATA.reduce((s,r,ri) => s + r.monthly.reduce((s2,m,mi) => s2+getRepPrev(ri,mi), 0), 0);
+  const teamPrev   = 10565593; // hardcoded 2025 actual grand total
   const ytdPct = teamYtdTgt > 0 ? teamYtdAct / teamYtdTgt : 0;
   const mtdPct = teamMtdTgt > 0 ? teamMtdAct / teamMtdTgt : 0;
   const stillToGo = Math.max(teamYtdTgt - teamYtdAct, 0);
@@ -1812,7 +1812,7 @@ function refreshTeamView() {
           </div>
           <div style="background:var(--border)"></div>
           <div style="text-align:center;padding:0 16px">
-            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">FY2025 Achieved</div>
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">2025 Achieved</div>
             <div style="font-size:26px;font-weight:800;font-family:var(--font-head);color:#6699cc">${fmt(teamPrev)}</div>
             <div style="font-size:11px;color:var(--muted);margin-top:3px">Prior year reference</div>
           </div>
