@@ -368,14 +368,17 @@
     overflow: hidden;
   }
   .eoy-item {
-    padding: 14px 20px;
+    padding: 14px 16px;
     border-right: 1px solid var(--border);
     display: flex; flex-direction: column; justify-content: center;
+    min-width: 0;
+    overflow: hidden;
   }
   .eoy-item:last-child { border-right: none; }
-  .eoy-item .eoy-label { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 6px; font-family: var(--font-sec); }
-  .eoy-item .eoy-val { font-family: var(--font-head); font-size: 24px; font-weight: 800; line-height: 1; }
-  .eoy-item .eoy-sub { font-size: 10px; color: var(--muted); margin-top: 5px; }
+  div.eoy-card { display: grid !important; width: 100% !important; box-sizing: border-box !important; }
+  .eoy-item .eoy-label { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 6px; font-family: var(--font-sec); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .eoy-item .eoy-val { font-family: var(--font-head); font-size: 22px; font-weight: 800; line-height: 1; white-space: nowrap; }
+  .eoy-item .eoy-sub { font-size: 10px; color: var(--muted); margin-top: 5px; white-space: normal; word-wrap: break-word; line-height: 1.4; }
   &#64;media (max-width: 900px) { .eoy-card { grid-template-columns: repeat(2,1fr); } }
 
   /* ── CLASS BREAKDOWN TABS ── */
@@ -757,9 +760,7 @@ function applyAccessControl() {
   if (access.role === 'admin') {
     tabs.querySelectorAll('.tab-btn').forEach(b => b.style.display = 'inline-flex');
     document.querySelectorAll('.admin-only').forEach(el => {
-      if (el.classList.contains('tab-divider')) el.style.display = 'block';
-      else if (el.classList.contains('eoy-card') || el.classList.contains('section-hdr') || el.classList.contains('tracker-wrap') || el.tagName === 'DIV') el.style.display = 'block';
-      else el.style.display = 'inline-flex';
+      el.style.display = el.classList.contains('tab-divider') ? 'block' : 'inline-flex';
     });
     showView('team');
   } else {
