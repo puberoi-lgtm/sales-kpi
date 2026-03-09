@@ -602,9 +602,6 @@
       <button class="tab-btn" onclick="showView('accounts')" id="tab-accounts" style="display:none">
         <span class="dot" style="background:#17a589"></span>Accounts
       </button>
-      <button class="tab-btn admin-only" onclick="showView('bulk')" id="tab-bulk" style="display:none">
-        <span class="dot" style="background:#f5a623"></span>Bulk Entry
-      </button>
       
       <button class="tab-btn admin-only" onclick="showView('reps-admin')" id="tab-reps-admin" style="display:none">
         <span class="dot" style="background:#e91e8c"></span>Reps
@@ -781,7 +778,6 @@ function fbStartListening() {
   // Listen for actuals
   window._fbListen('dashboard/classActuals', data => {
     state.classActuals = data || {};
-    populateBulkView();
     REPS_DATA.forEach((_, ri) => {
       const repView = document.getElementById(`view-rep-${ri}`);
       if (repView && repView.classList.contains('active')) {
@@ -997,33 +993,7 @@ function buildRepView(repIdx) {
     </div>
   </div>
 
-  <!-- ── ADMIN: Target upload + EOY prediction ── -->
-  <div class="section-hdr admin-only">🎯 Target Upload — bulk update targets via CSV (admin only)</div>
-  <div class="admin-only" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
-      <div>
-        <div style="font-size:12px;font-weight:600;margin-bottom:6px">Upload CSV to set targets for ${rep.name}</div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.6">
-          CSV format: <span style="color:var(--amber)">Month, Class, Target</span><br>
-          Month: Jan–Dec &nbsp;|&nbsp; Class: Server Racks, Data Products, Cabling, Others
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <label style="background:var(--green);color:#000;border-radius:5px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font-head)">
-            📂 Upload CSV
-            <input type="file" accept=".csv" style="display:none"
-              onchange="const f=this.files[0];if(!f)return;document.getElementById('target-upload-status-${repIdx}').textContent='⏳ Importing...';const r=new FileReader();r.onload=e=>applyTargetCsv(e.target.result,${repIdx});r.readAsText(f)">
-          </label>
-          <button onclick="resetAllCustomTargets(${repIdx})" style="background:transparent;border:1px solid #e05252;color:#e05252;border-radius:5px;padding:6px 12px;font-size:11px;font-family:var(--font-mono);cursor:pointer">↺ Reset</button>
-          <button onclick="downloadTargetTemplate(${repIdx})" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:6px 12px;font-size:11px;font-family:var(--font-mono);cursor:pointer">⬇ Template</button>
-        </div>
-        <div id="target-upload-status-${repIdx}" style="font-size:11px;margin-top:8px;color:var(--green)"></div>
-      </div>
-      <div style="font-size:11px;color:var(--muted);background:var(--surface2);border-radius:6px;padding:10px;font-family:var(--font-code);line-height:1.8">
-        <strong style="color:var(--text)">Example CSV:</strong><br>
-        Month,Class,Target<br>Jan,Server Racks,120000<br>Jan,Data Products,45000<br>Jan,Cabling,85000<br>Jan,Others,5000<br>...
-      </div>
-    </div>
-  </div>
+
 
   <div class="section-hdr admin-only">🔮 End of Year Prediction — based on current run rate</div>
   <div class="eoy-card admin-only" id="eoy-card-${repIdx}">
@@ -2219,182 +2189,9 @@ function setTeamMonthFilter(mi) {
 // ══════════════════════════════════════════════════════════════
 // BULK ENTRY VIEW
 // ══════════════════════════════════════════════════════════════
-function buildBulkView() {
-  const months = REPS_DATA[0].monthly.map(m => m.month);
-  const clsNames = REPS_DATA[0].classes.map(c => c.name);
-  const clsColors = ['#4472C4','#70AD47','#ED7D31','#9E480E'];
 
-  const csvUploadSection = `
-  <div id="csv-upload-panel" style="
-    background: var(--surface);
-    border: 2px dashed var(--border);
-    border-radius: 10px;
-    padding: 28px 24px;
-    margin-bottom: 24px;
-    text-align: center;
-    transition: border-color .2s, background .2s;
-  " ondragover="event.preventDefault();this.style.borderColor='var(--amber)';this.style.background='rgba(245,166,35,.05)'"
-     ondragleave="this.style.borderColor='var(--border)';this.style.background='var(--surface)'"
-     ondrop="handleCsvDrop(event)">
-    <div style="font-size:28px;margin-bottom:8px">📂</div>
-    <div style="font-family:var(--font-head);font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px">
-      Upload your NetSuite CSV export
-    </div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:16px">
-      Drag & drop your CSV file here, or click to browse.<br>
-      All actuals will be parsed and applied to every rep and class automatically.
-    </div>
-    <input type="file" id="csv-file-input" accept=".csv" style="display:none" onchange="handleCsvFile(this.files[0])">
-    <button onclick="document.getElementById('csv-file-input').click()" style="
-      background: var(--amber); color: #000; border: none; border-radius: 6px;
-      padding: 8px 20px; font-family: var(--font-mono); font-size: 12px;
-      font-weight: 600; cursor: pointer; transition: opacity .15s;
-    " onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
-      Choose CSV File
-    </button>
-    <button onclick="clearAllData()" style="
-      background: transparent; color: #e05252; border: 1px solid #e05252; border-radius: 6px;
-      padding: 8px 20px; font-family: var(--font-mono); font-size: 12px;
-      font-weight: 600; cursor: pointer; margin-left: 10px; transition: all .15s;
-    " onmouseover="this.style.background='rgba(224,82,82,.1)'" onmouseout="this.style.background='transparent'">
-      🗑 Clear All Data
-    </button>
-    <div id="csv-status" style="margin-top:14px;font-size:12px;color:var(--muted);min-height:18px"></div>
-  </div>`;
 
-  // Build a section per rep, with a tab per class
-  const repSections = REPS_DATA.map((rep, ri) => `
-    <div style="margin-bottom:28px;">
-      <div class="section-hdr"><span style="color:${rep.color}">● ${rep.name}</span> — ${rep.region}</div>
-      <div class="class-tabs" id="bulk-cls-tabs-${ri}">
-        ${clsNames.map((cls, ci) => `
-          <div class="class-tab ${ci===0?'active':''}"
-            style="${ci===0?`background:${clsColors[ci]};color:#fff`:'color:var(--muted)'}"
-            onclick="switchBulkClass(${ri},${ci})"
-            id="bulk-cls-tab-${ri}-${ci}">${cls}</div>
-        `).join('')}
-      </div>
-      ${clsNames.map((cls, ci) => `
-        <div id="bulk-cls-section-${ri}-${ci}" style="display:${ci===0?'block':'none'}">
-          <div class="tracker-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Month</th>
-                  <th>2026 Target</th>
-                  <th>2025 Actual</th>
-                  <th style="color:#ffe566">Enter 2026 Invoiced</th>
-                  <th>vs Target ($)</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody id="bulk-body-${ri}-${ci}"></tbody>
-            </table>
-          </div>
-        </div>
-      `).join('')}
-    </div>
-  `).join('');
 
-  return `
-  <div class="rep-header">
-    <div>
-      <div class="rep-title" style="color:var(--amber)">⚡ Bulk Entry</div>
-      <div class="rep-subtitle">Upload a CSV or enter actuals manually · Updates all individual sheets instantly</div>
-      <div class="rep-accent-bar" style="background:var(--amber)"></div>
-    </div>
-    <div style="font-size:11px;color:var(--muted);text-align:right">Changes propagate to all rep sheets<br>and the Team Overview automatically</div>
-  </div>
-  ${csvUploadSection}
-  ${repSections}
-  `;
-}
-
-function populateBulkView() {
-  const clsColors = ['#4472C4','#70AD47','#ED7D31','#9E480E'];
-  const access = getCurrentUserRole();
-  const isAdmin = access && access.role === 'admin';
-
-  REPS_DATA.forEach((rep, ri) => {
-    rep.classes.forEach((cls, ci) => {
-      const tbody = document.getElementById(`bulk-body-${ri}-${ci}`);
-      if (!tbody) return;
-      tbody.innerHTML = '';
-      cls.monthly.forEach((m, mi) => {
-        const tgt = getClassTarget(ri, ci, mi);
-        const act = getClassActual(ri, ci, mi);
-        const vari = act > 0 ? act - tgt : null;
-        const varCell = vari !== null ? `<span class="${vari>=0?'variance-pos':'variance-neg'}">${fmt(vari)}</span>` : '—';
-        const status = tgt === 0 ? `<span class="status-pend" style="color:var(--muted)">Not qualified</span>` : act > 0 ? (act >= tgt ? `<span class="status-on">✅ On Target</span>` : `<span class="status-off">⚠️ Below Target</span>`) : `<span class="status-pend">Pending</span>`;
-        const actualCell = isAdmin
-          ? `<input class="actual-input" type="text" inputmode="numeric" placeholder="0"
-              value="${act > 0 ? act : ''}"
-              onblur="setBulkActual(${ri},${ci},${mi},parseFloat(this.value.replace(/[^0-9.]/g,''))||0)">`
-          : `<span style="color:#ffe566;font-family:var(--font-mono)">${act > 0 ? fmt(act) : '—'}</span>`;
-        tbody.innerHTML += `<tr>
-          <td>${m.month} 2026</td>
-          <td class="target-cell">${fmt(tgt)}</td>
-          <td class="prev-cell">${fmt(getRepPrev(repIdx, mi))}</td>
-          <td>${actualCell}</td>
-          <td>${varCell}</td>
-          <td>${status}</td>
-        </tr>`;
-      });
-    });
-  });
-}
-
-function setBulkActual(repIdx, clsIdx, monthIdx, val) {
-  const access = getCurrentUserRole();
-  if (!access || access.role !== 'admin') return; // reps cannot edit
-  state.classActuals[`${repIdx}-${clsIdx}-${monthIdx}`] = val;
-  fbSave();
-  populateBulkView();
-  REPS_DATA.forEach((_, ri) => {
-    const repView = document.getElementById(`view-rep-${ri}`);
-    if (repView && repView.classList.contains('active')) {
-      populateTracker(ri);
-      populateClassTrackers(ri);
-      drawRepCharts(ri);
-    }
-  });
-  refreshTeamView();
-}
-
-function switchBulkClass(ri, ci) {
-  const clsColors = ['#4472C4','#70AD47','#ED7D31','#9E480E'];
-  REPS_DATA[ri].classes.forEach((_, i) => {
-    const tab = document.getElementById(`bulk-cls-tab-${ri}-${i}`);
-    const sec = document.getElementById(`bulk-cls-section-${ri}-${i}`);
-    if (tab) { tab.className = 'class-tab' + (i===ci?' active':''); tab.style.cssText = i===ci?`background:${clsColors[i]};color:#fff`:'color:var(--muted)'; }
-    if (sec) sec.style.display = i===ci ? 'block' : 'none';
-  });
-}
-
-// ══════════════════════════════════════════════════════════════
-// CSV IMPORT
-// ══════════════════════════════════════════════════════════════
-const CSV_REP_MAP = {
-  'Robert M Schaffer':  0,
-  'Andrew M Mobilia':   1,
-  'Alexander Poll':     2,
-  'Stivi Maticevski':   3,
-  'Melissa Goodridge':  4,
-};
-const CSV_CLASS_MAP = {
-  'Server Racks & Accessories': 0,
-  'Data Products':               1,
-  'Cabling & Adapters':          2,
-  // anything else -> 3 (Others)
-};
-const CSV_MONTH_MAP = {
-  '01/01/25':0,'01/02/25':1,'01/03/25':2,'01/04/25':3,
-  '01/05/25':4,'01/06/25':5,'01/07/25':6,'01/08/25':7,
-  '01/08/25':7,'01/09/25':8,'01/10/25':9,'01/11/25':10,'01/12/25':11,
-  '01/01/26':0,'01/02/26':1,'01/03/26':2,'01/04/26':3,
-  '01/05/26':4,'01/06/26':5,'01/07/26':6,'01/08/26':7,
-  '01/09/26':8,'01/10/26':9,'01/11/26':10,'01/12/26':11,
-};
 
 function parseCsvAmount(s) {
   if (!s) return 0;
@@ -2464,7 +2261,6 @@ function applyCsvTotals(totals) {
   // Save to Firebase so all users see the update
   fbSave();
   // Refresh everything
-  populateBulkView();
   REPS_DATA.forEach((_, ri) => {
     const repView = document.getElementById(`view-rep-${ri}`);
     if (repView && repView.classList.contains('active')) {
@@ -2493,7 +2289,6 @@ function clearAllData() {
   if (fileInput) fileInput.value = '';
 
   // Refresh all views
-  populateBulkView();
   REPS_DATA.forEach((_, ri) => {
     const repView = document.getElementById(`view-rep-${ri}`);
     if (repView && repView.classList.contains('active')) {
@@ -2561,8 +2356,6 @@ function showView(id) {
     buildAccountsView();
   } else if (id === 'reps-admin') {
     buildRepsAdminView();
-  } else if (id === 'bulk') {
-    populateBulkView();
   } else {
     const repIdx = parseInt(id.split('-')[1]);
     setTimeout(() => {
@@ -3163,13 +2956,6 @@ function init() {
   });
 
   var aD=document.createElement("div");aD.id="view-accounts";aD.className="view";aD.innerHTML='<div id="accounts-content" style="padding:24px">Loading\u2026</div>';container.appendChild(aD);
-
-  // Bulk entry view
-  const bulkDiv = document.createElement('div');
-  bulkDiv.id = 'view-bulk';
-  bulkDiv.className = 'view';
-  bulkDiv.innerHTML = buildBulkView();
-  container.appendChild(bulkDiv);
 
   // Reps admin view
   var raDiv = document.createElement('div');
