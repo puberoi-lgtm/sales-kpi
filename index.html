@@ -3000,6 +3000,19 @@ function searchLocTable(ri,query){
 }
 
 var _acctState={rep:'all',filter:'all',search:'',tab:'heatmap',company:'all',page:0};
+function acctSearch(val) {
+  _acctState.search = val;
+  _acctState.page = 0;
+  window._hmPage = 0;
+  clearTimeout(window._acctSearchTimer);
+  window._acctSearchTimer = setTimeout(function() {
+    var el = document.getElementById('acct-search-input');
+    var pos = el ? el.selectionStart : -1;
+    buildAccountsView();
+    var el2 = document.getElementById('acct-search-input');
+    if (el2) { el2.focus(); if (pos >= 0) el2.setSelectionRange(pos, pos); }
+  }, 50);
+}
 function buildAccountsView(){
   var el=document.getElementById('accounts-content');if(!el)return;
   var RN=['Robert Schaffer','Andrew Mobilia','Alexander Poll','Stivi Maticevski','Melissa Goodridge'];
@@ -3013,7 +3026,7 @@ function buildAccountsView(){
     +'<button class="acct-filter-btn'+(_acctState.filter==='all'?' active':'')+'" onclick="_acctState.filter=\'all\';_acctState.page=0;window._hmPage=0;buildAccountsView()">All</button>'
     +'<button class="acct-filter-btn'+(_acctState.filter==='dormant'?' active':'')+'" onclick="_acctState.filter=\'dormant\';_acctState.page=0;window._hmPage=0;buildAccountsView()">\u26a1 Dormant</button>'
     +'<button class="acct-filter-btn'+(_acctState.filter==='active'?' active':'')+'" onclick="_acctState.filter=\'active\';_acctState.page=0;window._hmPage=0;buildAccountsView()">Active</button>'
-    +'<input type="text" placeholder="Search accounts\u2026" value="'+_acctState.search+'" id="acct-search-input" oninput="_acctState.search=this.value;_acctState.page=0;window._hmPage=0;clearTimeout(window._acctSearchTimer);window._acctSearchTimer=setTimeout(function(){var v=document.getElementById('acct-search-input');var s=v?v.selectionStart:-1;buildAccountsView();var v2=document.getElementById('acct-search-input');if(v2){v2.focus();if(s>=0)v2.setSelectionRange(s,s);}},50)" />'
+    +'<input type="text" placeholder="Search accounts\u2026" value="'+_acctState.search+'" id="acct-search-input" oninput="acctSearch(this.value)" />'
     +'<button onclick="openAddAccountModal(-1)" class="admin-only" style="margin-left:auto;background:var(--green);color:#fff;border:none;border-radius:6px;padding:7px 16px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-main);white-space:nowrap">+ Add Account</button>'
     +'</div>'
     
