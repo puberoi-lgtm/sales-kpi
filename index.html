@@ -2935,12 +2935,13 @@ function buildAccountsView(){
   var companies=['all'].concat(Array.from(new Set(ACCOUNTS_DATA.map(function(a){return a.p||'';}).filter(Boolean))).sort());
   var coOpts=companies.map(function(c){return '<option value="'+c+'"'+(c===_acctState.company?' selected':'')+'>'+( c==='all'?'All Companies':c)+'</option>';}).join('');
   el.innerHTML='<div class="acct-toolbar">'
-    +'<select onchange="_acctState.rep=this.value;_acctState.page=0;buildAccountsView()">'+repOpts+'</select>'
-    +'<select onchange="_acctState.company=this.value;_acctState.page=0;buildAccountsView()" style="max-width:220px">'+coOpts+'</select>'
-    +'<button class="acct-filter-btn'+(_acctState.filter==='all'?' active':'')+'" onclick="_acctState.filter=\'all\';_acctState.page=0;buildAccountsView()">All</button>'
-    +'<button class="acct-filter-btn'+(_acctState.filter==='dormant'?' active':'')+'" onclick="_acctState.filter=\'dormant\';_acctState.page=0;buildAccountsView()">\u26a1 Dormant</button>'
-    +'<button class="acct-filter-btn'+(_acctState.filter==='active'?' active':'')+'" onclick="_acctState.filter=\'active\';_acctState.page=0;buildAccountsView()">Active</button>'
-    +'<input type="text" placeholder="Search accounts\u2026" value="'+_acctState.search+'" oninput="_acctState.search=this.value;_acctState.page=0;buildAccountsView()" />'
+    +'<select onchange="_acctState.rep=this.value;_acctState.page=0;window._hmPage=0;buildAccountsView()">'+repOpts+'</select>'
+    +'<select onchange="_acctState.company=this.value;_acctState.page=0;window._hmPage=0;buildAccountsView()" style="max-width:220px">'+coOpts+'</select>'
+    +'<button class="acct-filter-btn'+(_acctState.filter==='all'?' active':'')+'" onclick="_acctState.filter=\'all\';_acctState.page=0;window._hmPage=0;buildAccountsView()">All</button>'
+    +'<button class="acct-filter-btn'+(_acctState.filter==='dormant'?' active':'')+'" onclick="_acctState.filter=\'dormant\';_acctState.page=0;window._hmPage=0;buildAccountsView()">\u26a1 Dormant</button>'
+    +'<button class="acct-filter-btn'+(_acctState.filter==='active'?' active':'')+'" onclick="_acctState.filter=\'active\';_acctState.page=0;window._hmPage=0;buildAccountsView()">Active</button>'
+    +'<input type="text" placeholder="Search accounts\u2026" value="'+_acctState.search+'" oninput="_acctState.search=this.value;_acctState.page=0;window._hmPage=0;buildAccountsView()" />'
+    +'<button onclick="openAddAccountModal(-1)" class="admin-only" style="margin-left:auto;background:var(--green);color:#fff;border:none;border-radius:6px;padding:7px 16px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-main);white-space:nowrap">+ Add Account</button>'
     +'</div>'
     
     +'<div id="acct-tab-content"></div>';
@@ -2975,13 +2976,20 @@ function renderHeatmap(ct){
   var total=sorted.reduce(function(s,a){return s+a.s;},0);
   var dormCt=accts.filter(function(a){return isAcctDormant(a);}).length;
 
-  var rows=sorted.map(function(a){
+  // Pagination state
+  var HM_PAGE=50;
+  if(!window._hmPage)window._hmPage=0;
+  var totalHm=Math.max(1,Math.ceil(sorted.length/HM_PAGE));
+  if(window._hmPage>=totalHm)window._hmPage=0;
+  var pageSorted=sorted.slice(window._hmPage*HM_PAGE,(window._hmPage+1)*HM_PAGE);
+
+  var rows=pageSorted.map(function(a){
     var rc=RC[a.ri]; var isDorm=isAcctDormant(a);
     var cells=a.m.map(function(v,mi){
       var isAct=mi>=ACT_THRESH;
       var hl=isAct?'outline:2px solid rgba(23,165,137,0.6);outline-offset:-2px;':'';
-      var txt=v>0?('$'+(v>=1000?(v/1000).toFixed(0)+'k':v)):'\u2013';
-      return '<td><span class="hm-cell" style="background:'+heatColor(v,mx)+';'+hl+'">'+txt+'</span></td>';
+      var txt=v>0?('$'+(v>=1000?(v/1000).toFixed(0)+'k':v)):'–';
+      return '<td><span class="hm-cell" style="background:'+heatColor(v,mx)+';'+hl+'">'+ txt+'</span></td>';
     }).join('');
     var lastLbl=a.la>=0?COL_LABELS[a.la]:'never';
     var repCell=window._isAdmin
@@ -3006,7 +3014,20 @@ function renderHeatmap(ct){
     return '<th style="'+sty+'">'+(isAct?'<b>':'')+lbl+(isAct?'</b>':'')+'</th>';
   }).join('');
 
-  ct.innerHTML='<div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-bottom:8px">'
+  
+  // Pagination controls HTML
+  var pgCtrl='';
+  if(totalHm>1){
+    pgCtrl='<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;font-family:var(--font-mono);font-size:11px;color:var(--muted)">'
+      +'<span>Page '+(window._hmPage+1)+' of '+totalHm+' &middot; Showing '+(window._hmPage*HM_PAGE+1)+'&ndash;'+Math.min((window._hmPage+1)*HM_PAGE,sorted.length)+' of '+sorted.length+' accounts</span>'
+      +'<div style="display:flex;gap:6px">'
+      +(window._hmPage>0?'<button onclick="window._hmPage--;buildAccountsView()" style="padding:5px 14px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;font-family:var(--font-mono);font-size:11px">&larr; Prev</button>':'')
+      +((window._hmPage+1<totalHm)?'<button onclick="window._hmPage++;buildAccountsView()" style="padding:5px 14px;border-radius:5px;border:none;background:var(--green);color:#fff;cursor:pointer;font-family:var(--font-mono);font-size:11px">Next &rarr;</button>':'')
+      +'</div></div>';
+  }
+
+  ct.innerHTML=
+ct.innerHTML='<div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-bottom:8px">'
     +accts.length+' accounts \u00b7 Rolling 12mo total: <b style="color:var(--text)">$'+(total/1000).toFixed(0)+'k</b>'
     +' \u00b7 <span style="color:#e05252">'+dormCt+' dormant</span>'
     +' \u00b7 <em style="opacity:.5">Oct\u2013Feb active window</em></div>'
@@ -3014,7 +3035,8 @@ function renderHeatmap(ct){
     +'<thead><tr><th>Account</th><th>Parent</th>'
     +hdrs
     +'<th>12mo Total</th><th>'+(window._isAdmin?'Assign':'Rep')+'</th>'
-    +'</tr></thead><tbody>'+rows+'</tbody></table></div>';
+    +'</tr></thead><tbody>'+rows+'</tbody></table></div>'
+    +pgCtrl;
 }
 
 function init() {
@@ -3472,8 +3494,8 @@ document.addEventListener('DOMContentLoaded', function() {
 var _addAccountRepIdx = 0;
 
 function openAddAccountModal(ri) {
-  _addAccountRepIdx = ri;
-  document.getElementById('aa-rep').value = ri;
+  _addAccountRepIdx = ri < 0 ? 0 : ri;
+  document.getElementById('aa-rep').value = _addAccountRepIdx;
   ['aa-name','aa-parent','aa-region','aa-address','aa-phone','aa-email','aa-manager','aa-mobile','aa-notes'].forEach(function(id){
     document.getElementById(id).value = '';
   });
