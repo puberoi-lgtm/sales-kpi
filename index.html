@@ -2989,7 +2989,7 @@ function buildLocationsPane(ri){
       ?'<span class="cust-badge" style="background:#e0525222;color:#e05252" title="No order since Oct 2025 or earlier">Dormant</span>'
       :'<span class="cust-badge" style="background:#27ae6022;color:#27ae60" title="Ordered in last 3 months">Active</span>';
 
-    o+='<tr data-search="'+src+'">'
+    o+='<tr data-search="'+(a.n+' '+(a.p||'')).toLowerCase()+'">'
       +'<td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+a.n+'">'+a.n+'</td>'
       +'<td style="font-size:10px;color:var(--muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(a.p||'—')+'</td>'
       +'<td style="font-family:var(--font-mono);text-align:right">$'+Math.round(a.s).toLocaleString()+'</td>'
