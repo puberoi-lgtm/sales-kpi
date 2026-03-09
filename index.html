@@ -1060,7 +1060,7 @@ function buildRepView(repIdx) {
   <!-- ── ROW 2: KPI cards ── -->
   <div class="kpi-row">
     <div class="kpi-card" style="--accent-color:${rep.color}">
-      <div class="kpi-label">Annual Target</div>
+      <div class="kpi-label">2026 Annual Target</div>
       <div class="kpi-value" style="color:var(--green)" id="kpi-anntgt-${repIdx}">${fmt(annualTarget)}</div>
     </div>
     <div class="kpi-card" style="--accent-color:#a78bfa">
@@ -1857,13 +1857,13 @@ function refreshTeamView() {
         <!-- Top row: Annual summary — 4 columns -->
         <div style="display:grid;grid-template-columns:1fr 1px 1fr 1px 1fr 1px 1fr;gap:0;margin-bottom:18px">
           <div style="text-align:center;padding:0 16px">
-            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">Annual Target</div>
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">2026 Annual Target</div>
             <div style="font-size:26px;font-weight:800;font-family:var(--font-head);color:var(--green)">${fmt(teamYtdTgt)}</div>
             <div style="font-size:11px;color:var(--muted);margin-top:3px">CY2026 Full Year</div>
           </div>
           <div style="background:var(--border)"></div>
           <div style="text-align:center;padding:0 16px">
-            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">Annual Achievement</div>
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">YTD Annual Achievement</div>
             <div style="font-size:26px;font-weight:800;font-family:var(--font-head);color:${ytdColor}">${fmt(teamYtdAct)}</div>
             <div style="font-size:11px;color:${ytdColor};margin-top:3px">${fmtPct(ytdPct)} of target</div>
           </div>
@@ -2762,7 +2762,7 @@ function switchRepTab(ri,tab){
 // Active = last 3 slots of window (indices 9,10,11 = Oct'25,Jan'26,Feb'26)
 var ACCT_WINDOW_LEN = 12;
 var ACCT_ACTIVE_THRESHOLD = ACCT_WINDOW_LEN - 3; // = 9
-function isAcctDormant(a) { return a.la >= 0 && a.la < ACCT_ACTIVE_THRESHOLD; }
+function isAcctDormant(a) { return a.la < ACCT_ACTIVE_THRESHOLD; }  // la=-1 (no history) also counts as dormant
 function isAcctActive(a)  { return a.la >= ACCT_ACTIVE_THRESHOLD; }
 function isAcctNever(a)   { return a.la < 0; }
 
