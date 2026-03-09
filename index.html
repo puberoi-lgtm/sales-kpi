@@ -354,12 +354,19 @@
     padding: 16px 20px;
     margin-bottom: 18px;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0;
+    align-items: stretch;
   }
-  .eoy-item .eoy-label { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 4px; }
-  .eoy-item .eoy-val { font-family: var(--font-head); font-size: 22px; font-weight: 800; }
-  .eoy-item .eoy-sub { font-size: 10px; color: var(--muted); margin-top: 3px; }
+  .eoy-item {
+    padding: 14px 20px;
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .eoy-item:last-child { border-right: none; }
+  .eoy-item .eoy-label { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 6px; font-family: var(--font-sec); }
+  .eoy-item .eoy-val { font-family: var(--font-head); font-size: 24px; font-weight: 800; line-height: 1; }
+  .eoy-item .eoy-sub { font-size: 10px; color: var(--muted); margin-top: 5px; }
   &#64;media (max-width: 900px) { .eoy-card { grid-template-columns: repeat(2,1fr); } }
 
   /* ── CLASS BREAKDOWN TABS ── */
