@@ -3042,7 +3042,7 @@ function searchLocTable(ri,query){
   tbody.querySelectorAll('tr').forEach(function(tr){tr.style.display=(tr.dataset.search||'').includes(q)?'':'none';});
 }
 
-var _acctState={rep:'all',filter:'all',search:'',tab:'heatmap',company:'all',page:0};
+var _acctState={rep:'all',filter:'all',search:'',tab:'heatmap',company:'all',page:0,dormantAge:'all'};
 function acctSearch(val) {
   _acctState.search = val;
   _acctState.page = 0;
@@ -3066,9 +3066,15 @@ function buildAccountsView(){
   el.innerHTML='<div class="acct-toolbar">'
     +'<select onchange="_acctState.rep=this.value;_acctState.page=0;window._hmPage=0;buildAccountsView()">'+repOpts+'</select>'
     +'<select onchange="_acctState.company=this.value;_acctState.page=0;window._hmPage=0;buildAccountsView()" style="max-width:220px">'+coOpts+'</select>'
-    +'<button class="acct-filter-btn'+(_acctState.filter==='all'?' active':'')+'" onclick="_acctState.filter=\'all\';_acctState.page=0;window._hmPage=0;buildAccountsView()">All</button>'
+    +'<button class="acct-filter-btn'+(_acctState.filter==='all'?' active':'')+'" onclick="_acctState.filter=\'all\';_acctState.dormantAge=\'all\';_acctState.page=0;window._hmPage=0;buildAccountsView()">All</button>'
     +'<button class="acct-filter-btn'+(_acctState.filter==='dormant'?' active':'')+'" onclick="_acctState.filter=\'dormant\';_acctState.page=0;window._hmPage=0;buildAccountsView()">\u26a1 Dormant</button>'
-    +'<button class="acct-filter-btn'+(_acctState.filter==='active'?' active':'')+'" onclick="_acctState.filter=\'active\';_acctState.page=0;window._hmPage=0;buildAccountsView()">Active</button>'
+    +'<button class="acct-filter-btn'+(_acctState.filter==='active'?' active':'')+'" onclick="_acctState.filter=\'active\';_acctState.dormantAge=\'all\';_acctState.page=0;window._hmPage=0;buildAccountsView()">Active</button>'+'<select id="dormant-age-sel" onchange="_acctState.dormantAge=this.value;_acctState.filter=\'dormant\';_acctState.page=0;window._hmPage=0;buildAccountsView()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:11px;border-radius:5px;padding:5px 10px">'
+    +'<option value="all"'+(_acctState.dormantAge==\'all\'?' selected\':\'\')+'> Dormant: All</option>'
+    +'<option value="3"'+(_acctState.dormantAge==\'3\'?' selected\':\'\')+'> 3+ months</option>'
+    +'<option value="6"'+(_acctState.dormantAge==\'6\'?' selected\':\'\')+'> 6+ months</option>'
+    +'<option value="9"'+(_acctState.dormantAge==\'9\'?' selected\':\'\')+'> 9+ months</option>'
+    +'<option value="12"'+(_acctState.dormantAge==\'12\'?' selected\':\'\')+'> 12+ months / Never</option>'
+    +'</select>'
     +'<input type="text" placeholder="Search accounts\u2026" value="'+_acctState.search+'" id="acct-search-input" oninput="acctSearch(this.value)" />'
     +'<button onclick="openAddAccountModal(-1)" class="admin-only" style="margin-left:auto;background:var(--green);color:#fff;border:none;border-radius:6px;padding:7px 16px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-main);white-space:nowrap">+ Add Account</button>'
     +'</div>'
@@ -3083,7 +3089,13 @@ function getFilteredAccounts(){
     if(_acctState.rep==='unassigned'){if(a.ri!==-1)return false;}
     else if(_acctState.rep!=='all'&&RN[a.ri]!==_acctState.rep)return false;
     if(_acctState.company!=='all'&&(a.p||'')!==_acctState.company)return false;
-    if(_acctState.filter==='dormant'&&!isAcctDormant(a))return false;
+    if(_acctState.filter==='dormant'){
+      if(!isAcctDormant(a))return false;
+      if(_acctState.dormantAge!=='all'){
+        var monthsAgo = a.la<0 ? 99 : (14 - a.la); // Mar 2026 = month 2, last active month 0-11
+        if(monthsAgo < parseInt(_acctState.dormantAge)) return false;
+      }
+    }
     if(_acctState.filter==='active'&&!isAcctActive(a))return false;
     if(q&&!(a.n+' '+(a.p||'')).toLowerCase().includes(q))return false;
     return true;
