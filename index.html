@@ -1021,7 +1021,7 @@ function getActual(repIdx, monthIdx) {
   }, 0);
 }
 function getClassActual(repIdx, clsIdx, monthIdx) {
-  return state.classActuals[`${repIdx}-${clsIdx}-${monthIdx}`] || 0;
+  return Math.round((state.classActuals[`${repIdx}-${clsIdx}-${monthIdx}`] || 0) * 100) / 100;
 }
 
 // Get 2025 prev actual — REPS_DATA (pivot) is always source of truth
@@ -1176,13 +1176,13 @@ function buildRepView(repIdx) {
   
   <div style="background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.25);border-radius:6px;padding:7px 12px;font-size:11px;color:var(--amber);display:flex;align-items:center;gap:8px;margin-bottom:12px">
     <span>⚠️</span>
-    <span><strong>Invoiced figures only.</strong> Achievement is based on invoiced revenue. Open purchase orders (POs) not yet invoiced are <strong>not included</strong> in these figures.</span>
+    <span><strong>Invoiced figures only.</strong> Achievement is based on invoiced revenue. Open purchase orders (POs) not yet invoiced are <strong>not included</strong> in these figures. Figures also exclude <strong>freight, rebates and credit notes</strong> (classified as "Others").</span>
   </div>
 
   
 
   <!-- Monthly Tracker -->
-  <div class="section-hdr">📋 Monthly Tracker — Auto-summed from class entries</div>
+  <div class="section-hdr">📋 Monthly Tracker — Auto-summed from class entries <span style="font-size:9px;font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0">(excludes freight, rebates &amp; credit notes)</span></div>
   ${repIdx === 4 ? `<div id="melissa-2026-ytd-banner" style="display:none;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.25);border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:11px;color:var(--muted)">
     <span style="color:#60a5fa;font-weight:600">ℹ 2026 YTD Sales (Jan–Feb context)</span>
     &nbsp;&nbsp;<span style="font-family:var(--font-mono);font-size:12px;color:#ffe566" id="melissa-2026-ytd-amount"></span>
@@ -1372,7 +1372,7 @@ function populateClassTrackers(repIdx) {
       // Admins can edit, reps see read-only display
       const actualCell = isAdmin
         ? `<input class="actual-input" type="text" inputmode="numeric" placeholder="0"
-            value="${act > 0 ? Math.round(act * 100) / 100 : ''}"
+            value="${act > 0 ? Math.round(act) : ''}"
             onblur="setClassActual(${repIdx},${ci},${mi},parseFloat(this.value.replace(/[^0-9.]/g,''))||0)">`
         : `<span style="color:#ffe566;font-family:var(--font-mono)">${act > 0 ? fmt(act) : '—'}</span>`;
 
