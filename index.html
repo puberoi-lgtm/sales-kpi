@@ -1372,7 +1372,7 @@ function populateClassTrackers(repIdx) {
       // Admins can edit, reps see read-only display
       const actualCell = isAdmin
         ? `<input class="actual-input" type="text" inputmode="numeric" placeholder="0"
-            value="${act > 0 ? act : ''}"
+            value="${act > 0 ? Math.round(act * 100) / 100 : ''}"
             onblur="setClassActual(${repIdx},${ci},${mi},parseFloat(this.value.replace(/[^0-9.]/g,''))||0)">`
         : `<span style="color:#ffe566;font-family:var(--font-mono)">${act > 0 ? fmt(act) : '—'}</span>`;
 
@@ -2446,7 +2446,7 @@ function applyCsvTotals(totals) {
     for (let ci = 0; ci < 4; ci++) {
       for (let mi = 0; mi < 12; mi++) {
         if (totals[ri][ci][mi] !== 0) {
-          state.classActuals[`${ri}-${ci}-${mi}`] = totals[ri][ci][mi];
+          state.classActuals[`${ri}-${ci}-${mi}`] = Math.round(totals[ri][ci][mi] * 100) / 100;
         }
       }
     }
