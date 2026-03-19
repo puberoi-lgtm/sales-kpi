@@ -3056,6 +3056,13 @@ function acctSearch(val) {
     if (el2) { el2.focus(); if (pos >= 0) el2.setSelectionRange(pos, pos); }
   }, 50);
 }
+function buildDormantAgeSelect() {
+  var ages = [['all','Dormant: All'],['3','3+ months'],['6','6+ months'],['9','9+ months'],['12','12+ months / Never']];
+  var opts = ages.map(function(a) {
+    return '<option value="' + a[0] + '"' + (_acctState.dormantAge === a[0] ? ' selected' : '') + '>' + a[1] + '</option>';
+  }).join('');
+  return '<select onchange="_acctState.dormantAge=this.value;_acctState.filter=\'dormant\';_acctState.page=0;window._hmPage=0;buildAccountsView()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:11px;border-radius:5px;padding:5px 10px">' + opts + '</select>';
+}
 function buildAccountsView(){
   var el=document.getElementById('accounts-content');if(!el)return;
   var RN=['Robert Schaffer','Andrew Mobilia','Alexander Poll','Stivi Maticevski','Melissa Goodridge'];
@@ -3068,13 +3075,8 @@ function buildAccountsView(){
     +'<select onchange="_acctState.company=this.value;_acctState.page=0;window._hmPage=0;buildAccountsView()" style="max-width:220px">'+coOpts+'</select>'
     +'<button class="acct-filter-btn'+(_acctState.filter==='all'?' active':'')+'" onclick="_acctState.filter=\'all\';_acctState.dormantAge=\'all\';_acctState.page=0;window._hmPage=0;buildAccountsView()">All</button>'
     +'<button class="acct-filter-btn'+(_acctState.filter==='dormant'?' active':'')+'" onclick="_acctState.filter=\'dormant\';_acctState.page=0;window._hmPage=0;buildAccountsView()">\u26a1 Dormant</button>'
-    +'<button class="acct-filter-btn'+(_acctState.filter==='active'?' active':'')+'" onclick="_acctState.filter=\'active\';_acctState.dormantAge=\'all\';_acctState.page=0;window._hmPage=0;buildAccountsView()">Active</button>'+'<select id="dormant-age-sel" onchange="_acctState.dormantAge=this.value;_acctState.filter=\'dormant\';_acctState.page=0;window._hmPage=0;buildAccountsView()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:11px;border-radius:5px;padding:5px 10px">'
-    +'<option value="all"'+(_acctState.dormantAge==\'all\'?' selected\':\'\')+'> Dormant: All</option>'
-    +'<option value="3"'+(_acctState.dormantAge==\'3\'?' selected\':\'\')+'> 3+ months</option>'
-    +'<option value="6"'+(_acctState.dormantAge==\'6\'?' selected\':\'\')+'> 6+ months</option>'
-    +'<option value="9"'+(_acctState.dormantAge==\'9\'?' selected\':\'\')+'> 9+ months</option>'
-    +'<option value="12"'+(_acctState.dormantAge==\'12\'?' selected\':\'\')+'> 12+ months / Never</option>'
-    +'</select>'
+    +'<button class="acct-filter-btn'+(_acctState.filter==='active'?' active':'')+'" onclick="_acctState.filter=\'active\';_acctState.dormantAge=\'all\';_acctState.page=0;window._hmPage=0;buildAccountsView()">Active</button>'
+    +buildDormantAgeSelect()
     +'<input type="text" placeholder="Search accounts\u2026" value="'+_acctState.search+'" id="acct-search-input" oninput="acctSearch(this.value)" />'
     +'<button onclick="openAddAccountModal(-1)" class="admin-only" style="margin-left:auto;background:var(--green);color:#fff;border:none;border-radius:6px;padding:7px 16px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-main);white-space:nowrap">+ Add Account</button>'
     +'</div>'
