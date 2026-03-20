@@ -465,8 +465,8 @@
     font-family: var(--font-head); font-weight: 800; font-size: 20px;
     color: var(--green); margin-bottom: 28px;
   }
-  .login-title { font-family: var(--font-head); font-size: 18px; font-weight: 700; margin-bottom: 6px; }
-  .login-subtitle { font-size: 11px; color: var(--muted); margin-bottom: 28px; }
+  .login-title { font-family: var(--font-head); font-size: 20px; font-weight: 800; margin-bottom: 6px; color: #ffffff; text-shadow: 0 1px 8px rgba(0,0,0,0.8); }
+  .login-subtitle { font-size: 11px; color: rgba(255,255,255,0.75); margin-bottom: 28px; }
   .login-field { margin-bottom: 16px; }
   .login-field label { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 6px; }
   .login-field input {
@@ -671,6 +671,62 @@
     .view { padding-bottom: calc(20px + env(safe-area-inset-bottom)) !important; }
   }
 
+
+  /* ── Theme-aware colour fixes ── */
+  /* Tracker table text */
+  .tracker-wrap td, .tracker-wrap th { color: var(--text); }
+  .loc-table td, .loc-table th { color: var(--text); }
+  .heatmap-table td, .heatmap-table th { color: var(--text); }
+
+  /* KPI card labels */
+  .kpi-label { color: var(--muted) !important; }
+
+  /* Section headers */
+  .section-hdr { color: var(--muted); }
+
+  /* Rep subtitle */
+  .rep-subtitle { color: var(--muted) !important; }
+
+  /* Variance colours - ensure visible on both themes */
+  .variance-pos { color: #27ae60 !important; }
+  .variance-neg { color: #e05252 !important; }
+
+  /* Warning banner */
+  .warning-banner { background: rgba(245,166,35,0.12) !important; border-color: var(--amber) !important; color: var(--text) !important; }
+
+  /* Acct toolbar inputs */
+  .acct-toolbar input, .acct-toolbar select { color: var(--text) !important; background: var(--surface2) !important; }
+
+  /* Current month row */
+  .current-month-row td { background: rgba(107,191,51,0.08) !important; }
+
+  /* Status badges */
+  .status-on  { color: #27ae60 !important; }
+  .status-off { color: #e05252 !important; }
+  .status-pend { color: var(--muted) !important; }
+
+  /* Topbar on light theme */
+  body.light .topbar { background: #ffffff !important; }
+  body.light .tab-btn { color: #444 !important; }
+  body.light .tab-btn.active { color: #22863a !important; }
+  body.light .kpi-value { color: var(--text) !important; }
+  body.light .rep-title { color: var(--text) !important; }
+  body.light .section-hdr { color: #666 !important; }
+  body.light .heatmap-table tbody tr:hover { background: rgba(0,0,0,0.03); }
+
+  /* EOY box on light theme */
+  body.light .eoy-item .eoy-val { color: var(--text); }
+  body.light .eoy-item .eoy-sub { color: #666; }
+
+  /* Charts area */
+  body.light canvas { filter: none; }
+
+  /* KRA panel */
+  body.light #kra-panel-0, body.light #kra-panel-1, body.light #kra-panel-2,
+  body.light #kra-panel-3, body.light #kra-panel-4 {
+    background: #f8f9fa !important; border-color: #dee2e6 !important;
+  }
+
 </style>
 </head>
 <body>
@@ -793,6 +849,9 @@ const PREDICTED_SALES = {"0-0":225691.34,"0-1":258223.69,"0-2":236533.48,"0-3":2
 
 const state = {
   acctStatusSnap: {},
+  notes: [],
+  leave: {},
+  noteInsights: {},
   actuals: {},         // "repIdx-monthIdx" -> value
   classActuals: {},    // "repIdx-clsIdx-monthIdx" -> value
   customTargets: {},   // "repIdx-clsIdx-monthIdx" -> value (admin overrides)
@@ -965,6 +1024,22 @@ function fbStartListening() {
   });
 
   // prevActuals listener removed (manual upload mode)
+  // Listen for notes
+  window._fbListen('dashboard/notes', data => {
+    state.notes = data ? Object.values(data) : [];
+    refreshNotesViews();
+  });
+  // Listen for leave
+  window._fbListen('dashboard/leave', data => {
+    state.leave = data || {};
+    refreshLeaveViews();
+  });
+  // Listen for note insights
+  window._fbListen('dashboard/noteInsights', data => {
+    state.noteInsights = data || {};
+    refreshInsightsViews();
+  });
+
   // Listen for dormant conversion tracking
   window._fbListen('dashboard/acctStatusSnap', data => {
     state.acctStatusSnap = data || {};
@@ -1060,25 +1135,23 @@ function getDormantConversions() {
   return { nowActive, nowDormant };
 }
 function getKRAScore(repIdx) {
-  // Core classes: 0,1,2 (Server Racks, Data Products, Cabling) = 70% weight
-  // Non-Core class: 3 (Bulk Cables) = 30% weight
-  // Class 4 (Others) excluded
+  // Core (70%): Server Racks(0) + Data Products(1) + Cabling(2) + Bulk Cables(3)
+  // Non-Core (30%): Others(4)
   var coreTarget = 0, coreActual = 0, ncTarget = 0, ncActual = 0;
-  var months = REPS_DATA[repIdx].monthly.length;
-  for (var mo = 0; mo < months; mo++) {
-    for (var ci = 0; ci < 3; ci++) { // Core
+  for (var mo = 0; mo < 12; mo++) {
+    for (var ci = 0; ci < 4; ci++) {
       coreTarget += getClassTarget(repIdx, ci, mo);
       coreActual += getClassActual(repIdx, ci, mo);
     }
-    // Non-Core (Bulk Cables = ci 3)
-    ncTarget += getClassTarget(repIdx, 3, mo);
-    ncActual += getClassActual(repIdx, 3, mo);
+    ncTarget += getClassTarget(repIdx, 4, mo);
+    ncActual += getClassActual(repIdx, 4, mo);
   }
-  var coreAch  = coreTarget  > 0 ? coreActual  / coreTarget  : 0;
-  var ncAch    = ncTarget    > 0 ? ncActual    / ncTarget    : 0;
+  var coreAch  = coreTarget > 0 ? coreActual / coreTarget : 0;
+  var ncAch    = ncTarget   > 0 ? ncActual   / ncTarget   : 0;
   var kraScore = (coreAch * 0.7) + (ncAch * 0.3);
   return { coreAch, ncAch, kraScore, coreActual, coreTarget, ncActual, ncTarget };
 }
+
 function getClassActual(repIdx, clsIdx, monthIdx) {
   return Math.round((state.classActuals[`${repIdx}-${clsIdx}-${monthIdx}`] || 0) * 100) / 100;
 }
@@ -1144,6 +1217,8 @@ function buildRepView(repIdx) {
   return `
   <div class="rep-tab-bar">
     <button class="rep-tab-btn active" id="rtab-kpi-${repIdx}" onclick="switchRepTab(${repIdx},'kpi')">📊 KPI</button>
+    <button class="rep-tab-btn" id="rtab-notes-${repIdx}" onclick="switchRepTab(${repIdx},'notes')">📝 Notes</button>
+    <button class="rep-tab-btn" id="rtab-leave-${repIdx}" onclick="switchRepTab(${repIdx},'leave')">🏖️ Leave</button>
     <button class="rep-tab-btn" id="rtab-loc-${repIdx}" onclick="switchRepTab(${repIdx},'loc')">📍 Customers</button>
   </div>
   <div class="rep-tab-pane active" id="rpane-kpi-${repIdx}">
@@ -1241,18 +1316,18 @@ function buildRepView(repIdx) {
   
 
   <!-- Monthly Tracker -->
-  <div class="section-hdr" id="kra-hdr-${repIdx}">🎯 KRA Achievement — Core (70%) + Non-Core Bulk Cables (30%)</div>
+  <div class="section-hdr" id="kra-hdr-${repIdx}">🎯 KRA Achievement — Core Products (70%) + Non-Core Others (30%)</div>
   <div id="kra-panel-${repIdx}" style="display:grid;grid-template-columns:1fr 1px 1fr 1px 1fr;gap:0;background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:18px">
     <div style="padding:14px 18px">
       <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">🔵 Core Achievement</div>
       <div id="kra-core-${repIdx}" style="font-size:22px;font-weight:800">—</div>
-      <div style="font-size:10px;color:var(--muted);margin-top:4px">Server Racks + Data Products + Cabling · 70% weight</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">Server Racks + Data Products + Cabling + Bulk Cables · 70% weight</div>
     </div>
     <div style="background:var(--border)"></div>
     <div style="padding:14px 18px">
       <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">🟠 Non-Core Achievement</div>
       <div id="kra-nc-${repIdx}" style="font-size:22px;font-weight:800">—</div>
-      <div style="font-size:10px;color:var(--muted);margin-top:4px">Bulk Cables · 30% weight</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">Others (freight, rebates, misc) · 30% weight</div>
     </div>
     <div style="background:var(--border)"></div>
     <div style="padding:14px 18px">
@@ -1291,42 +1366,60 @@ function buildRepView(repIdx) {
     </table>
   </div>
 
-  <!-- Results by Class -->
-  <div class="section-hdr">📦 Results by Class</div>
+  <!-- Results by Core / Non-Core -->
+  <div class="section-hdr">📦 Results by Category — Core &amp; Non-Core</div>
   <div class="class-tabs" id="cls-tabs-${repIdx}">
-    ${rep.classes.map((cls, ci) => `
-    <div class="class-tab ${ci===0?'active':''}"
-      style="${ci===0?`background:${clsColors[ci]};color:#fff;`:'color:var(--muted)'}"
-      onclick="switchClass(${repIdx},${ci})"
-      id="cls-tab-${repIdx}-${ci}">
-      ${cls.name}
-    </div>`).join('')}
+    <div class="class-tab active" style="background:#4472C4;color:#fff" onclick="switchCoreTab(${repIdx},'core')" id="cls-tab-${repIdx}-core">Core Products</div>
+    <div class="class-tab" style="color:var(--muted)" onclick="switchCoreTab(${repIdx},'noncore')" id="cls-tab-${repIdx}-noncore">Non-Core (Others)</div>
   </div>
-  ${rep.classes.map((cls, ci) => `
-  <div id="cls-section-${repIdx}-${ci}" style="display:${ci===0?'block':'none'}">
+
+  <div id="cls-section-${repIdx}-core">
+    <div style="font-size:10px;color:var(--muted);font-family:var(--font-mono);margin-bottom:8px">Server Racks &amp; Accessories + Data Products + Cabling &amp; Adapters + Bulk Cables</div>
     <div class="tracker-wrap">
       <table>
-        <thead>
-          <tr>
-            <th>Month</th><th>2026 Target</th><th style="color:#a78bfa">Acct Ach 2025</th><th>2025 Actual</th>
-            <th>2026 Invoiced</th><th>vs Tgt ($)</th><th>vs Tgt (%)</th><th>Status</th>
-          </tr>
-        </thead>
-        <tbody id="cls-body-${repIdx}-${ci}"></tbody>
-        <tfoot>
-          <tr class="total-row">
-            <td>Total</td>
-            <td id="cls-tot-tgt-${repIdx}-${ci}"></td>
-            <td>${fmt(cls.monthly.reduce((s,m,mi)=>s+getClassPrev(repIdx,ci,mi),0))}</td>
-            <td id="cls-tot-act-${repIdx}-${ci}"></td>
-            <td id="cls-tot-var-${repIdx}-${ci}"></td>
-            <td id="cls-tot-vpct-${repIdx}-${ci}"></td>
-            <td id="cls-tot-stat-${repIdx}-${ci}"></td>
-          </tr>
-        </tfoot>
+        <thead><tr>
+          <th>Month</th><th>2026 Target</th><th style="color:#a78bfa">Acct Ach 2025</th><th>2025 Actual</th>
+          <th>2026 Invoiced</th><th>Ach%</th><th>vs Tgt ($)</th><th>vs Tgt (%)</th><th>Status</th>
+        </tr></thead>
+        <tbody id="cls-body-${repIdx}-core"></tbody>
+        <tfoot><tr class="total-row">
+          <td>Total</td>
+          <td id="cls-tot-tgt-${repIdx}-core"></td>
+          <td id="cls-tot-prev-${repIdx}-core"></td>
+          <td id="cls-tot-hist-${repIdx}-core"></td>
+          <td id="cls-tot-act-${repIdx}-core"></td>
+          <td id="cls-tot-ach-${repIdx}-core"></td>
+          <td id="cls-tot-var-${repIdx}-core"></td>
+          <td id="cls-tot-vpct-${repIdx}-core"></td>
+          <td id="cls-tot-stat-${repIdx}-core"></td>
+        </tr></tfoot>
       </table>
     </div>
-  </div>`).join('')}
+  </div>
+
+  <div id="cls-section-${repIdx}-noncore" style="display:none">
+    <div style="font-size:10px;color:var(--muted);font-family:var(--font-mono);margin-bottom:8px">Others — freight, rebates, miscellaneous</div>
+    <div class="tracker-wrap">
+      <table>
+        <thead><tr>
+          <th>Month</th><th>2026 Target</th><th style="color:#a78bfa">Acct Ach 2025</th><th>2025 Actual</th>
+          <th>2026 Invoiced</th><th>Ach%</th><th>vs Tgt ($)</th><th>vs Tgt (%)</th><th>Status</th>
+        </tr></thead>
+        <tbody id="cls-body-${repIdx}-noncore"></tbody>
+        <tfoot><tr class="total-row">
+          <td>Total</td>
+          <td id="cls-tot-tgt-${repIdx}-noncore"></td>
+          <td id="cls-tot-prev-${repIdx}-noncore"></td>
+          <td id="cls-tot-hist-${repIdx}-noncore"></td>
+          <td id="cls-tot-act-${repIdx}-noncore"></td>
+          <td id="cls-tot-ach-${repIdx}-noncore"></td>
+          <td id="cls-tot-var-${repIdx}-noncore"></td>
+          <td id="cls-tot-vpct-${repIdx}-noncore"></td>
+          <td id="cls-tot-stat-${repIdx}-noncore"></td>
+        </tr></tfoot>
+      </table>
+    </div>
+  </div>
 
   </div><!-- /rpane-kpi -->
 
@@ -1336,6 +1429,14 @@ function buildRepView(repIdx) {
 
   <div class="rep-tab-pane" id="rpane-loc-${repIdx}">
     ${buildLocationsPane(repIdx)}
+  </div>
+
+  <div class="rep-tab-pane" id="rpane-notes-${repIdx}">
+    <div id="notes-panel-${repIdx}"><div style="padding:40px;text-align:center;color:var(--muted);font-family:var(--font-mono)">Loading notes...</div></div>
+  </div>
+
+  <div class="rep-tab-pane" id="rpane-leave-${repIdx}">
+    <div id="leave-panel-${repIdx}"><div style="padding:40px;text-align:center;color:var(--muted);font-family:var(--font-mono)">Loading leave...</div></div>
   </div>
 
   `;
@@ -1445,56 +1546,79 @@ function populateTracker(repIdx) {
   populateEoyPrediction(repIdx, totTgt, totAct);
 }
 
+function switchCoreTab(repIdx, tab) {
+  ['core','noncore'].forEach(function(t) {
+    var sec = document.getElementById('cls-section-' + repIdx + '-' + t);
+    var btn = document.getElementById('cls-tab-' + repIdx + '-' + t);
+    if (!sec || !btn) return;
+    if (t === tab) {
+      sec.style.display = 'block';
+      btn.style.background = '#4472C4'; btn.style.color = '#fff';
+    } else {
+      sec.style.display = 'none';
+      btn.style.background = ''; btn.style.color = 'var(--muted)';
+    }
+  });
+}
+
 function populateClassTrackers(repIdx) {
-  const rep = REPS_DATA[repIdx];
-  const access = getCurrentUserRole();
-  const isAdmin = access && access.role === 'admin';
   const now = new Date();
   const currentMi = now.getMonth();
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-  rep.classes.forEach((cls, ci) => {
-    const tbody = document.getElementById(`cls-body-${repIdx}-${ci}`);
+  // Core = classes 0-3, Non-Core = class 4
+  const groups = [
+    { key: 'core',    ciList: [0,1,2,3] },
+    { key: 'noncore', ciList: [4]        }
+  ];
+
+  groups.forEach(function(grp) {
+    const tbody = document.getElementById('cls-body-' + repIdx + '-' + grp.key);
     if (!tbody) return;
     tbody.innerHTML = '';
-    let totTgt = 0, totAct = 0;
-    cls.monthly.forEach((m, mi) => {
-      const tgt  = getClassTarget(repIdx, ci, mi);
-      const act  = getClassActual(repIdx, ci, mi);
-      const vari = act > 0 ? act - tgt : null;
-      const vpct = act > 0 && tgt !== 0 ? (act - tgt) / Math.abs(tgt) : null;
-      totTgt += tgt; totAct += act;
-      const isCurrentMonth = mi === currentMi;
-      const rowClass = isCurrentMonth ? 'current-month-row' : '';
-      const badge = isCurrentMonth ? '<span class="current-month-badge">▶ Now</span>' : '';
-      const status = tgt === 0 ? `<span class="status-pend" style="color:var(--muted)">Not qualified</span>` : act > 0 ? (act >= tgt ? `<span class="status-on">✅ On Target</span>` : `<span class="status-off">⚠️ Below Target</span>`) : `<span class="status-pend">Pending</span>`;
-      const varCell = vari !== null ? `<span class="${vari>=0?'variance-pos':'variance-neg'}">${fmt(vari)}</span>` : '—';
-      const pctCell = vpct !== null ? `<span class="${vpct>=0?'variance-pos':'variance-neg'}">${fmtPct(vpct)}</span>` : '—';
 
-      // Admins can edit, reps see read-only display
-      const actualCell = isAdmin
-        ? `<input class="actual-input" type="text" inputmode="numeric" placeholder="0"
-            value="${act > 0 ? Math.round(act) : ''}"
-            onblur="setClassActual(${repIdx},${ci},${mi},parseFloat(this.value.replace(/[^0-9.]/g,''))||0)">`
-        : `<span style="color:#ffe566;font-family:var(--font-mono)">${act > 0 ? fmt(act) : '—'}</span>`;
+    let totTgt=0, totAct=0, totPrev=0, totHist=0;
 
-      tbody.innerHTML += `<tr class="${rowClass}">
-        <td>${m.month} 2026${badge}</td>
-        <td class="target-cell">${fmt(tgt)}</td>
-        <td style="color:#a78bfa">${fmt(REPS_DATA[repIdx].classes[ci]?.monthly[mi]?.acctPrev||0)}</td>
-        <td class="prev-cell">${fmt(getClassPrev(repIdx, ci, mi))}</td>
-        <td>${actualCell}</td>
-        <td>${varCell}</td><td>${pctCell}</td><td>${status}</td>
-      </tr>`;
-    });
-    const totVar = totAct > 0 ? totAct - totTgt : null;
-    const totVpct = totAct > 0 && totTgt !== 0 ? (totAct - totTgt) / Math.abs(totTgt) : null;
-    const el = (id) => document.getElementById(id);
-    if (el(`cls-tot-tgt-${repIdx}-${ci}`)) el(`cls-tot-tgt-${repIdx}-${ci}`).textContent = fmt(totTgt);
-    if (el(`cls-tot-act-${repIdx}-${ci}`)) el(`cls-tot-act-${repIdx}-${ci}`).textContent = fmt(totAct);
-    if (el(`cls-tot-var-${repIdx}-${ci}`)) el(`cls-tot-var-${repIdx}-${ci}`).innerHTML = totVar !== null ? `<span class="${totVar>=0?'variance-pos':'variance-neg'}">${fmt(totVar)}</span>` : '—';
-    if (el(`cls-tot-vpct-${repIdx}-${ci}`)) el(`cls-tot-vpct-${repIdx}-${ci}`).innerHTML = totVpct !== null ? `<span class="${totVpct>=0?'variance-pos':'variance-neg'}">${fmtPct(totVpct)}</span>` : '—';
-    const s = totTgt === 0 ? `<span class="status-pend" style="color:var(--muted)">Not qualified</span>` : totAct > 0 ? (totAct >= totTgt ? `<span class="status-on">✅ On Target</span>` : `<span class="status-off">⚠️ Below Target</span>`) : `<span class="status-pend">Pending</span>`;
-    if (el(`cls-tot-stat-${repIdx}-${ci}`)) el(`cls-tot-stat-${repIdx}-${ci}`).innerHTML = s;
+    for (let mi=0; mi<12; mi++) {
+      const tgt  = grp.ciList.reduce((s,ci) => s + getClassTarget(repIdx,ci,mi), 0);
+      const act  = grp.ciList.reduce((s,ci) => s + getClassActual(repIdx,ci,mi), 0);
+      const prev = grp.ciList.reduce((s,ci) => s + (REPS_DATA[repIdx].classes[ci]?.monthly[mi]?.acctPrev||0), 0);
+      const hist = grp.ciList.reduce((s,ci) => s + getClassPrev(repIdx,ci,mi), 0);
+      totTgt+=tgt; totAct+=act; totPrev+=prev; totHist+=hist;
+
+      const vari   = act > 0 ? act - tgt : null;
+      const vpct   = act > 0 && tgt !== 0 ? (act-tgt)/Math.abs(tgt) : null;
+      const achPct = act > 0 && tgt > 0 ? act/tgt : null;
+      const isCur  = mi === currentMi;
+
+      const status = tgt===0
+        ? '<span class="status-pend" style="color:var(--muted)">Not qualified</span>'
+        : act>0 ? (act>=tgt ? '<span class="status-on">✅ On Target</span>' : '<span class="status-off">⚠️ Below Target</span>')
+        : '<span class="status-pend">Pending</span>';
+      const varCell  = vari!==null ? '<span class="'+(vari>=0?'variance-pos':'variance-neg')+'">'+fmt(vari)+'</span>' : '—';
+      const pctCell  = vpct!==null ? '<span class="'+(vpct>=0?'variance-pos':'variance-neg')+'">'+fmtPct(vpct)+'</span>' : '—';
+      const achCell  = achPct!==null ? '<span class="'+(achPct>=1?'variance-pos':achPct>=0.8?'':'variance-neg')+'" style="'+(achPct>=0.8&&achPct<1?'color:var(--amber)':'')+'">'+(achPct*100).toFixed(1)+'%</span>' : '—';
+
+      tbody.innerHTML += '<tr class="'+(isCur?'current-month-row':'')+'"><td>'+months[mi]+' 2026'+(isCur?'<span class="current-month-badge">▶ Now</span>':'')+'</td>'
+        +'<td class="target-cell">'+fmt(tgt)+'</td>'
+        +'<td style="color:#a78bfa">'+fmt(prev)+'</td>'
+        +'<td class="prev-cell">'+fmt(hist)+'</td>'
+        +'<td><span style="color:#ffe566;font-family:var(--font-mono)">'+(act>0?fmt(act):'—')+'</span></td>'
+        +'<td>'+achCell+'</td><td>'+varCell+'</td><td>'+pctCell+'</td><td>'+status+'</td></tr>';
+    }
+
+    const g = (id) => document.getElementById(id);
+    const totVar  = totAct>0 ? totAct-totTgt : null;
+    const totVpct = totAct>0&&totTgt!==0 ? (totAct-totTgt)/Math.abs(totTgt) : null;
+    const totAch  = totAct>0&&totTgt>0 ? totAct/totTgt : null;
+    if(g('cls-tot-tgt-'+repIdx+'-'+grp.key))   g('cls-tot-tgt-'+repIdx+'-'+grp.key).textContent   = fmt(totTgt);
+    if(g('cls-tot-prev-'+repIdx+'-'+grp.key))  g('cls-tot-prev-'+repIdx+'-'+grp.key).textContent  = fmt(totPrev);
+    if(g('cls-tot-hist-'+repIdx+'-'+grp.key))  g('cls-tot-hist-'+repIdx+'-'+grp.key).textContent  = fmt(totHist);
+    if(g('cls-tot-act-'+repIdx+'-'+grp.key))   g('cls-tot-act-'+repIdx+'-'+grp.key).textContent   = totAct>0?fmt(totAct):'—';
+    if(g('cls-tot-ach-'+repIdx+'-'+grp.key))   g('cls-tot-ach-'+repIdx+'-'+grp.key).innerHTML     = totAch!==null?'<span class="'+(totAch>=1?'variance-pos':totAch>=0.8?'':'variance-neg')+'">'+(totAch*100).toFixed(1)+'%</span>':'—';
+    if(g('cls-tot-var-'+repIdx+'-'+grp.key))   g('cls-tot-var-'+repIdx+'-'+grp.key).innerHTML     = totVar!==null?'<span class="'+(totVar>=0?'variance-pos':'variance-neg')+'">'+fmt(totVar)+'</span>':'—';
+    if(g('cls-tot-vpct-'+repIdx+'-'+grp.key))  g('cls-tot-vpct-'+repIdx+'-'+grp.key).innerHTML    = totVpct!==null?'<span class="'+(totVpct>=0?'variance-pos':'variance-neg')+'">'+fmtPct(totVpct)+'</span>':'—';
+    if(g('cls-tot-stat-'+repIdx+'-'+grp.key))  g('cls-tot-stat-'+repIdx+'-'+grp.key).innerHTML    = totTgt===0?'—':totAct>0?(totAct>=totTgt?'<span class="status-on">✅ On Target</span>':'<span class="status-off">⚠️ Below</span>'):'<span class="status-pend">Pending</span>';
   });
 }
 
@@ -1720,37 +1844,17 @@ function drawRepCharts(repIdx) {
 
   // ── Chart 2: Class-wise — Target vs Actual line chart ──
   // Use shorter class names for legend clarity
-  const clsShortNames = ['Server Racks', 'Data Products', 'Cabling', 'Bulk Cables', 'Others'];
-  const clsDatasets = rep.classes.map((cls, ci) => {
-    const tgtData = months.map((_, mi) => Math.round(getClassTarget(repIdx, ci, mi)));
-    const actData = months.map((_, mi) => { const a = getClassActual(repIdx, ci, mi); return a > 0 ? Math.round(a) : null; });
-    return [
-      {
-        label: clsShortNames[ci] + ' ╌ Target',
-        data: tgtData,
-        borderColor: clsColors[ci] + 'aa',
-        backgroundColor: 'transparent',
-        borderWidth: 1.5,
-        borderDash: [4, 3],
-        tension: 0.4,
-        pointRadius: 2,
-        pointHoverRadius: 4,
-        fill: false,
-      },
-      {
-        label: clsShortNames[ci] + ' — Invoiced',
-        data: actData,
-        borderColor: clsColors[ci],
-        backgroundColor: 'transparent',
-        borderWidth: 2.5,
-        tension: 0.4,
-        pointRadius: 3,
-        pointHoverRadius: 5,
-        fill: false,
-        spanGaps: false,
-      }
-    ];
-  }).flat();
+  // Core (ci 0-3) vs Non-Core (ci 4) datasets
+  const coreTgtData = months.map((_, mi) => Math.round([0,1,2,3].reduce((s,ci) => s+getClassTarget(repIdx,ci,mi), 0)));
+  const coreActData = months.map((_, mi) => { const a = [0,1,2,3].reduce((s,ci)=>s+getClassActual(repIdx,ci,mi),0); return a>0?Math.round(a):null; });
+  const ncTgtData   = months.map((_, mi) => Math.round(getClassTarget(repIdx,4,mi)));
+  const ncActData   = months.map((_, mi) => { const a = getClassActual(repIdx,4,mi); return a>0?Math.round(a):null; });
+  const clsDatasets = [
+    { label: 'Core ╌ Target',   data: coreTgtData, borderColor:'#4472C4aa', backgroundColor:'transparent', borderWidth:1.5, borderDash:[4,3], tension:0.4, pointRadius:2, fill:false },
+    { label: 'Core — Invoiced', data: coreActData, borderColor:'#4472C4',   backgroundColor:'rgba(68,114,196,0.08)', borderWidth:2.5, tension:0.4, pointRadius:3, fill:true,  spanGaps:false },
+    { label: 'Non-Core ╌ Target',   data: ncTgtData, borderColor:'#9E480Eaa', backgroundColor:'transparent', borderWidth:1.5, borderDash:[4,3], tension:0.4, pointRadius:2, fill:false },
+    { label: 'Non-Core — Invoiced', data: ncActData, borderColor:'#9E480E',   backgroundColor:'transparent', borderWidth:2,   tension:0.4, pointRadius:3, fill:false, spanGaps:false },
+  ];
 
   mkChart(`ch-rep-class-${repIdx}`, {
     type: 'line',
@@ -2768,6 +2872,16 @@ function buildRepsAdminView() {
     + '</div>'
     + '</div>'
     + '<div style="margin-top:32px">'
+    + '<div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:12px">📝 Upload Notes (XLS/CSV from NetSuite)</div>'
+    + '<div id="notes-upload-panel" ondragover="event.preventDefault()" ondrop="handleNotesFileDrop(event)" onclick="document.getElementById(\'notes-file-input\').click()" style="border:2px dashed var(--border);border-radius:10px;padding:28px;text-align:center;background:var(--surface);cursor:pointer">'
+    + '<div style="font-size:28px;margin-bottom:8px">📝</div>'
+    + '<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">Drop Notes XLS/CSV or click to browse</div>'
+    + '<div style="font-size:11px;color:var(--muted)">NetSuite User Notes export · auto-deduplicates on re-upload</div>'
+    + '<input type="file" id="notes-file-input" accept=".xls,.csv" style="display:none" onchange="if(this.files[0])handleNotesFile(this.files[0])">'
+    + '</div>'
+    + '<div id="notes-upload-status" style="margin-top:10px;font-family:var(--font-mono);font-size:11px;color:var(--muted)"></div>'
+    + '</div>'
+    + '<div style="margin-top:32px">'
     + '<div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:12px">📂 Upload Invoice Data (CSV)</div>'
     + '<div id="csv-upload-panel" ondragover="event.preventDefault();this.style.borderColor=\'var(--green)\';this.style.background=\'rgba(107,191,51,.06)\'" ondragleave="this.style.borderColor=\'var(--border)\';this.style.background=\'var(--surface)\'" ondrop="handleCsvDrop(event)" style="border:2px dashed var(--border);border-radius:10px;padding:32px;text-align:center;background:var(--surface);cursor:pointer;transition:.2s" onclick="document.getElementById(\'csv-file-input\').click()">'
     + '<div style="font-size:28px;margin-bottom:8px">📄</div>'
@@ -2965,22 +3079,24 @@ function saveRepsToFirebase() {
 // INIT
 // ══════════════════════════════════════════════════════════════
 
-function switchRepTab(ri,tab){
-  ['kpi','loc'].forEach(function(t){
-    var btn=document.getElementById('rtab-'+t+'-'+ri);
-    var pane=document.getElementById('rpane-'+t+'-'+ri);
-    if(btn){btn.classList.toggle('active',t===tab);btn.style.borderBottomColor=(t===tab)?REPS_DATA[ri].color:'transparent';}
-    if(pane)pane.classList.toggle('active',t===tab);
+function switchRepTab(ri, tab) {
+  ['kpi','loc','notes','leave'].forEach(function(t) {
+    var btn  = document.getElementById('rtab-'+t+'-'+ri);
+    var pane = document.getElementById('rpane-'+t+'-'+ri);
+    if (btn)  { btn.classList.toggle('active', t===tab); btn.style.borderBottomColor = (t===tab) ? REPS_DATA[ri].color : 'transparent'; }
+    if (pane) { pane.classList.toggle('active', t===tab); }
   });
-  if(tab==='loc')setTimeout(function(){initCustMap(ri);},80);
+  // Render on demand
+  if (tab === 'notes') {
+    var panel = document.getElementById('notes-panel-'+ri);
+    if (panel) renderRepNotes(ri, panel);
+  }
+  if (tab === 'leave') {
+    var panel = document.getElementById('leave-panel-'+ri);
+    if (panel) renderLeavePanel(ri, panel);
+  }
 }
 
-
-// ── Account dormant helpers ─────────────────────────────────────
-// la = index into 12-month rolling window: 0=Mar'25 ... 11=Feb'26
-// Active = last 3 slots of window (indices 9,10,11 = Oct'25,Jan'26,Feb'26)
-var ACCT_WINDOW_LEN = 12;
-var ACCT_ACTIVE_THRESHOLD = ACCT_WINDOW_LEN - 3; // = 9
 function isAcctDormant(a) { return a.la < ACCT_ACTIVE_THRESHOLD; }  // la=-1 (no history) also counts as dormant
 function isAcctActive(a)  { return a.la >= ACCT_ACTIVE_THRESHOLD; }
 function isAcctNever(a)   { return a.la < 0; }
@@ -3159,6 +3275,562 @@ function acctSearch(val) {
     if (el2) { el2.focus(); if (pos >= 0) el2.setSelectionRange(pos, pos); }
   }, 50);
 }
+
+// ══════════════════════════════════════════════════════════════
+// NOTES, LEAVE & MEETING KRA
+// ══════════════════════════════════════════════════════════════
+
+const VIC_HOLIDAYS_2026 = [
+  '2026-01-01','2026-01-26','2026-03-09','2026-04-03','2026-04-04',
+  '2026-04-05','2026-04-06','2026-04-25','2026-06-08','2026-11-03',
+  '2026-12-25','2026-12-26','2026-12-28'
+];
+const VIC_HOLIDAY_NAMES = {
+  '2026-01-01':"New Year's Day",'2026-01-26':'Australia Day',
+  '2026-03-09':'Labour Day','2026-04-03':'Good Friday',
+  '2026-04-04':'Saturday before Easter','2026-04-05':'Easter Sunday',
+  '2026-04-06':'Easter Monday','2026-04-25':'ANZAC Day',
+  '2026-06-08':"King's Birthday",'2026-11-03':'Melbourne Cup',
+  '2026-12-25':'Christmas Day','2026-12-26':'Boxing Day',
+  '2026-12-28':'Boxing Day (substitute)'
+};
+const MEETINGS_PER_DAY = 7;
+
+function dateStr(d) {
+  // Returns YYYY-MM-DD for a Date object
+  return d.toISOString().slice(0,10);
+}
+
+function isWeekend(d) {
+  const day = d.getDay();
+  return day === 0 || day === 6;
+}
+
+function isHoliday(ds) {
+  return VIC_HOLIDAYS_2026.includes(ds);
+}
+
+function getRepLeave(repIdx) {
+  // Returns set of YYYY-MM-DD strings the rep is on leave
+  var repKey = 'rep_' + repIdx;
+  var repLeave = state.leave[repKey] || {};
+  return Object.keys(repLeave).filter(d => repLeave[d]);
+}
+
+function isRepOnLeave(repIdx, ds) {
+  var repKey = 'rep_' + repIdx;
+  return !!(state.leave[repKey] && state.leave[repKey][ds]);
+}
+
+function getWorkingDaysInRange(startDate, endDate, repIdx) {
+  // Count working days (Mon-Fri, excl holidays, excl rep leave)
+  var count = 0;
+  var d = new Date(startDate);
+  while (d <= endDate) {
+    var ds = dateStr(d);
+    if (!isWeekend(d) && !isHoliday(ds) && !isRepOnLeave(repIdx, ds)) count++;
+    d.setDate(d.getDate() + 1);
+  }
+  return count;
+}
+
+function getMeetingTarget(repIdx, startDate, endDate) {
+  return getWorkingDaysInRange(startDate, endDate, repIdx) * MEETINGS_PER_DAY;
+}
+
+function getRepNotes(repIdx) {
+  var repNames = ['Robert M Schaffer','Andrew M Mobilia','Alexander Poll','Stivi Maticevski','Melissa'];
+  var repCodes = ['E10003','E10076','E10004','E10228','E10384'];
+  return state.notes.filter(function(n) {
+    return n.repCode === repCodes[repIdx] || (n.rep && n.rep.includes(repNames[repIdx]));
+  });
+}
+
+function getRepNotesInRange(repIdx, startDate, endDate) {
+  var notes = getRepNotes(repIdx);
+  return notes.filter(function(n) {
+    if (!n.date) return false;
+    var d = n.date.slice(0,10);
+    return d >= dateStr(startDate) && d <= dateStr(endDate);
+  });
+}
+
+function getWeekRange(offsetWeeks) {
+  // offsetWeeks=0 = current week (Mon-Sun)
+  var now = new Date();
+  var day = now.getDay(); // 0=Sun
+  var mon = new Date(now);
+  mon.setDate(now.getDate() - (day === 0 ? 6 : day - 1) + (offsetWeeks * 7));
+  var sun = new Date(mon);
+  sun.setDate(mon.getDate() + 6);
+  return { start: mon, end: sun };
+}
+
+function refreshNotesViews() {
+  // Refresh notes on any open rep page
+  for (var ri = 0; ri < 5; ri++) {
+    var panel = document.getElementById('notes-panel-' + ri);
+    if (panel) renderRepNotes(ri, panel);
+  }
+  var teamNotes = document.getElementById('team-notes-panel');
+  if (teamNotes) renderTeamNotes(teamNotes);
+}
+
+function refreshLeaveViews() {
+  for (var ri = 0; ri < 5; ri++) {
+    var panel = document.getElementById('leave-panel-' + ri);
+    if (panel) renderLeavePanel(ri, panel);
+  }
+}
+
+function refreshInsightsViews() {
+  for (var ri = 0; ri < 5; ri++) {
+    var el = document.getElementById('insights-panel-' + ri);
+    if (el && state.noteInsights['rep_'+ri]) {
+      el.innerHTML = formatInsight(state.noteInsights['rep_'+ri]);
+    }
+  }
+  var teamEl = document.getElementById('team-insights-panel');
+  if (teamEl && state.noteInsights['team']) {
+    teamEl.innerHTML = formatInsight(state.noteInsights['team']);
+  }
+}
+
+function formatInsight(text) {
+  if (!text) return '<span style="color:var(--muted)">No insights yet.</span>';
+  return '<div style="font-size:12px;line-height:1.7;color:var(--text);white-space:pre-wrap">' + text.replace(/</g,'&lt;') + '</div>';
+}
+
+// ── Parse notes XLS/CSV ──
+function parseNotesFile(text) {
+  // Handle XML-based XLS (NetSuite format)
+  if (text.includes('<?xml') || text.includes('<Workbook')) {
+    return parseNotesXml(text);
+  }
+  return parseNotesCsv(text);
+}
+
+function parseNotesXml(text) {
+  var notes = [];
+  var repCodes = {'E10003':0,'E10076':1,'E10004':2,'E10228':3,'E10384':4,'E10141':3};
+  // Extract cell data values
+  var cells = [];
+  var re = /<Data[^>]*>([^<]*)<\/Data>/g;
+  var m;
+  while ((m = re.exec(text)) !== null) cells.push(m[1]);
+  // First 6 are headers, then groups of 6
+  for (var i = 6; i + 5 < cells.length; i += 6) {
+    var repStr = cells[i].trim();
+    var code = repStr.split(' ')[0];
+    var ri = repCodes[code];
+    if (ri === undefined) continue;
+    var note = {
+      repCode: code,
+      rep: repStr,
+      ri: ri,
+      date: cells[i+1].slice(0,10),
+      company: cells[i+2].replace(/&amp;/g,'&').trim(),
+      title: cells[i+3].replace(/&amp;/g,'&').trim(),
+      memo: cells[i+4].replace(/&amp;/g,'&').replace(/&#13;&#10;/g,'\n').replace(/&apos;/g,"'").trim(),
+      direction: cells[i+5].trim(),
+      id: code + '_' + cells[i+1].slice(0,19).replace(/[^0-9]/g,'') + '_' + Math.abs(cells[i+4].length)
+    };
+    notes.push(note);
+  }
+  return notes;
+}
+
+function parseNotesCsv(text) {
+  text = text.replace(/^\uFEFF/,'');
+  var lines = text.split(/\r?\n/).filter(l => l.trim());
+  var hi = lines.findIndex(l => l.includes('Author') && l.includes('Memo'));
+  if (hi < 0) return [];
+  var headers = lines[hi].split(',').map(h => h.replace(/^"|"$/g,'').trim().toLowerCase());
+  var iAuth=headers.indexOf('author'), iDate=headers.indexOf('date'),
+      iComp=headers.indexOf('company'), iTitle=headers.indexOf('title'),
+      iMemo=headers.indexOf('memo'), iDir=headers.indexOf('direction');
+  var repCodes = {'E10003':0,'E10076':1,'E10004':2,'E10228':3,'E10384':4,'E10141':3};
+  var notes = [];
+  for (var i=hi+1; i<lines.length; i++) {
+    var cols = []; var cur='', inQ=false;
+    for (var ch of lines[i]) { if(ch==='"'){inQ=!inQ;}else if(ch===','&&!inQ){cols.push(cur);cur='';}else cur+=ch; }
+    cols.push(cur);
+    var repStr=(cols[iAuth]||'').trim();
+    var code=repStr.split(' ')[0];
+    var ri=repCodes[code];
+    if(ri===undefined) continue;
+    notes.push({repCode:code,rep:repStr,ri,date:(cols[iDate]||'').slice(0,10),
+      company:(cols[iComp]||'').trim(),title:(cols[iTitle]||'').trim(),
+      memo:(cols[iMemo]||'').trim(),direction:(cols[iDir]||'').trim(),
+      id:code+'_'+(cols[iDate]||'').replace(/[^0-9]/g,'')+'_'+Math.abs((cols[iMemo]||'').length)});
+  }
+  return notes;
+}
+
+function saveNotes(newNotes) {
+  if (!window._fbSet) return;
+  // Merge with existing notes (deduplicate by id)
+  var existing = {};
+  state.notes.forEach(n => { if(n.id) existing[n.id]=n; });
+  var duplicates=0, added=0;
+  newNotes.forEach(function(n) {
+    if (existing[n.id]) { duplicates++; }
+    else { existing[n.id]=n; added++; }
+  });
+  window._fbSet('dashboard/notes', existing);
+  return { added, duplicates, total: Object.keys(existing).length };
+}
+
+// ── AI Insights ──
+async function generateInsights(repIdx, notes) {
+  if (!notes || notes.length === 0) return 'No notes available for analysis.';
+  var repName = ['Robert Schaffer','Andrew Mobilia','Alexander Poll','Stivi Maticevski','Melissa Goodridge'][repIdx];
+  var summary = notes.slice(0,50).map(n =>
+    n.date + ' | ' + n.company + (n.title?' ['+n.title+']':'') + ': ' + (n.memo||'').slice(0,200)
+  ).join('\n');
+
+  try {
+    var resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-20250514', max_tokens:600,
+        messages:[{role:'user', content:
+          'You are a sales manager reviewing field notes for ' + repName + '. Analyse these notes and provide:\n'
+          +'1. Key trends (2-3 bullet points)\n2. Opportunities identified\n3. Risks or concerns\n4. Recommended actions\n\nNotes:\n' + summary
+          +'\n\nKeep response concise, focused on actionable sales insights. Use bullet points.'
+        }]
+      })
+    });
+    var data = await resp.json();
+    return data.content?.[0]?.text || 'Could not generate insights.';
+  } catch(e) {
+    return 'Error generating insights: ' + e.message;
+  }
+}
+
+async function generateTeamInsights(notes) {
+  if (!notes || notes.length === 0) return 'No notes available.';
+  var summary = notes.slice(0,80).map(n =>
+    n.date + ' | [' + n.rep.split(' ').slice(-1)[0] + '] ' + n.company + ': ' + (n.memo||'').slice(0,150)
+  ).join('\n');
+  try {
+    var resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-20250514', max_tokens:800,
+        messages:[{role:'user', content:
+          'You are a national sales manager. Analyse these field notes from the team and provide:\n'
+          +'1. Overall team trends\n2. Common customer themes or objections\n3. Competitive intelligence mentioned\n4. Top opportunities across the team\n5. Concerns or risks\n\nNotes:\n'+summary
+          +'\n\nBe concise and actionable.'
+        }]
+      })
+    });
+    var data = await resp.json();
+    return data.content?.[0]?.text || 'Could not generate insights.';
+  } catch(e) { return 'Error: '+e.message; }
+}
+
+
+// ── Rep Notes Panel ──────────────────────────────────────────
+function renderRepNotes(repIdx, container) {
+  if (!container) { container = document.getElementById('notes-panel-' + repIdx); }
+  if (!container) return;
+
+  var notes = getRepNotes(repIdx).sort((a,b) => b.date.localeCompare(a.date));
+  var now = new Date();
+  var weekRange = getWeekRange(0);
+  var weekNotes = getRepNotesInRange(repIdx, weekRange.start, weekRange.end);
+  var weekTarget = getMeetingTarget(repIdx, weekRange.start, weekRange.end);
+  var weekAch = weekNotes.length;
+  var weekPct = weekTarget > 0 ? weekAch/weekTarget : 0;
+  var weekColor = weekPct >= 1 ? 'var(--green)' : weekPct >= 0.7 ? 'var(--amber)' : '#e05252';
+
+  // Month range
+  var mStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  var mEnd   = new Date(now.getFullYear(), now.getMonth()+1, 0);
+  var monthNotes  = getRepNotesInRange(repIdx, mStart, mEnd);
+  var monthTarget = getMeetingTarget(repIdx, mStart, mEnd);
+  var monthAch    = monthNotes.length;
+  var monthPct    = monthTarget > 0 ? monthAch/monthTarget : 0;
+  var monthColor  = monthPct >= 1 ? 'var(--green)' : monthPct >= 0.7 ? 'var(--amber)' : '#e05252';
+
+  var repName = ['Robert Schaffer','Andrew Mobilia','Alexander Poll','Stivi Maticevski','Melissa Goodridge'][repIdx];
+  var insightKey = 'rep_' + repIdx;
+  var existingInsight = state.noteInsights[insightKey] || '';
+
+  var html = '<div style="padding:20px 24px">';
+
+  // Meeting KRA summary
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">'
+    + '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px">'
+    + '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px">📅 This Week</div>'
+    + '<div style="font-size:24px;font-weight:800;color:'+weekColor+'">'+weekAch+' / '+weekTarget+'</div>'
+    + '<div style="font-size:10px;color:var(--muted);margin-top:4px">meetings · KRA: 7/working day · '+weekRange.start.toLocaleDateString('en-AU',{day:'2-digit',month:'short'})+' – '+weekRange.end.toLocaleDateString('en-AU',{day:'2-digit',month:'short'})+'</div>'
+    + '<div style="margin-top:8px;height:4px;background:var(--border);border-radius:2px"><div style="height:4px;border-radius:2px;background:'+weekColor+';width:'+Math.min(weekPct*100,100)+'%"></div></div>'
+    + '</div>'
+    + '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px">'
+    + '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px">📆 This Month</div>'
+    + '<div style="font-size:24px;font-weight:800;color:'+monthColor+'">'+monthAch+' / '+monthTarget+'</div>'
+    + '<div style="font-size:10px;color:var(--muted);margin-top:4px">meetings · based on '+getWorkingDaysInRange(mStart,mEnd,repIdx)+' working days</div>'
+    + '<div style="margin-top:8px;height:4px;background:var(--border);border-radius:2px"><div style="height:4px;border-radius:2px;background:'+monthColor+';width:'+Math.min(monthPct*100,100)+'%"></div></div>'
+    + '</div></div>';
+
+  // AI Insights
+  html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:20px">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
+    + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">🤖 AI Insights</div>'
+    + '<button onclick="generateAndSaveInsight('+repIdx+')" style="background:var(--green);color:#fff;border:none;border-radius:5px;padding:5px 12px;font-size:11px;cursor:pointer;font-family:var(--font-mono)">✨ Generate</button>'
+    + '</div>'
+    + '<div id="insights-panel-'+repIdx+'">' + (existingInsight ? formatInsight(existingInsight) : '<span style="color:var(--muted);font-size:11px">Click Generate to analyse notes with AI.</span>') + '</div>'
+    + '</div>';
+
+  // Notes list
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'
+    + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">📋 All Notes ('+notes.length+')</div>'
+    + '</div>';
+
+  if (!notes.length) {
+    html += '<div style="padding:32px;text-align:center;color:var(--muted);font-family:var(--font-mono);font-size:11px;background:var(--surface);border:1px solid var(--border);border-radius:8px">No notes uploaded yet. Upload via Reps → Upload Notes.</div>';
+  } else {
+    notes.forEach(function(n) {
+      var dColor = n.direction === 'Outgoing' ? '#4472C4' : 'var(--muted)';
+      html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:8px">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'
+        + '<div style="font-size:12px;font-weight:600;color:var(--text)">' + (n.company||'Unknown') + '</div>'
+        + '<div style="display:flex;gap:8px;align-items:center">'
+        + (n.direction ? '<span style="font-size:9px;padding:2px 7px;border-radius:8px;background:'+dColor+'22;color:'+dColor+'">'+n.direction+'</span>' : '')
+        + '<span style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">'+n.date+'</span>'
+        + '</div></div>'
+        + (n.title ? '<div style="font-size:10px;color:var(--green);font-weight:600;margin-bottom:4px">'+n.title+'</div>' : '')
+        + '<div style="font-size:11px;color:var(--muted);line-height:1.5;white-space:pre-wrap">'+n.memo+'</div>'
+        + '</div>';
+    });
+  }
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+async function generateAndSaveInsight(repIdx) {
+  var btn = event.target;
+  btn.textContent = '⏳ Generating...'; btn.disabled = true;
+  var notes = getRepNotes(repIdx);
+  var insight = await generateInsights(repIdx, notes);
+  if (window._fbSet) {
+    var insightsData = Object.assign({}, state.noteInsights);
+    insightsData['rep_'+repIdx] = insight;
+    window._fbSet('dashboard/noteInsights', insightsData);
+  }
+  state.noteInsights['rep_'+repIdx] = insight;
+  var el = document.getElementById('insights-panel-'+repIdx);
+  if (el) el.innerHTML = formatInsight(insight);
+  btn.textContent = '✨ Generate'; btn.disabled = false;
+}
+
+// ── Leave Panel ──────────────────────────────────────────────
+function renderLeavePanel(repIdx, container) {
+  if (!container) container = document.getElementById('leave-panel-' + repIdx);
+  if (!container) return;
+
+  var now = new Date();
+  var currentYear = now.getFullYear();
+  var repLeaveKeys = getRepLeave(repIdx);
+  var repName = ['Robert Schaffer','Andrew Mobilia','Alexander Poll','Stivi Maticevski','Melissa Goodridge'][repIdx];
+  var isAdmin = window._isAdmin;
+  var currentRole = getCurrentUserRole();
+  var canEdit = isAdmin || (currentRole && currentRole.repIdx == repIdx);
+
+  var monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+  var html = '<div style="padding:20px 24px">';
+
+  // Summary
+  var totalLeave = repLeaveKeys.length;
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px">'
+    + '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px">'
+    + '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:4px">Leave Days Taken</div>'
+    + '<div style="font-size:24px;font-weight:800;color:var(--text)">'+totalLeave+'</div></div>'
+    + '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px">'
+    + '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:4px">Public Holidays</div>'
+    + '<div style="font-size:24px;font-weight:800;color:var(--text)">'+VIC_HOLIDAYS_2026.length+'</div></div>'
+    + '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px">'
+    + '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:4px">Adjusted Meeting Days</div>';
+
+  // Calculate adjusted working days for current month
+  var mStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  var mEnd   = new Date(now.getFullYear(), now.getMonth()+1, 0);
+  var adjDays = getWorkingDaysInRange(mStart, mEnd, repIdx);
+  html += '<div style="font-size:24px;font-weight:800;color:var(--green)">'+adjDays+'</div>'
+    + '<div style="font-size:10px;color:var(--muted)">this month</div></div></div>';
+
+  // Add leave form
+  if (canEdit) {
+    html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:20px">'
+      + '<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">➕ Mark Leave / Absence</div>'
+      + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+      + '<input type="date" id="leave-date-'+repIdx+'" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:6px 10px;font-family:var(--font-mono);font-size:11px">'
+      + '<button onclick="markLeave('+repIdx+')" style="background:var(--green);color:#fff;border:none;border-radius:5px;padding:6px 14px;font-size:11px;cursor:pointer;font-family:var(--font-mono)">Mark Leave</button>'
+      + '</div></div>';
+  }
+
+  // Public holidays
+  html += '<div style="margin-bottom:16px">'
+    + '<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">🇦🇺 Victoria Public Holidays 2026</div>'
+    + '<div class="loc-table-wrap"><table class="loc-table"><thead><tr><th>Holiday</th><th>Date</th></tr></thead><tbody>';
+  Object.entries(VIC_HOLIDAY_NAMES).forEach(([d,name]) => {
+    var dt = new Date(d+'T00:00:00');
+    html += '<tr><td>'+name+'</td><td style="font-family:var(--font-mono);font-size:10px">'+dt.toLocaleDateString('en-AU',{weekday:'short',day:'2-digit',month:'short'})+'</td></tr>';
+  });
+  html += '</tbody></table></div></div>';
+
+  // Rep leave list
+  if (repLeaveKeys.length) {
+    html += '<div>'
+      + '<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">📋 Marked Leave Days</div>'
+      + '<div class="loc-table-wrap"><table class="loc-table"><thead><tr><th>Date</th><th></th></tr></thead><tbody>';
+    repLeaveKeys.sort().forEach(function(d) {
+      var dt = new Date(d+'T00:00:00');
+      html += '<tr><td style="font-family:var(--font-mono)">'+dt.toLocaleDateString('en-AU',{weekday:'short',day:'2-digit',month:'short',year:'numeric'})+'</td>'
+        + '<td>'+(canEdit?'<button onclick="removeLeave('+repIdx+',\''+d+'\')" style="background:transparent;border:1px solid #e05252;color:#e05252;border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer">Remove</button>':'')+'</td></tr>';
+    });
+    html += '</tbody></table></div></div>';
+  } else {
+    html += '<div style="color:var(--muted);font-size:11px;font-family:var(--font-mono)">No leave days marked yet.</div>';
+  }
+
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function markLeave(repIdx) {
+  var input = document.getElementById('leave-date-'+repIdx);
+  if (!input || !input.value) return alert('Please select a date.');
+  var d = input.value;
+  if (isWeekend(new Date(d+'T00:00:00'))) return alert('That day is a weekend.');
+  if (!window._fbSet) return;
+  var leaveData = JSON.parse(JSON.stringify(state.leave));
+  if (!leaveData['rep_'+repIdx]) leaveData['rep_'+repIdx] = {};
+  leaveData['rep_'+repIdx][d] = true;
+  window._fbSet('dashboard/leave', leaveData);
+  input.value = '';
+}
+
+function removeLeave(repIdx, d) {
+  if (!window._fbSet) return;
+  var leaveData = JSON.parse(JSON.stringify(state.leave));
+  if (leaveData['rep_'+repIdx]) delete leaveData['rep_'+repIdx][d];
+  window._fbSet('dashboard/leave', leaveData);
+}
+
+// ── Team Notes Panel ─────────────────────────────────────────
+function renderTeamNotes(container) {
+  if (!container) return;
+  var RN = ['Robert','Andrew','Alexander','Stivi','Melissa'];
+  var RC = ['#4472C4','#70AD47','#ED7D31','#9E480E','#C00000'];
+  var now = new Date();
+  var weekRange = getWeekRange(0);
+  var allNotes = state.notes.sort((a,b) => b.date.localeCompare(a.date));
+  var existingInsight = state.noteInsights['team'] || '';
+
+  var html = '<div style="padding:0">';
+
+  // Weekly meeting KRA for each rep
+  html += '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:20px">';
+  for (var ri=0; ri<5; ri++) {
+    var wNotes = getRepNotesInRange(ri, weekRange.start, weekRange.end);
+    var wTgt   = getMeetingTarget(ri, weekRange.start, weekRange.end);
+    var wPct   = wTgt>0 ? wNotes.length/wTgt : 0;
+    var wColor = wPct>=1?'var(--green)':wPct>=0.7?'var(--amber)':'#e05252';
+    html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;text-align:center">'
+      + '<div style="font-size:10px;color:'+RC[ri]+';font-weight:700;margin-bottom:4px">'+RN[ri]+'</div>'
+      + '<div style="font-size:18px;font-weight:800;color:'+wColor+'">'+wNotes.length+'/'+wTgt+'</div>'
+      + '<div style="font-size:9px;color:var(--muted)">meetings this week</div>'
+      + '<div style="margin-top:6px;height:3px;background:var(--border);border-radius:2px"><div style="height:3px;border-radius:2px;background:'+wColor+';width:'+Math.min(wPct*100,100)+'%"></div></div>'
+      + '</div>';
+  }
+  html += '</div>';
+
+  // Team AI insights
+  html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:20px">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
+    + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">🤖 Team Intelligence</div>'
+    + '<button onclick="generateAndSaveTeamInsight()" style="background:var(--green);color:#fff;border:none;border-radius:5px;padding:5px 12px;font-size:11px;cursor:pointer;font-family:var(--font-mono)">✨ Generate</button>'
+    + '</div>'
+    + '<div id="team-insights-panel">' + (existingInsight ? formatInsight(existingInsight) : '<span style="color:var(--muted);font-size:11px">Click Generate to analyse all team notes with AI.</span>') + '</div>'
+    + '</div>';
+
+  // Recent notes feed
+  html += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:10px">📋 Recent Activity ('+allNotes.length+' notes)</div>';
+  if (!allNotes.length) {
+    html += '<div style="padding:24px;text-align:center;color:var(--muted);font-family:var(--font-mono);font-size:11px">No notes uploaded yet.</div>';
+  } else {
+    allNotes.slice(0,30).forEach(function(n) {
+      var ri = n.ri !== undefined ? n.ri : -1;
+      var rc = ri>=0 ? RC[ri] : '#888';
+      var rn = ri>=0 ? RN[ri] : (n.rep||'');
+      html += '<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid '+rc+';border-radius:8px;padding:10px 14px;margin-bottom:6px">'
+        + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">'
+        + '<span style="font-size:10px;font-weight:700;color:'+rc+'">'+rn+'</span>'
+        + '<span style="font-size:10px;color:var(--muted);font-family:var(--font-mono)">'+n.date+'</span>'
+        + '<span style="font-size:10px;font-weight:600;color:var(--text)">'+n.company+'</span>'
+        + (n.title?'<span style="font-size:9px;padding:1px 6px;border-radius:8px;background:var(--green)22;color:var(--green)">'+n.title+'</span>':'')
+        + '</div>'
+        + '<div style="font-size:11px;color:var(--muted);line-height:1.4">'+n.memo.slice(0,200)+(n.memo.length>200?'…':'')+'</div>'
+        + '</div>';
+    });
+  }
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+async function generateAndSaveTeamInsight() {
+  var btn = event.target;
+  btn.textContent = '⏳ Generating...'; btn.disabled = true;
+  var insight = await generateTeamInsights(state.notes);
+  if (window._fbSet) {
+    var insightsData = Object.assign({}, state.noteInsights, {team: insight});
+    window._fbSet('dashboard/noteInsights', insightsData);
+  }
+  state.noteInsights['team'] = insight;
+  var el = document.getElementById('team-insights-panel');
+  if (el) el.innerHTML = formatInsight(insight);
+  btn.textContent = '✨ Generate'; btn.disabled = false;
+}
+
+
+function handleNotesFileDrop(event) {
+  event.preventDefault();
+  var file = event.dataTransfer.files[0];
+  if (file) handleNotesFile(file);
+}
+
+async function handleNotesFile(file) {
+  var status = document.getElementById('notes-upload-status');
+  if (status) { status.style.color='var(--muted)'; status.textContent='⏳ Parsing '+file.name+'...'; }
+  var reader = new FileReader();
+  reader.onload = async function(e) {
+    var text = e.target.result;
+    var notes = parseNotesFile(text);
+    if (!notes || !notes.length) {
+      if (status) { status.style.color='#e05252'; status.textContent='❌ Could not parse file. Check format.'; }
+      return;
+    }
+    var result = saveNotes(notes);
+    if (status) {
+      status.style.color='var(--green)';
+      status.textContent = '✅ ' + result.added + ' new notes added · ' + result.duplicates + ' duplicates skipped · ' + result.total + ' total notes';
+    }
+    // Auto-generate team insights
+    if (status) status.textContent += ' · ⏳ Generating AI insights...';
+    var insight = await generateTeamInsights(state.notes);
+    if (window._fbSet) {
+      var insightsData = Object.assign({}, state.noteInsights, {team: insight});
+      window._fbSet('dashboard/noteInsights', insightsData);
+    }
+    if (status) status.textContent = status.textContent.replace('⏳ Generating AI insights...', '✅ AI insights updated');
+  };
+  reader.readAsText(file);
+}
 function buildDormantAgeSelect() {
   var ages = [['all','Dormant: All'],['3','3+ months'],['6','6+ months'],['9','9+ months'],['12','12+ months / Never']];
   var opts = ages.map(function(a) {
@@ -3216,66 +3888,119 @@ function getFilteredAccounts(){
 
 
 function renderConversions(ct) {
-  var conv = getDormantConversions();
   var RN = ['Robert Schaffer','Andrew Mobilia','Alexander Poll','Stivi Maticevski','Melissa Goodridge'];
   var RC = ['#4472C4','#70AD47','#ED7D31','#9E480E','#C00000'];
   var snap = state.acctStatusSnap || {};
-  var snapDate = Object.values(snap)[0] ? new Date(Object.values(snap)[0].ts).toLocaleDateString('en-AU') : 'No snapshot';
+  var snapKeys = Object.keys(snap);
+  var hasSnap = snapKeys.length > 0;
+  var snapDate = hasSnap ? new Date(snap[snapKeys[0]].ts).toLocaleDateString('en-AU') : null;
 
-  var html = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">'
+  // Compute conversions
+  var reactivated = [];  // was dormant at snapshot, now active
+  var goneDormant = [];  // was active at snapshot, now dormant
+
+  if (hasSnap) {
+    ACCOUNTS_DATA.forEach(function(a) {
+      var key = a.n.replace(/[.#$\[\]]/g, '_');
+      var prev = snap[key];
+      if (!prev) return;
+      var wasDormant = prev.dormant;
+      var isDormantNow = isAcctDormant(a);
+      if (wasDormant && !isDormantNow) reactivated.push(a);
+      if (!wasDormant && isDormantNow) goneDormant.push(a);
+    });
+  }
+
+  // Count totals at snapshot
+  var snapDormantCount = snapKeys.filter(function(k){ return snap[k].dormant; }).length;
+  var snapActiveCount  = snapKeys.filter(function(k){ return !snap[k].dormant; }).length;
+
+  // Attrition ratio = accounts gone dormant / accounts that were active
+  var attritionRate = snapActiveCount > 0 ? goneDormant.length / snapActiveCount : 0;
+  // Recovery ratio = accounts reactivated / accounts that were dormant
+  var recoveryRate  = snapDormantCount > 0 ? reactivated.length / snapDormantCount : 0;
+
+  var html = '<div style="margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">'
     + '<div>'
-    + '<div style="font-size:13px;font-weight:700;color:var(--text)">🔄 Dormant Account Conversions</div>'
-    + '<div style="font-size:11px;color:var(--muted);margin-top:2px;font-family:var(--font-mono)">Comparing current status vs snapshot taken ' + snapDate + '</div>'
-    + '</div>'
-    + '<button onclick="takeStatusSnapshot()" class="admin-only" style="background:var(--green);color:#fff;border:none;border-radius:6px;padding:7px 14px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font-main)">📸 Take New Snapshot</button>'
+    + '<div style="font-size:14px;font-weight:700;color:var(--text)">🔄 Dormant Account Conversion Tracker</div>'
+    + '<div style="font-size:11px;color:var(--muted);margin-top:3px;font-family:var(--font-mono)">'
+    + (hasSnap ? 'Baseline snapshot: ' + snapDate + ' · ' + snapKeys.length + ' accounts tracked' : 'No baseline snapshot taken yet')
+    + '</div></div>'
+    + '<button onclick="takeStatusSnapshot()" class="admin-only" style="background:var(--green);color:#fff;border:none;border-radius:6px;padding:7px 14px;font-size:11px;font-weight:600;cursor:pointer">📸 Set Baseline Snapshot</button>'
     + '</div>';
 
-  if (!Object.keys(snap).length) {
-    html += '<div style="padding:40px;text-align:center;color:var(--muted);font-family:var(--font-mono);font-size:12px">No snapshot taken yet. Click "Take New Snapshot" to record current account statuses, then check back later to see conversions.</div>';
+  if (!hasSnap) {
+    html += '<div style="padding:48px;text-align:center;background:var(--surface);border:1px solid var(--border);border-radius:10px">'
+      + '<div style="font-size:32px;margin-bottom:12px">📸</div>'
+      + '<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">No baseline snapshot set</div>'
+      + '<div style="font-size:11px;color:var(--muted);max-width:400px;margin:0 auto">Click "Set Baseline Snapshot" to record the current active/dormant status of all accounts. This becomes your baseline — return here anytime to see which dormant accounts have been re-activated, and which active accounts have gone dormant.</div>'
+      + '</div>';
     ct.innerHTML = html;
+    ct.querySelectorAll('.admin-only').forEach(function(el){ el.style.display='inline-flex'; });
     return;
   }
 
-  // Re-activated accounts
+  // ── KPI summary cards ──
+  html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:24px">';
+  var cards = [
+    { label: 'Dormant at Baseline', val: snapDormantCount, color: '#e05252', sub: 'accounts tracked as dormant' },
+    { label: '✅ Re-activated',     val: reactivated.length, color: '#27ae60', sub: 'Recovery rate: ' + (recoveryRate*100).toFixed(1) + '%' },
+    { label: 'Active at Baseline',  val: snapActiveCount,  color: 'var(--green)', sub: 'accounts tracked as active' },
+    { label: '⚠️ Gone Dormant',     val: goneDormant.length, color: '#f5a623', sub: 'Attrition rate: ' + (attritionRate*100).toFixed(1) + '%' },
+  ];
+  cards.forEach(function(c) {
+    html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px">'
+      + '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px">' + c.label + '</div>'
+      + '<div style="font-size:28px;font-weight:800;color:' + c.color + ';line-height:1">' + c.val + '</div>'
+      + '<div style="font-size:10px;color:var(--muted);margin-top:5px;font-family:var(--font-mono)">' + c.sub + '</div>'
+      + '</div>';
+  });
+  html += '</div>';
+
+  // ── Re-activated accounts table ──
   html += '<div style="margin-bottom:24px">'
-    + '<div style="font-size:12px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">✅ Re-activated (' + conv.nowActive.length + ') — were dormant, now active</div>';
-  if (conv.nowActive.length) {
-    html += '<div class="loc-table-wrap"><table class="loc-table"><thead><tr><th>Account</th><th>Parent</th><th>Rep</th><th style="text-align:right">2025 Rev</th></tr></thead><tbody>';
-    conv.nowActive.forEach(function(a) {
+    + '<div style="font-size:11px;font-weight:700;color:#27ae60;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">✅ Re-activated Accounts (' + reactivated.length + ')</div>';
+  if (reactivated.length) {
+    html += '<div class="loc-table-wrap"><table class="loc-table"><thead><tr>'
+      + '<th>Account</th><th>Parent</th><th>Rep</th><th style="text-align:right">2025 Rev</th>'
+      + '</tr></thead><tbody>';
+    reactivated.forEach(function(a) {
       var rc = RC[a.ri] || '#888';
-      html += '<tr><td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + a.n + '">' + a.n + '</td>'
-        + '<td style="font-size:10px;color:var(--muted)">' + (a.p||'—') + '</td>'
-        + '<td style="color:' + rc + ';font-size:10px">' + (RN[a.ri]||'—') + '</td>'
-        + '<td style="font-family:var(--font-mono);text-align:right">' + (a.s ? '$'+Math.round(a.s).toLocaleString("en-AU") : '—') + '</td></tr>';
+      html += '<tr><td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+a.n+'">'+a.n+'</td>'
+        + '<td style="font-size:10px;color:var(--muted)">'+(a.p||'—')+'</td>'
+        + '<td style="color:'+rc+';font-size:10px;white-space:nowrap">'+(RN[a.ri]||'—')+'</td>'
+        + '<td style="font-family:var(--font-mono);text-align:right">'+(a.s?'$'+Math.round(a.s).toLocaleString('en-AU'):'—')+'</td></tr>';
     });
     html += '</tbody></table></div>';
   } else {
-    html += '<div style="color:var(--muted);font-family:var(--font-mono);font-size:11px;padding:12px 0">No re-activations since snapshot.</div>';
+    html += '<div style="color:var(--muted);font-family:var(--font-mono);font-size:11px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:6px">No dormant accounts have been re-activated since the baseline snapshot.</div>';
   }
   html += '</div>';
 
-  // Gone dormant
+  // ── Gone dormant table ──
   html += '<div>'
-    + '<div style="font-size:12px;font-weight:700;color:#e05252;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">⚠️ Gone Dormant (' + conv.nowDormant.length + ') — were active, now dormant</div>';
-  if (conv.nowDormant.length) {
-    html += '<div class="loc-table-wrap"><table class="loc-table"><thead><tr><th>Account</th><th>Parent</th><th>Rep</th><th style="text-align:right">2025 Rev</th></tr></thead><tbody>';
-    conv.nowDormant.forEach(function(a) {
+    + '<div style="font-size:11px;font-weight:700;color:#f5a623;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">⚠️ Gone Dormant (' + goneDormant.length + ') — Attrition Rate: ' + (attritionRate*100).toFixed(1) + '%</div>';
+  if (goneDormant.length) {
+    html += '<div class="loc-table-wrap"><table class="loc-table"><thead><tr>'
+      + '<th>Account</th><th>Parent</th><th>Rep</th><th style="text-align:right">2025 Rev</th>'
+      + '</tr></thead><tbody>';
+    goneDormant.forEach(function(a) {
       var rc = RC[a.ri] || '#888';
-      html += '<tr><td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + a.n + '">' + a.n + '</td>'
-        + '<td style="font-size:10px;color:var(--muted)">' + (a.p||'—') + '</td>'
-        + '<td style="color:' + rc + ';font-size:10px">' + (RN[a.ri]||'—') + '</td>'
-        + '<td style="font-family:var(--font-mono);text-align:right">' + (a.s ? '$'+Math.round(a.s).toLocaleString("en-AU") : '—') + '</td></tr>';
+      html += '<tr><td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+a.n+'">'+a.n+'</td>'
+        + '<td style="font-size:10px;color:var(--muted)">'+(a.p||'—')+'</td>'
+        + '<td style="color:'+rc+';font-size:10px;white-space:nowrap">'+(RN[a.ri]||'—')+'</td>'
+        + '<td style="font-family:var(--font-mono);text-align:right">'+(a.s?'$'+Math.round(a.s).toLocaleString('en-AU'):'—')+'</td></tr>';
     });
     html += '</tbody></table></div>';
   } else {
-    html += '<div style="color:var(--muted);font-family:var(--font-mono);font-size:11px;padding:12px 0">No accounts gone dormant since snapshot.</div>';
+    html += '<div style="color:var(--muted);font-family:var(--font-mono);font-size:11px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:6px">No active accounts have gone dormant since the baseline snapshot.</div>';
   }
   html += '</div>';
 
   ct.innerHTML = html;
-  // Show admin-only elements
   ct.querySelectorAll('.admin-only').forEach(function(el){ el.style.display='inline-flex'; });
 }
+
 function renderAccountsTab(){var ct=document.getElementById('acct-tab-content');if(!ct)return;if(_acctState.tab==='conversions')renderConversions(ct);else renderHeatmap(ct);}
 function heatColor(v,mx){if(!v||v<=0)return 'transparent';var p=Math.min(v/mx,1);return 'rgba('+Math.round(23+77*p)+','+Math.round(165-85*p)+','+Math.round(137-87*p)+','+(0.15+p*0.70)+')';}
 function renderHeatmap(ct){
