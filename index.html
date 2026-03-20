@@ -2015,6 +2015,16 @@ function init() {
     b.style.display = 'inline-flex';
   });
   document.getElementById('tab-team').style.display = 'inline-flex';
+
+  // Populate all rep trackers and charts
+  REPS_DATA.forEach((_, ri) => {
+    try { populateTracker(ri); } catch(e) { console.warn('populateTracker '+ri, e); }
+    try { populateClassTrackers(ri); } catch(e) { console.warn('populateClassTrackers '+ri, e); }
+    try { drawRepCharts(ri); } catch(e) { console.warn('drawRepCharts '+ri, e); }
+  });
+
+  // Populate team view
+  try { refreshTeamView(); } catch(e) { console.warn('refreshTeamView', e); }
 }
 
 // ══════════════════════════════════════════════════════════════
