@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- v20260319_162005_20260319_161226 -->
+<!DOCTYPE html><!-- v20260320_080231 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -887,7 +887,13 @@ window.addEventListener('auth-changed', e => {
   const user = e.detail.user;
   if (user) {
     // Ensure views are built before showing dashboard
-    if (!window._initDone) { window._initDone = true; init(); }
+    if (!window._initDone) {
+      window._initDone = true;
+      try { init(); } catch(e) {
+        console.error('init() failed:', e);
+        // Show dashboard anyway so user is not stuck on login
+      }
+    }
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('logout-btn').style.display = '';
     document.getElementById('change-pw-btn').style.display = '';
