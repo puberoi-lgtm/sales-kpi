@@ -850,6 +850,64 @@ function isAcctDormant(a) { return a.la < ACCT_ACTIVE_THRESHOLD; }
 function isAcctActive(a)  { return a.la >= ACCT_ACTIVE_THRESHOLD; }
 function isAcctNever(a)   { return a.la < 0; }
 
+
+const state = {
+  acctStatusSnap: {},
+  notes: [],
+  leave: {},
+  noteInsights: {},
+  classActuals: {},
+  customTargets: {},
+  customAccounts: []
+};
+
+const ADMIN_EMAILS = ['puberoi@serveredge.com.au','pkumar@serveredge.com.au'];
+const REP_EMAILS = {
+  'rschaffer@serveredge.com.au': 0,
+  'amobilia@serveredge.com.au': 1,
+  'apoll@serveredge.com.au': 2,
+  'smaticevski@serveredge.com.au': 3,
+  'mgoodridge@serveredge.com.au': 4
+};
+
+function getCurrentUserRole() {
+  var user = window._currentUser;
+  if (!user) return null;
+  var email = user.email.toLowerCase();
+  if (ADMIN_EMAILS.includes(email)) return { role: 'admin' };
+  var ri = REP_EMAILS[email];
+  if (ri !== undefined) return { role: 'rep', repIdx: ri };
+  return { role: 'admin' }; // default to admin for unknown emails
+}
+
+function applyAccessControl() {
+  var role = getCurrentUserRole();
+  if (!role) return;
+  var isAdmin = role.role === 'admin';
+  window._isAdmin = isAdmin;
+
+  // Show/hide tabs based on role
+  var repAdminTab = document.getElementById('tab-reps-admin');
+  if (repAdminTab) repAdminTab.style.display = isAdmin ? 'inline-flex' : 'none';
+
+  // Show/hide admin-only elements
+  document.querySelectorAll('.admin-only').forEach(function(el) {
+    el.style.display = isAdmin ? '' : 'none';
+  });
+
+  // For reps, only show their own tab
+  if (!isAdmin && role.repIdx !== undefined) {
+    for (var ri = 0; ri < 5; ri++) {
+      var tab = document.getElementById('tab-rep-' + ri);
+      if (tab) tab.style.display = ri === role.repIdx ? 'inline-flex' : 'none';
+    }
+    // Show their rep view by default
+    showView('rep-' + role.repIdx);
+  }
+}
+
+var _acctState = { rep: 'all', company: 'all', filter: 'all', dormantAge: 'all', search: '', page: 0, tab: 'heatmap' };
+
 function doLogin() {
   const email    = document.getElementById('login-email').value.trim();
   const password = document.getElementById('login-password').value;
