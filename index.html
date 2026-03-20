@@ -977,7 +977,7 @@ window.addEventListener('auth-changed', e => {
   const user = e.detail.user;
   if (user) {
     // Ensure views are built before showing dashboard
-    if (!window._initDone) init();
+    if (!window._initDone) { window._initDone = true; init(); }
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('logout-btn').style.display = '';
     document.getElementById('change-pw-btn').style.display = '';
@@ -1438,35 +1438,74 @@ function updateKRAPanel(repIdx) {
   ncEl.textContent    = k.grwActual    > 0 ? (k.grwAch    * 100).toFixed(1) + '%' : '—';
   scoreEl.textContent = (k.estActual > 0 || k.grwActual > 0) ? (k.kraScore * 100).toFixed(1) + '%' : '—';
 }
+
+function switchCoreTab(repIdx, tab) {}
+
+function populateClassTrackers(repIdx) {
+  const tbody = document.getElementById('cls-body-' + repIdx + '-combined');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  const now = new Date();
+  const currentMi = now.getMonth();
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  let totEstTgt=0, totEstAct=0, totGrwTgt=0, totGrwAct=0;
+  for (let mi=0; mi<12; mi++) {
+    const estTgt = [0,1,2,3].reduce((s,ci) => s + getClassTarget(repIdx,ci,mi), 0);
+    const estAct = [0,1,2,3].reduce((s,ci) => s + getClassActual(repIdx,ci,mi), 0);
+    const grwTgt = getClassTarget(repIdx,4,mi);
+    const grwAct = getClassActual(repIdx,4,mi);
+    totEstTgt+=estTgt; totEstAct+=estAct; totGrwTgt+=grwTgt; totGrwAct+=grwAct;
+    const estAch = estTgt>0&&estAct>0 ? estAct/estTgt : null;
+    const grwAch   = grwTgt>0&&grwAct>0 ? grwAct/grwTgt : null;
+    const kraScore = estAch!==null ? estAch*0.7+(grwAch||0)*0.3 : null;
+    const isCur = mi===currentMi;
+    const ac = (p) => p!==null ? '<span style="color:'+(p>=1?'var(--green)':p>=0.8?'var(--amber)':'#e05252')+';font-weight:600">'+(p*100).toFixed(1)+'%</span>' : '\u2014';
+    const status = estTgt===0?'<span class="status-pend" style="color:var(--muted)">Pending</span>'
+      :estAct>0?(kraScore!==null&&kraScore>=0.7?'<span class="status-on">\u2705 On Track</span>':'<span class="status-off">\u26a0\ufe0f Below</span>')
+      :'<span class="status-pend">Pending</span>';
+    tbody.innerHTML += '<tr class="'+(isCur?'current-month-row':'')+'"><td>'+months[mi]+' 2026'+(isCur?'<span class="current-month-badge">\u25b6 Now</span>':'')+'</td>'
+      +'<td class="target-cell">'+fmt(estTgt)+'</td><td><span style="color:#ffe566;font-family:var(--font-mono)">'+(estAct>0?fmt(estAct):'\u2014')+'</span></td><td>'+ac(estAch)+'</td>'
+      +'<td class="target-cell">'+fmt(grwTgt)+'</td><td><span style="color:#ffe566;font-family:var(--font-mono)">'+(grwAct>0?fmt(grwAct):'\u2014')+'</span></td><td>'+ac(grwAch)+'</td>'
+      +'<td>'+(kraScore!==null?'<span style="color:'+(kraScore>=0.7?'var(--green)':kraScore>=0.5?'var(--amber)':'#e05252')+';font-weight:700">'+(kraScore*100).toFixed(1)+'%</span>':'\u2014')+'</td>'
+      +'<td>'+status+'</td></tr>';
+  }
+  const g = (id) => document.getElementById(id);
+  const tca = totEstTgt>0&&totEstAct>0?totEstAct/totEstTgt:null;
+  const tna = totGrwTgt>0&&totGrwAct>0?totGrwAct/totGrwTgt:null;
+  const tk  = tca!==null?tca*0.7+(tna||0)*0.3:null;
+  const fa  = (p) => p!==null?'<span style="color:'+(p>=1?'var(--green)':p>=0.8?'var(--amber)':'#e05252')+';font-weight:700">'+(p*100).toFixed(1)+'%</span>':'\u2014';
+  if(g('cls-tot-established-tgt-'+repIdx)) g('cls-tot-established-tgt-'+repIdx).textContent=fmt(totEstTgt);
+  if(g('cls-tot-established-act-'+repIdx)) g('cls-tot-established-act-'+repIdx).textContent=totEstAct>0?fmt(totEstAct):'\u2014';
+  if(g('cls-tot-established-ach-'+repIdx)) g('cls-tot-established-ach-'+repIdx).innerHTML=fa(tca);
+  if(g('cls-tot-grw-tgt-'+repIdx))   g('cls-tot-grw-tgt-'+repIdx).textContent=fmt(totGrwTgt);
+  if(g('cls-tot-grw-act-'+repIdx))   g('cls-tot-grw-act-'+repIdx).textContent=totGrwAct>0?fmt(totGrwAct):'\u2014';
+  if(g('cls-tot-grw-ach-'+repIdx))   g('cls-tot-grw-ach-'+repIdx).innerHTML=fa(tna);
+  if(g('cls-tot-kra-'+repIdx))      g('cls-tot-kra-'+repIdx).innerHTML=fa(tk);
+  if(g('cls-tot-kra-stat-'+repIdx)) g('cls-tot-kra-stat-'+repIdx).innerHTML=totEstAct>0?(tk!==null&&tk>=0.7?'<span class="status-on">\u2705 On Track</span>':'<span class="status-off">\u26a0\ufe0f Below</span>'):'<span class="status-pend">Pending</span>';
+}
 function populateTracker(repIdx) {
   updateKRAPanel(repIdx);
   const rep = REPS_DATA[repIdx];
   const tbody = document.getElementById(`tracker-body-${repIdx}`);
   if (!tbody) return;
   tbody.innerHTML = '';
-
-  // Current month index (0=Jan ... 11=Dec), CY2026
   const now = new Date();
-  const currentMi = now.getMonth(); // JS months are 0-indexed, same as our array
-
+  const currentMi = now.getMonth();
   let totTgt = 0, totAct = 0, totPrev = 0;
   rep.monthly.forEach((m, mi) => {
     const tgt  = getTarget(repIdx, mi);
     const act  = getActual(repIdx, mi);
     const vari = act > 0 ? act - tgt : null;
     const vpct = act > 0 && tgt !== 0 ? (act - tgt) / Math.abs(tgt) : null;
-    const achPct = act > 0 && tgt > 0 ? act / tgt : null; // achievement %
+    const achPct = act > 0 && tgt > 0 ? act / tgt : null;
     totTgt += tgt; totAct += act; totPrev += getRepPrev(repIdx, mi);
-
     const isCurrentMonth = mi === currentMi;
     const rowClass = isCurrentMonth ? 'current-month-row' : '';
     const badge = isCurrentMonth ? '<span class="current-month-badge">▶ Now</span>' : '';
-
     const status = tgt === 0 ? `<span class="status-pend" style="color:var(--muted)">Not qualified</span>` : act > 0 ? (act >= tgt ? `<span class="status-on">✅ On Target</span>` : `<span class="status-off">⚠️ Below Target</span>`) : `<span class="status-pend">Pending</span>`;
     const varCell = vari !== null ? `<span class="${vari >= 0 ? 'variance-pos' : 'variance-neg'}">${fmt(vari)}</span>` : '—';
     const pctCell = vpct !== null ? `<span class="${vpct >= 0 ? 'variance-pos' : 'variance-neg'}">${fmtPct(vpct)}</span>` : '—';
     const achCell = achPct !== null ? `<span class="${achPct >= 1 ? 'variance-pos' : achPct >= 0.8 ? '' : 'variance-neg'}" style="${achPct >= 0.8 && achPct < 1 ? 'color:var(--amber)' : ''}">${(achPct * 100).toFixed(1)}%</span>` : '—';
-
     tbody.innerHTML += `<tr class="${rowClass}">
       <td>${m.month} 2026${badge}</td>
       <td class="target-cell">${fmt(tgt)}</td>
@@ -1474,51 +1513,1217 @@ function populateTracker(repIdx) {
       <td class="prev-cell">${fmt(getRepPrev(repIdx, mi))}</td>
       <td><span class="actual-input" style="display:inline-block;width:110px;cursor:default;color:#ffe566">${act > 0 ? fmt(act) : '—'}</span></td>
       <td>${achCell}</td>
-      <td>${varCell}</td>
-      <td>${pctCell}</td>
-      <td>${status}</td>
+      <td>${varCell}</td><td>${pctCell}</td><td>${status}</td>
     </tr>`;
   });
-
-  // Totals
-  const totVar = totAct > 0 ? totAct - totTgt : null;
+  const totVar  = totAct > 0 ? totAct - totTgt : null;
   const totVpct = totAct > 0 && totTgt !== 0 ? (totAct - totTgt) / Math.abs(totTgt) : null;
-  document.getElementById(`tot-tgt-${repIdx}`).textContent = fmt(totTgt);
-  document.getElementById(`tot-act-${repIdx}`).textContent = fmt(totAct);
-  const totAchPct = totAct > 0 && totTgt > 0 ? totAct / totTgt : null;
-  const totAchEl = document.getElementById(`tot-ach-${repIdx}`);
-  if (totAchEl) totAchEl.innerHTML = totAchPct !== null ? `<span class="${totAchPct>=1?'variance-pos':totAchPct>=0.8?'':'variance-neg'}" style="${totAchPct>=0.8&&totAchPct<1?'color:var(--amber)':''}">${(totAchPct*100).toFixed(1)}%</span>` : '—';
-  document.getElementById(`tot-var-${repIdx}`).innerHTML = totVar !== null ? `<span class="${totVar>=0?'variance-pos':'variance-neg'}">${fmt(totVar)}</span>` : '—';
-  document.getElementById(`tot-vpct-${repIdx}`).innerHTML = totVpct !== null ? `<span class="${totVpct>=0?'variance-pos':'variance-neg'}">${fmtPct(totVpct)}</span>` : '—';
-  const s = totTgt === 0 ? `<span class="status-pend" style="color:var(--muted)">Not qualified</span>` : totAct > 0 ? (totAct >= totTgt ? `<span class="status-on">✅ On Target</span>` : `<span class="status-off">⚠️ Below Target</span>`) : `<span class="status-pend">Pending</span>`;
-  document.getElementById(`tot-stat-${repIdx}`).innerHTML = s;
+  const totAch  = totAct > 0 && totTgt > 0 ? totAct / totTgt : null;
+  const el = (id) => document.getElementById(id);
+  if(el(`tot-tgt-${repIdx}`))  el(`tot-tgt-${repIdx}`).textContent  = fmt(totTgt);
+  if(el(`tot-prev-${repIdx}`)) el(`tot-prev-${repIdx}`).textContent = fmt(rep.monthly.reduce((s,m,mi)=>s+getRepAcctPrev(repIdx,mi),0));
+  if(el(`tot-hist-${repIdx}`)) el(`tot-hist-${repIdx}`).textContent = fmt(totPrev);
+  if(el(`tot-act-${repIdx}`))  el(`tot-act-${repIdx}`).textContent  = totAct > 0 ? fmt(totAct) : '—';
+  if(el(`tot-ach-${repIdx}`))  el(`tot-ach-${repIdx}`).innerHTML    = totAch !== null ? `<span class="${totAch>=1?'variance-pos':totAch>=0.8?'':'variance-neg'}">${(totAch*100).toFixed(1)}%</span>` : '—';
+  if(el(`tot-var-${repIdx}`))  el(`tot-var-${repIdx}`).innerHTML    = totVar !== null ? `<span class="${totVar>=0?'variance-pos':'variance-neg'}">${fmt(totVar)}</span>` : '—';
+  if(el(`tot-pct-${repIdx}`))  el(`tot-pct-${repIdx}`).innerHTML    = totVpct !== null ? `<span class="${totVpct>=0?'variance-pos':'variance-neg'}">${fmtPct(totVpct)}</span>` : '—';
+  if(el(`tot-stat-${repIdx}`)) el(`tot-stat-${repIdx}`).innerHTML   = totTgt === 0 ? '—' : totAct > 0 ? (totAct >= totTgt ? '<span class="status-on">✅ On Target</span>' : '<span class="status-off">⚠️ Below Target</span>') : '<span class="status-pend">Pending</span>';
+  populateClassTrackers(repIdx);
+}
 
-  // KPI cards
-  const kpiYtd   = document.getElementById(`kpi-ytd-${repIdx}`);
-  const kpiStill = document.getElementById(`kpi-still-${repIdx}`);
-  const kpiTgt   = document.getElementById(`kpi-anntgt-${repIdx}`);
-  const kpiPct   = document.getElementById(`kpi-ytd-pct-${repIdx}`);
-  if (kpiYtd)   kpiYtd.textContent   = fmt(totAct);
-  if (kpiStill) kpiStill.textContent = fmt(Math.max(totTgt - totAct, 0));
-  if (kpiTgt)   kpiTgt.textContent   = fmt(totTgt);
-  if (kpiPct)   { kpiPct.textContent = totTgt > 0 ? fmtPct(totAct / totTgt) : '0.0%'; }
-  const ytdBar = document.getElementById(`kpi-ytd-bar-${repIdx}`);
-  if (ytdBar && totTgt > 0) { ytdBar.style.width = Math.min(totAct/totTgt*100, 100).toFixed(1)+'%'; }
+function drawRepCharts(repIdx) {
+  const rep = REPS_DATA[repIdx];
+  const months = rep.monthly.map(m => m.month);
+  const targets = months.map((_, mi) => Math.round(getTarget(repIdx, mi)));
+  const actuals = months.map((_, mi) => { const a = getActual(repIdx, mi); return a > 0 ? Math.round(a) : null; });
+  const trend = months.map((_, mi) => Math.round(getRepPrev(repIdx, mi) * 1.1));
+  const clsColors = ['#4472C4','#70AD47','#ED7D31','#9E480E','#808080'];
 
-  // MTD indicator in header
-  const mtdAct = getActual(repIdx, currentMi);
-  const mtdTgt = getTarget(repIdx, currentMi);
-  const mtdPct = mtdTgt > 0 ? mtdAct / mtdTgt : 0;
-  const mtdColor = mtdPct >= 1 ? 'var(--green)' : mtdPct >= 0.8 ? 'var(--amber)' : mtdAct > 0 ? '#e05252' : 'var(--muted)';
-  const mtdLabel = mtdPct >= 1 ? '✅ On target' : mtdPct >= 0.8 ? '🟡 Close' : mtdAct > 0 ? '🔴 Below target' : 'Pending';
-  const mtdPctEl  = document.getElementById(`kpi-mtd-pct-${repIdx}`);
-  const mtdValsEl = document.getElementById(`kpi-mtd-vals-${repIdx}`);
-  const mtdBarEl  = document.getElementById(`kpi-mtd-bar-${repIdx}`);
-  if (mtdPctEl)  { mtdPctEl.textContent = mtdAct > 0 ? (mtdPct*100).toFixed(1)+'%' : 'Pending'; mtdPctEl.style.color = mtdColor; }
-  if (mtdValsEl) mtdValsEl.innerHTML = mtdAct > 0 ? `${fmtK(mtdAct)} of ${fmtK(mtdTgt)} &nbsp;·&nbsp; <span style="color:${mtdColor}">${mtdLabel}</span>` : `Target: ${fmtK(mtdTgt)}`;
-  if (mtdBarEl)  { mtdBarEl.style.width = Math.min(mtdPct*100, 100).toFixed(1)+'%'; mtdBarEl.style.background = mtdColor; }
+  mkChart(`ch-rep-monthly-${repIdx}`, {
+    type: 'line',
+    data: { labels: months, datasets: [
+      { label: '2026 Target', data: targets, borderColor: rep.color, backgroundColor: rep.color+'18', borderWidth: 2.5, tension: 0.4, pointRadius: 4, fill: true },
+      { label: 'Predicted (3yr trend +10%)', data: trend, borderColor: '#a78bfa', backgroundColor: 'transparent', borderWidth: 1.5, borderDash: [5,4], tension: 0.4, pointRadius: 2, fill: false },
+      { label: 'Invoiced', data: actuals, borderColor: '#f5a623', backgroundColor: '#f5a62322', borderWidth: 2.5, tension: 0.4, pointRadius: 4, spanGaps: false, fill: false }
+    ]},
+    options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false,
+      plugins: { ...CHART_DEFAULTS.plugins, legend: { display: true, position: 'bottom', labels: { color: 'var(--muted)', font:{size:10}, boxWidth:24 } } }
+    }
+  });
 
-  populateEoyPrediction(repIdx, totTgt, totAct);
+  // Core (ci 0-3) vs Growth (ci 4) datasets
+  const estTgtData = months.map((_, mi) => Math.round([0,1,2,3].reduce((s,ci) => s+getClassTarget(repIdx,ci,mi), 0)));
+  const estActData = months.map((_, mi) => { const a = [0,1,2,3].reduce((s,ci)=>s+getClassActual(repIdx,ci,mi),0); return a>0?Math.round(a):null; });
+  const grwTgtData = months.map((_, mi) => Math.round(getClassTarget(repIdx,4,mi)));
+  const grwActData = months.map((_, mi) => { const a = getClassActual(repIdx,4,mi); return a>0?Math.round(a):null; });
+  const clsDatasets = [
+    { label: 'Established ╌ Target', data: estTgtData, borderColor:'#4472C4aa', backgroundColor:'transparent', borderWidth:1.5, borderDash:[4,3], tension:0.4, pointRadius:2, fill:false },
+    { label: 'Established — Invoiced', data: estActData, borderColor:'#4472C4', backgroundColor:'rgba(68,114,196,0.08)', borderWidth:2.5, tension:0.4, pointRadius:3, fill:true, spanGaps:false },
+    { label: 'Growth ╌ Target', data: grwTgtData, borderColor:'#9E480Eaa', backgroundColor:'transparent', borderWidth:1.5, borderDash:[4,3], tension:0.4, pointRadius:2, fill:false },
+    { label: 'Growth — Invoiced', data: grwActData, borderColor:'#9E480E', backgroundColor:'transparent', borderWidth:2, tension:0.4, pointRadius:3, fill:false, spanGaps:false },
+  ];
+
+  mkChart(`ch-rep-class-${repIdx}`, {
+    type: 'line',
+    data: { labels: months, datasets: clsDatasets },
+    options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false,
+      plugins: { ...CHART_DEFAULTS.plugins, legend: { display: true, position: 'bottom', labels: { color: 'var(--muted)', font:{size:10}, boxWidth:24 } } }
+    }
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// VIEW ROUTING
+// ══════════════════════════════════════════════════════════════
+function showView(id) {
+  $$('.view').forEach(v => v.classList.remove('active'));
+  $$('.tab-btn').forEach(b => b.classList.remove('active'));
+  const view = document.getElementById(`view-${id}`);
+  const tab  = document.getElementById(`tab-${id}`);
+  if (view) view.classList.add('active');
+  if (tab)  tab.classList.add('active');
+  if (id === 'accounts') { buildAccountsView(); }
+  if (id === 'reps-admin') { buildRepsAdminView(); }
+}
+
+// ══════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════════════════
+// TEAM VIEW
+// ══════════════════════════════════════════════════════════════
+function buildTeamView() {
+  const months = REPS_DATA[0].monthly.map(m => m.month);
+  return `
+  <div class="rep-header">
+    <div>
+      <div class="rep-title" style="color:var(--green)">Team Overview</div>
+      <div class="rep-subtitle">All Associates · Manager View · All values in AUD</div>
+      <div class="rep-accent-bar" style="background:var(--green)"></div>
+    </div>
+    <div class="rep-badges">
+      <span id="team-mtd-badge" style="font-size:11px;padding:4px 10px;border-radius:12px;border:1px solid var(--border);font-family:var(--font-mono)">MTD —</span>
+      <span id="team-ytd-badge" style="font-size:11px;padding:4px 10px;border-radius:12px;border:1px solid var(--border);font-family:var(--font-mono)">YTD —</span>
+    </div>
+  </div>
+  <div id="team-kpi-strip" style="margin-bottom:18px"></div>
+  <div class="section-hdr">📊 Team Achievement — Target vs Actual vs 2025</div>
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:18px">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button id="team-chart-all" onclick="filterTeamChart('all')" style="background:var(--green);color:#fff;border:none;border-radius:20px;padding:5px 14px;font-size:11px;font-family:var(--font-mono);cursor:pointer">All Year</button>
+      ${months.map(m => `<button onclick="filterTeamChart('${m}')" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:11px;font-family:var(--font-mono);cursor:pointer">${m}</button>`).join('')}
+    </div>
+    <div style="height:260px"><canvas id="ch-team-main"></canvas></div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-size:10px;font-family:var(--font-mono);color:var(--muted)">
+      <span>— 2026 Target</span><span>- - 2025 Actual</span><span style="color:#ffe566">▬ 2026 Invoiced</span>
+    </div>
+  </div>
+  <div id="team-assoc-summary" style="margin-bottom:18px"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px">
+      <div class="section-hdr" style="margin-bottom:10px">Target vs Achievement by Associate</div>
+      <div style="height:220px"><canvas id="ch-team-bar"></canvas></div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:10px;font-family:var(--font-mono);color:var(--muted)">
+        <span style="color:#4472C4">■ 2026 Target</span><span>■ FY2025 Actual</span><span style="color:#ffe566">■ 2026 Invoiced</span>
+      </div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div class="section-hdr">Class Mix — 2025 Achievement</div>
+        <select onchange="filterClassChart(this.value)" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-family:var(--font-mono);font-size:10px;border-radius:4px;padding:3px 6px">
+          <option value="ytd">Full Year</option>
+          ${months.map(m => `<option value="${m}">${m}</option>`).join('')}
+        </select>
+      </div>
+      <div style="height:220px"><canvas id="ch-team-class"></canvas></div>
+    </div>
+  </div>
+  <div class="section-hdr">📋 Monthly Team Performance</div>
+  <div class="tracker-wrap" style="margin-bottom:18px">
+    <table>
+      <thead><tr>
+        <th>Month</th>
+        ${REPS_DATA.map(r => `<th style="color:${r.color}">${r.shortName||r.name.split(' ')[0]}</th>`).join('')}
+        <th>Team Total</th><th style="color:#a78bfa">2025 Ach</th><th>Team Target</th><th>Achiev %</th><th>vs Target</th><th>Remarks</th>
+      </tr></thead>
+      <tbody id="team-monthly-body"></tbody>
+      <tfoot><tr class="total-row">
+        <td>Total</td>
+        ${REPS_DATA.map((_,ri) => `<td id="team-col-tot-${ri}"></td>`).join('')}
+        <td id="team-tot-act"></td><td id="team-tot-prev" style="color:#a78bfa"></td><td id="team-tot-tgt"></td><td id="team-tot-ach"></td><td id="team-tot-var"></td><td></td>
+      </tr></tfoot>
+    </table>
+  </div>
+  <div class="section-hdr">📊 Class Achievement — Team</div>
+  <div class="tracker-wrap" style="margin-bottom:6px">
+    <table>
+      <thead><tr>
+        <th>Month</th><th>Team Target</th><th>Team Invoiced</th><th>Achiev %</th>
+      </tr></thead>
+      <tbody id="team-class-body"></tbody>
+    </table>
+  </div>
+  `;
+}
+
+function refreshTeamView() {
+  const teamView = document.getElementById('view-team');
+  if (!teamView || !teamView.classList.contains('active')) return;
+  const months = REPS_DATA[0].monthly.map(m => m.month);
+  const now = new Date();
+  const currentMi = now.getMonth();
+  const clsColors = ['#4472C4','#70AD47','#ED7D31','#9E480E','#C00000'];
+
+  const teamYtdAct = REPS_DATA.reduce((s,_,ri) => s + months.reduce((s2,_,mi) => s2 + getActual(ri,mi), 0), 0);
+  const teamYtdTgt = REPS_DATA.reduce((s,_,ri) => s + months.reduce((s2,_,mi) => s2 + getTarget(ri,mi), 0), 0);
+  const teamMtdAct = REPS_DATA.reduce((s,_,ri) => s + getActual(ri,currentMi), 0);
+  const teamMtdTgt = REPS_DATA.reduce((s,_,ri) => s + getTarget(ri,currentMi), 0);
+  const teamPrev   = 10580119;
+
+  const ytdPct = teamYtdTgt > 0 ? teamYtdAct/teamYtdTgt : 0;
+  const mtdPct = teamMtdTgt > 0 ? teamMtdAct/teamMtdTgt : 0;
+  const ytdColor = ytdPct >= 1 ? 'var(--green)' : ytdPct >= 0.8 ? 'var(--amber)' : '#e05252';
+  const mtdColor = mtdPct >= 1 ? 'var(--green)' : mtdPct >= 0.8 ? 'var(--amber)' : '#e05252';
+
+  const mtdBadge = document.getElementById('team-mtd-badge');
+  const ytdBadge = document.getElementById('team-ytd-badge');
+  if (mtdBadge) { mtdBadge.textContent = `MTD ${fmtPct(mtdPct)}`; mtdBadge.style.color = mtdColor; mtdBadge.style.borderColor = mtdColor; }
+  if (ytdBadge) { ytdBadge.textContent = `YTD ${fmtPct(ytdPct)}`; ytdBadge.style.color = ytdColor; ytdBadge.style.borderColor = ytdColor; }
+
+  const trendAnnual = teamPrev * 1.1;
+  const trendColor = '#a78bfa';
+
+  const kpiStrip = document.getElementById('team-kpi-strip');
+  if (kpiStrip) {
+    var isMobile=window.innerWidth<768;
+    kpiStrip.innerHTML = '<div class="team-big-cards" style="display:grid;grid-template-columns:'+(isMobile?'1fr 1fr':'1fr 1px 1fr 1px 1fr 1px 1fr')+';gap:'+(isMobile?'1px':'0')+';margin-bottom:18px;width:100%;box-sizing:border-box;overflow:hidden;background:var(--surface);border:1px solid var(--border);border-radius:10px">'
+      + '<div style="text-align:center;padding:16px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">2026 Annual Target</div><div style="font-size:26px;font-weight:800;font-family:var(--font-head);color:var(--green)">' + fmt(teamYtdTgt) + '</div><div style="font-size:11px;color:var(--muted);margin-top:3px">Full Year</div></div>'
+      + '<div style="background:var(--border)"></div>'
+      + '<div style="text-align:center;padding:16px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">YTD Annual Achievement</div><div style="font-size:26px;font-weight:800;font-family:var(--font-head);color:' + ytdColor + '">' + fmt(teamYtdAct) + '</div><div style="font-size:11px;color:' + ytdColor + ';margin-top:3px">' + fmtPct(ytdPct) + ' of target</div></div>'
+      + '<div style="background:var(--border)"></div>'
+      + '<div style="text-align:center;padding:16px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">Predicted Achievement</div><div style="font-size:26px;font-weight:800;font-family:var(--font-head);color:' + trendColor + '">' + fmt(trendAnnual) + '</div><div style="font-size:11px;color:var(--muted);margin-top:3px">' + fmtPct(trendAnnual/teamYtdTgt) + ' of target · 3yr trend +10%</div></div>'
+      + '<div style="background:var(--border)"></div>'
+      + '<div style="text-align:center;padding:16px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">2025 Achieved</div><div style="font-size:26px;font-weight:800;font-family:var(--font-head);color:#6699cc">' + fmt(teamPrev) + '</div><div style="font-size:11px;color:var(--muted);margin-top:3px">Prior year reference</div></div>'
+      + '</div>';
+  }
+
+  // YTD/MTD boxes
+  const teamYtdEl = document.getElementById('team-assoc-summary');
+  if (teamYtdEl) {
+    teamYtdEl.innerHTML = '<div class="team-ytd-row" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px">'
+      + '<div style="background:var(--surface2);border-radius:8px;padding:14px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:10px;font-weight:600">📅 Year to Date</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'
+      + '<div><div style="font-size:10px;color:var(--muted)">YTD Target</div><div style="font-size:16px;font-weight:700;font-family:var(--font-head);color:var(--green)">' + fmtK(teamYtdTgt) + '</div></div>'
+      + '<div><div style="font-size:10px;color:var(--muted)">YTD Invoiced</div><div style="font-size:16px;font-weight:700;font-family:var(--font-head);color:' + ytdColor + '">' + fmtK(teamYtdAct) + '</div></div>'
+      + '<div><div style="font-size:10px;color:var(--muted)">Achievement</div><div style="font-size:16px;font-weight:700;font-family:var(--font-head);color:' + ytdColor + '">' + fmtPct(ytdPct) + '</div></div>'
+      + '</div><div style="margin-top:10px;height:4px;background:var(--border);border-radius:2px"><div style="height:4px;border-radius:2px;background:' + ytdColor + ';width:' + Math.min(ytdPct*100,100) + '%;transition:width .4s"></div></div></div>'
+      + '<div style="background:var(--surface2);border-radius:8px;padding:14px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:10px;font-weight:600">📅 Month to Date — ' + months[currentMi] + '</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'
+      + '<div><div style="font-size:10px;color:var(--muted)">MTD Target</div><div style="font-size:16px;font-weight:700;font-family:var(--font-head);color:var(--green)">' + fmtK(teamMtdTgt) + '</div></div>'
+      + '<div><div style="font-size:10px;color:var(--muted)">MTD Actual</div><div style="font-size:16px;font-weight:700;font-family:var(--font-head);color:' + mtdColor + '">' + fmtK(teamMtdAct) + '</div></div>'
+      + '<div><div style="font-size:10px;color:var(--muted)">Achievement</div><div style="font-size:16px;font-weight:700;font-family:var(--font-head);color:' + mtdColor + '">' + fmtPct(mtdPct) + '</div></div>'
+      + '</div><div style="margin-top:10px;height:4px;background:var(--border);border-radius:2px"><div style="height:4px;border-radius:2px;background:' + mtdColor + ';width:' + Math.min(mtdPct*100,100) + '%;transition:width .4s"></div></div></div>'
+      + '</div>';
+  }
+
+  // Monthly table
+  const tbody = document.getElementById('team-monthly-body');
+  if (tbody) {
+    tbody.innerHTML = '';
+    let totActs = REPS_DATA.map(() => 0), totTgts = 0, totAct = 0, totPrevTot = 0;
+    months.forEach((mo, mi) => {
+      const repActs = REPS_DATA.map((_,ri) => getActual(ri,mi));
+      const teamAct = repActs.reduce((s,v) => s+v, 0);
+      const teamTgt = REPS_DATA.reduce((s,_,ri) => s+getTarget(ri,mi), 0);
+      const teamPrevMo = REPS_DATA.reduce((s,_,ri) => s+getRepPrev(ri,mi), 0);
+      totAct += teamAct; totTgts += teamTgt; totPrevTot += teamPrevMo;
+      repActs.forEach((v,i) => totActs[i] += v);
+      const ach = teamTgt > 0 && teamAct > 0 ? teamAct/teamTgt : null;
+      const vari = teamAct > 0 ? teamAct - teamTgt : null;
+      const isCur = mi === currentMi;
+      tbody.innerHTML += '<tr class="'+(isCur?'current-month-row':'')+'"><td>'+mo+' 2026'+(isCur?'<span class="current-month-badge">▶ Now</span>':'')+'</td>'
+        + repActs.map((v,ri) => '<td style="color:'+REPS_DATA[ri].color+';font-family:var(--font-mono)">'+(v>0?fmt(v):'—')+'</td>').join('')
+        + '<td style="font-weight:600">'+(teamAct>0?fmt(teamAct):'—')+'</td>'
+        + '<td style="color:#a78bfa;font-family:var(--font-mono)">'+fmt(teamPrevMo)+'</td>'
+        + '<td>'+fmt(teamTgt)+'</td>'
+        + '<td>'+(ach!==null?'<span style="color:'+(ach>=1?'var(--green)':ach>=0.8?'var(--amber)':'#e05252')+'">'+(ach*100).toFixed(1)+'%</span>':'—')+'</td>'
+        + '<td>'+(vari!==null?'<span class="'+(vari>=0?'variance-pos':'variance-neg')+'">'+fmt(vari)+'</span>':'—')+'</td>'
+        + '<td></td></tr>';
+    });
+    const el = id => document.getElementById(id);
+    REPS_DATA.forEach((_,ri) => { if(el('team-col-tot-'+ri)) el('team-col-tot-'+ri).textContent = totActs[ri]>0?fmt(totActs[ri]):'—'; });
+    if(el('team-tot-act'))  el('team-tot-act').textContent  = totAct>0?fmt(totAct):'—';
+    if(el('team-tot-prev')) el('team-tot-prev').textContent = fmt(totPrevTot);
+    if(el('team-tot-tgt'))  el('team-tot-tgt').textContent  = fmt(totTgts);
+    const totAch = totTgts>0&&totAct>0?totAct/totTgts:null;
+    if(el('team-tot-ach'))  el('team-tot-ach').innerHTML    = totAch!==null?'<span style="color:'+(totAch>=1?'var(--green)':totAch>=0.8?'var(--amber)':'#e05252')+'">'+(totAch*100).toFixed(1)+'%</span>':'—';
+    if(el('team-tot-var'))  el('team-tot-var').innerHTML    = totAct>0?'<span class="'+(totAct-totTgts>=0?'variance-pos':'variance-neg')+'">'+fmt(totAct-totTgts)+'</span>':'—';
+  }
+
+  // Draw charts
+  const labels = months;
+  const teamTargets = labels.map((_,mi) => Math.round(REPS_DATA.reduce((s,_,ri)=>s+getTarget(ri,mi),0)));
+  const teamActuals = labels.map((_,mi) => { const a=REPS_DATA.reduce((s,_,ri)=>s+getActual(ri,mi),0); return a>0?Math.round(a):null; });
+  const teamTrend   = labels.map((_,mi) => Math.round(REPS_DATA.reduce((s,_,ri)=>s+getRepPrev(ri,mi),0)*1.1));
+
+  mkChart('ch-team-main', {
+    type:'line',
+    data:{labels, datasets:[
+      {label:'2026 Target',data:teamTargets,borderColor:'#6bbf33',backgroundColor:'rgba(107,191,51,0.08)',borderWidth:2.5,tension:0.4,pointRadius:3,fill:true},
+      {label:'2025 Actual',data:teamTrend,borderColor:'rgba(255,255,255,0.3)',backgroundColor:'transparent',borderWidth:1.5,borderDash:[5,4],tension:0.4,pointRadius:2,fill:false},
+      {label:'2026 Invoiced',data:teamActuals,borderColor:'#ffe566',backgroundColor:'rgba(255,229,102,0.12)',borderWidth:2.5,tension:0.4,pointRadius:4,spanGaps:false,fill:false}
+    ]},
+    options:{...CHART_DEFAULTS,responsive:true,maintainAspectRatio:false,
+      plugins:{...CHART_DEFAULTS.plugins,legend:{display:false}}}
+  });
+
+  mkChart('ch-team-bar', {
+    type:'bar',
+    data:{
+      labels:REPS_DATA.map(r=>r.shortName||r.name.split(' ')[0]),
+      datasets:[
+        {label:'2026 Target',data:REPS_DATA.map((_,ri)=>Math.round(REPS_DATA[ri].monthly.reduce((s,_,mi)=>s+getTarget(ri,mi),0))),backgroundColor:'#4472C4aa',borderRadius:3},
+        {label:'FY2025 Actual',data:REPS_DATA.map((_,ri)=>Math.round(REPS_DATA[ri].monthly.reduce((s,m)=>s+(m.prev||0),0))),backgroundColor:'rgba(150,150,150,0.5)',borderRadius:3},
+        {label:'2026 Invoiced',data:REPS_DATA.map((_,ri)=>Math.round(REPS_DATA[ri].monthly.reduce((s,_,mi)=>s+getActual(ri,mi),0))||null),backgroundColor:'#ffe56688',borderRadius:3}
+      ]
+    },
+    options:{...CHART_DEFAULTS,responsive:true,maintainAspectRatio:false,
+      plugins:{...CHART_DEFAULTS.plugins,legend:{display:false}}}
+  });
+
+  // Class mix pie
+  const clsNames=['Server Racks','Data Products','Cabling','Bulk Cables','Others'];
+  const clsTotals=clsNames.map((_,ci)=>REPS_DATA.reduce((s,_,ri)=>s+REPS_DATA[ri].monthly.reduce((s2,_,mi)=>s2+(REPS_DATA[ri].classes[ci]?.monthly[mi]?.prev||0),0),0));
+  mkChart('ch-team-class', {
+    type:'doughnut',
+    data:{labels:clsNames,datasets:[{data:clsTotals.map(Math.round),backgroundColor:clsColors,borderWidth:0}]},
+    options:{...CHART_DEFAULTS,responsive:true,maintainAspectRatio:false,cutout:'55%',
+      plugins:{...CHART_DEFAULTS.plugins,legend:{display:true,position:'right',labels:{color:'var(--muted)',font:{size:10},boxWidth:12}}}}
+  });
+
+  // Inject leave panel
+  var teamLeaveEl = document.getElementById('team-leave-panel');
+  if (!teamLeaveEl) {
+    var tleaveDiv = document.createElement('div');
+    tleaveDiv.id = 'team-leave-panel';
+    tleaveDiv.style.cssText = 'margin-top:20px';
+    var tview2 = document.getElementById('view-team');
+    if (tview2) tview2.appendChild(tleaveDiv);
+    teamLeaveEl = tleaveDiv;
+  }
+  renderTeamLeave(teamLeaveEl);
+
+  // Inject notes panel
+  var teamNotesEl = document.getElementById('team-notes-panel');
+  if (!teamNotesEl) {
+    var tnotesDiv = document.createElement('div');
+    tnotesDiv.id = 'team-notes-panel';
+    tnotesDiv.style.cssText = 'margin-top:24px';
+    var tview = document.getElementById('view-team');
+    if (tview) tview.appendChild(tnotesDiv);
+    teamNotesEl = tnotesDiv;
+  }
+  renderTeamNotes(teamNotesEl);
+}
+
+function filterTeamChart(mo) {}
+function filterClassChart(mo) {}
+
+// ══════════════════════════════════════════════════════════════
+// ACCOUNTS VIEW
+// ══════════════════════════════════════════════════════════════
+function acctFilterBtn(f, label) {
+  var cls = 'acct-filter-btn' + (_acctState.filter === f ? ' active' : '');
+  var reset = f !== 'dormant' ? "_acctState.dormantAge=\'all\';" : '';
+  return '<button class="' + cls + '" onclick="_acctState.filter=\'' + f + '\';' + reset + '_acctState.page=0;window._hmPage=0;buildAccountsView()">' + label + '</button>';
+}
+function buildAccountsView() {
+  var el = document.getElementById('accounts-content'); if(!el) return;
+  var RN=['Robert Schaffer','Andrew Mobilia','Alexander Poll','Stivi Maticevski','Melissa Goodridge'];
+  var repOpts='<option value="all"'+('all'===_acctState.rep?' selected':'')+'>All Reps</option>'+RN.map(function(r){return '<option value="'+r+'"'+(r===_acctState.rep?' selected':'')+'>'+r+'</option>';}).join('')+'<option value="unassigned"'+('unassigned'===_acctState.rep?' selected':'')+'>Unassigned</option>';
+  var companies=['all'].concat(Array.from(new Set(ACCOUNTS_DATA.map(function(a){return a.p||'';}).filter(Boolean))).sort());
+  var coOpts=companies.map(function(c){return '<option value="'+c+'"'+(c===_acctState.company?' selected':'')+'>'+( c==='all'?'All Companies':c)+'</option>';}).join('');
+  el.innerHTML='<div class="acct-toolbar">'
+    +'<select onchange="_acctState.rep=this.value;_acctState.page=0;window._hmPage=0;buildAccountsView()">'+repOpts+'</select>'
+    +'<select onchange="_acctState.company=this.value;_acctState.page=0;window._hmPage=0;buildAccountsView()" style="max-width:220px">'+coOpts+'</select>'
+    +acctFilterBtn('all','All')
+    +acctFilterBtn('dormant','&#9889; Dormant')
+    +acctFilterBtn('active','Active')
+    +buildDormantAgeSelect()
+    +'<input type="text" placeholder="Search accounts…" value="'+_acctState.search+'" id="acct-search-input" oninput="acctSearch(this.value)" />'
+    +'<button onclick="openAddAccountModal(-1)" class="admin-only" style="margin-left:auto;background:var(--green);color:#fff;border:none;border-radius:6px;padding:7px 16px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-main);white-space:nowrap">+ Add Account</button>'
+    +'</div>'
+    +buildAcctTabs()
+    +'<div id="acct-tab-content"></div>';
+  renderAccountsTab();
+}
+
+// ══════════════════════════════════════════════════════════════
+// REPS ADMIN VIEW
+// ══════════════════════════════════════════════════════════════
+function buildRepsAdminView() {
+  var el = document.getElementById('reps-admin-content'); if(!el) return;
+  var MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var COLORS=['#4472C4','#70AD47','#ED7D31','#9E480E','#C00000'];
+  function repRow(ri, rep) {
+    var isVisible = !rep.hidden;
+    var monthTargets = rep.monthly.map(function(m,mi){
+      return '<td style="padding:2px 4px"><input type="number" value="'+Math.round(m.target)+'" min="0" step="1000" style="width:72px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:10px;border-radius:3px;padding:2px 4px;font-family:var(--font-mono)" onchange="updateRepMonthTarget('+ri+','+mi+',this.value)"></td>';
+    }).join('');
+    return '<tr id="rep-admin-row-'+ri+'" style="border-bottom:1px solid var(--border);opacity:'+(isVisible?'1':'0.4')+'">'
+      +'<td style="padding:6px 8px;width:32px"><input type="color" value="'+rep.color+'" title="Rep colour" style="width:28px;height:28px;border:none;border-radius:4px;cursor:pointer;background:none;padding:0" onchange="updateRepColor('+ri+',this.value)"></td>'
+      +'<td style="padding:6px 8px;min-width:160px"><input type="text" value="'+rep.name+'" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:12px;border-radius:3px;padding:4px 8px;width:150px;font-family:var(--font-head)" onchange="updateRepName('+ri+',this.value)"></td>'
+      +'<td style="padding:6px 8px;width:90px"><input type="text" value="'+(rep.shortName||rep.name.split(' ')[0])+'" maxlength="12" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:12px;border-radius:3px;padding:4px 8px;width:80px;font-family:var(--font-head)" onchange="updateRepShortName('+ri+',this.value)"></td>'
+      +'<td style="padding:6px 8px;width:80px"><input type="text" value="'+(rep.region||'')+'" maxlength="20" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:11px;border-radius:3px;padding:4px 8px;width:70px;font-family:var(--font-mono)" onchange="updateRepRegion('+ri+',this.value)"></td>'
+      +'<td style="padding:6px 8px;min-width:180px"><input type="text" value="'+(rep.email||'')+'" placeholder="rep[at]serveredge.com.au" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:10px;border-radius:3px;padding:4px 8px;width:170px;font-family:var(--font-mono)" onchange="updateRepEmail('+ri+',this.value)"></td>'
+      +'<td style="padding:6px 8px;width:70px"><input type="number" value="'+(rep.growthRates?rep.growthRates[0]:20)+'" min="0" max="100" style="width:56px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:11px;border-radius:3px;padding:3px 6px;font-family:var(--font-mono)" onchange="updateRepGrowth('+ri+',this.value)"><span style="font-size:10px;color:var(--muted)"> %</span></td>'
+      +monthTargets
+      +'</tr>';
+  }
+  var rows = REPS_DATA.map(function(rep,ri){ return repRow(ri,rep); }).join('');
+  var monthHdrs = MO.map(function(m){return '<th>'+m+' Target</th>';}).join('');
+  el.innerHTML='<div style="max-width:100%;overflow-x:auto">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'
+    +'<div><div style="font-size:18px;font-weight:700;font-family:var(--font-head)">Rep Management</div><div style="font-size:12px;color:var(--muted);margin-top:4px">Edit rep details, monthly targets, visibility. Changes apply immediately.</div></div>'
+    +'<div style="display:flex;gap:8px"><button onclick="openAddRepModal()" style="background:var(--green);color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-main)">+ Add Rep</button>'
+    +'<button onclick="saveRepsToFirebase()" title="Save targets to Firebase" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:8px 12px;font-size:13px;cursor:pointer">🚩</button></div>'
+    +'</div>'
+    +'<div style="background:rgba(245,166,35,0.1);border:1px solid var(--amber);border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:11px;color:var(--amber)">⚠️ Target changes here take effect for ALL months shown. To adjust from current month only, use the account-level reassign on the Accounts tab.</div>'
+    +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">'
+    +'<thead><tr style="background:var(--green-dk)"><th style="padding:8px;text-align:left">  </th><th>Full Name</th><th>Tab Label</th><th>Region</th><th>Email</th><th>Growth</th>'+monthHdrs+'</tr></thead>'
+    +'<tbody>'+rows+'</tbody></table></div>'
+    +'</div>'
+    +'<div style="margin-top:32px">'
+    +'<div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:12px">📊 Upload Invoice Data (CSV)</div>'
+    +'<div id="csv-upload-panel" ondragover="event.preventDefault()" ondrop="handleCsvDrop(event)" onclick="document.getElementById(\'csv-file-input\').click()" style="border:2px dashed var(--border);border-radius:10px;padding:32px;text-align:center;background:var(--surface);cursor:pointer">'
+    +'<div style="font-size:28px;margin-bottom:8px">📄</div>'
+    +'<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">Drop CSV file here or click to browse</div>'
+    +'<div style="font-size:11px;color:var(--muted)">NetSuite invoice export · CSV format</div>'
+    +'<input type="file" id="csv-file-input" accept=".csv" style="display:none" onchange="if(this.files[0])handleCsvFile(this.files[0])">'
+    +'</div>'
+    +'<div id="csv-status" style="margin-top:10px;font-family:var(--font-mono);font-size:11px;color:var(--muted)"></div>'
+    +'<div style="display:flex;gap:10px;margin-top:12px">'
+    +'<button onclick="if(confirm(\'Clear all uploaded data for everyone?\'))fbClear()" style="background:transparent;border:1px solid #e05252;color:#e05252;border-radius:6px;padding:6px 14px;font-size:11px;cursor:pointer;font-family:var(--font-mono)">🗑 Clear All Data</button>'
+    +'</div></div>'
+    +'<div style="margin-top:32px">'
+    +'<div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:12px">📝 Upload Notes (XLS/CSV from NetSuite)</div>'
+    +'<div id="notes-upload-panel" ondragover="event.preventDefault()" ondrop="handleNotesFileDrop(event)" onclick="document.getElementById(\'notes-file-input\').click()" style="border:2px dashed var(--border);border-radius:10px;padding:28px;text-align:center;background:var(--surface);cursor:pointer">'
+    +'<div style="font-size:28px;margin-bottom:8px">📝</div>'
+    +'<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">Drop Notes XLS/CSV or click to browse</div>'
+    +'<div style="font-size:11px;color:var(--muted)">NetSuite User Notes export · auto-deduplicates on re-upload</div>'
+    +'<input type="file" id="notes-file-input" accept=".xls,.csv" style="display:none" onchange="if(this.files[0])handleNotesFile(this.files[0])">'
+    +'</div>'
+    +'<div id="notes-upload-status" style="margin-top:10px;font-family:var(--font-mono);font-size:11px;color:var(--muted)"></div>'
+    +'</div>'
+    +'<div style="margin-top:32px">'
+    +'<div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:12px">🔄 Reassignment Log</div>'
+    +'<div id="reassign-log" style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">Loading...</div>'
+    +'</div>';
+  renderReassignLog();
+}
+
+// Stub functions to prevent errors
+function updateRepMonthTarget(ri,mi,val){REPS_DATA[ri].monthly[mi].target=parseFloat(val)||0;}
+function updateRepColor(ri,val){REPS_DATA[ri].color=val;}
+function updateRepName(ri,val){REPS_DATA[ri].name=val;}
+function updateRepShortName(ri,val){REPS_DATA[ri].shortName=val;}
+function updateRepRegion(ri,val){REPS_DATA[ri].region=val;}
+function updateRepEmail(ri,val){REPS_DATA[ri].email=val;}
+function updateRepGrowth(ri,val){if(!REPS_DATA[ri].growthRates)REPS_DATA[ri].growthRates=[20,20,20,20];REPS_DATA[ri].growthRates[0]=parseFloat(val)||20;}
+function openAddRepModal(){}
+function saveRepsToFirebase(){if(window._fbSet)window._fbSet('dashboard/customTargets',{});alert('Targets saved.');}
+function openAddAccountModal(ri){_addAccountRepIdx=ri<0?0:ri;document.getElementById('aa-rep').value=_addAccountRepIdx;['aa-name','aa-parent','aa-region'].forEach(function(id){document.getElementById(id).value='';});document.getElementById('aa-error').style.display='none';document.getElementById('add-account-overlay').style.display='flex';}
+function closeAddAccountModal(){document.getElementById('add-account-overlay').style.display='none';}
+var _addAccountRepIdx=0;
+function saveNewAccount(){
+  var name=document.getElementById('aa-name').value.trim();
+  var parent=document.getElementById('aa-parent').value.trim();
+  var ri=parseInt(document.getElementById('aa-rep').value);
+  var region=document.getElementById('aa-region').value.trim();
+  if(!name){document.getElementById('aa-error').style.display='block';document.getElementById('aa-error').textContent='Account name is required.';return;}
+  var newAcct={ri:ri,n:name,p:parent||name.split(' : ')[0],s:0,l3:0,la:-1,m:[0,0,0,0,0,0,0,0,0,0,0,0],ad:'',ph:'',em:'',mo:''};
+  ACCOUNTS_DATA.push(newAcct);
+  if(window._fbSet){var customAccts={};(state.customAccounts||[]).forEach(function(a){customAccts[a.n.replace(/[.#$[\]]/g,'_')]=a;});customAccts[name.replace(/[.#$[\]]/g,'_')]=newAcct;window._fbSet('dashboard/customAccounts',customAccts);}
+  closeAddAccountModal();
+  buildAccountsView();
+}
+function reassignAccount(sel){
+  var name=decodeURIComponent(sel.dataset.acct);
+  var newRi=parseInt(sel.value);
+  var acct=ACCOUNTS_DATA.find(function(a){return a.n===name;});
+  if(acct){acct.ri=newRi;}
+}
+function renderReassignLog(){
+  var el=document.getElementById('reassign-log');if(!el)return;
+  if(!window._fbListen){el.innerHTML='Loading...';return;}
+  window._fbListen('dashboard/reassignments',function(data){
+    if(!data||!Object.keys(data).length){el.innerHTML='No reassignments recorded.';return;}
+    var MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var RN=['Robert','Andrew','Alexander','Stivi','Melissa'];
+    var keys=Object.keys(data);
+    el.innerHTML=keys.map(function(k){
+      var r=data[k];
+      var dt=new Date(r.ts).toLocaleDateString('en-AU');
+      return '<div style="padding:4px 0;border-bottom:1px solid var(--border)">'
+        +'<span style="color:var(--text)">'+k+'</span> '
+        +'<span style="color:#e05252">'+(RN[r.from]||r.from)+'</span> → '
+        +'<span style="color:var(--green)">'+(RN[r.to]||r.to)+'</span> '
+        +'from '+MO[r.mi]+' ('+dt+' by '+(r.by||'admin')+')'
+        +(r.undo?'<button onclick="undoReassign(\''+k+'\')" style="margin-left:8px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:4px;padding:1px 6px;font-size:9px;cursor:pointer">Undo</button>':'')
+        +'</div>';
+    }).join('');
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// LOCATIONS PANE (simplified)
+// ══════════════════════════════════════════════════════════════
+
+
+function locPage(ri, dir) {
+  if (!window['_custState_'+ri]) window['_custState_'+ri] = {page:0,company:'all',search:''};
+  window['_custState_'+ri].page += dir;
+  var p = document.getElementById('loc-pane-'+ri);
+  if (p) p.innerHTML = buildLocationsPane(ri);
+}
+function locFilterCo(ri, val) {
+  if (!window['_custState_'+ri]) window['_custState_'+ri] = {page:0,company:'all',search:''};
+  window['_custState_'+ri].company = val;
+  window['_custState_'+ri].page = 0;
+  var p = document.getElementById('loc-pane-'+ri);
+  if (p) p.innerHTML = buildLocationsPane(ri);
+}
+function locFilterSearch(ri, val) {
+  if (!window['_custState_'+ri]) window['_custState_'+ri] = {page:0,company:'all',search:''};
+  window['_custState_'+ri].search = val;
+  window['_custState_'+ri].page = 0;
+  var p = document.getElementById('loc-pane-'+ri);
+  if (p) p.innerHTML = buildLocationsPane(ri);
+}
+function buildLocationsPane(ri) {
+  var accts=(ACCOUNTS_DATA||[]).filter(function(a){return a.ri===ri;});
+  if(!accts.length)return '<div style="padding:40px;text-align:center;color:var(--muted);font-family:var(--font-mono)">No customer data.</div>';
+  var MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var dormant=accts.filter(function(a){return isAcctDormant(a);}).sort(function(a,b){return (b.s||0)-(a.s||0);});
+  var active=accts.filter(function(a){return isAcctActive(a);});
+  var mapped=accts.filter(function(a){return a.ad&&a.ad.trim();});
+  var mapId='cust-map-'+ri;
+  var o='<div>';
+  o+='<div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button onclick="openAddAccountModal('+ri+')" style="background:var(--green);color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-main)">+ Add Account</button></div>';
+  o+='<div class="loc-stat-row">'
+    +'<div class="loc-stat"><div class="loc-stat-val">'+accts.length+'</div><div class="loc-stat-lbl">Total Customers</div></div>'
+    +'<div class="loc-stat"><div class="loc-stat-val" style="color:var(--green)">'+active.length+'</div><div class="loc-stat-lbl">Active</div></div>'
+    +'<div class="loc-stat"><div class="loc-stat-val" style="color:#e05252">'+dormant.length+'</div><div class="loc-stat-lbl">Dormant</div></div>'
+    +'<div class="loc-stat"><div class="loc-stat-val">'+mapped.length+'</div><div class="loc-stat-lbl">On Map</div></div>'
+    +'</div>';
+  o+='<div id="'+mapId+'" class="cust-map" style="height:420px;border-radius:10px;border:1px solid var(--border);margin-bottom:24px"></div>';
+
+  // Paginated table
+  var custState_ri=window['_custState_'+ri]||(window['_custState_'+ri]={page:0,company:'all',search:''});
+  var companies_ri=['all'].concat(Array.from(new Set(accts.map(function(a){return a.p||'';}).filter(Boolean))).sort());
+  var filteredAccts=accts.filter(function(a){
+    if(custState_ri.company!=='all'&&(a.p||'')!==custState_ri.company)return false;
+    if(custState_ri.search&&!(a.n+' '+(a.p||'')).toLowerCase().includes(custState_ri.search.toLowerCase()))return false;
+    return true;
+  });
+  var PAGE=50;
+  var totalPages=Math.max(1,Math.ceil(filteredAccts.length/PAGE));
+  if(custState_ri.page>=totalPages)custState_ri.page=0;
+  var pageAccts=filteredAccts.slice(custState_ri.page*PAGE,(custState_ri.page+1)*PAGE);
+  var coOpts_ri=companies_ri.map(function(c){return '<option value="'+c+'"'+(c===custState_ri.company?' selected':'')+'>'+( c==='all'?'All Companies':c)+'</option>';}).join('');
+  o+='<div class="cust-section-title">📋 All Customers <span style="color:var(--muted);font-size:10px;font-weight:400">('+filteredAccts.length+' accounts)</span></div>';
+  o+='<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">'
+  o+='<div id="loc-filter-'+ri+'" style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">'
+    +'<select id="loc-co-'+ri+'" onchange="locFilterCo('+ri+',this.value)" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:11px;border-radius:5px;padding:5px 10px;max-width:200px">'+coOpts_ri+'</select>'
+    +'<input type="text" id="loc-srch-'+ri+'" placeholder="Search customers…" value="'+custState_ri.search+'" oninput="locFilterSearch('+ri+',this.value)" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 10px;font-family:var(--font-mono);font-size:11px;outline:none;width:200px"/>'
+    +'</div>';
+    +'</div>';
+  o+='<div class="loc-table-wrap"><table class="loc-table"><thead><tr><th>Customer</th><th>Parent Company</th><th style="text-align:right">2025 Rev</th><th>Status</th><th>Last Order</th></tr></thead><tbody>';
+  pageAccts.forEach(function(a){
+    var dorm=isAcctDormant(a);
+    var lastMo=(a.la>=0&&a.la<12)?MO[a.la]:'—';
+    var q4=dorm?'<span class="cust-badge" style="background:#e0525222;color:#e05252">Dormant</span>':'<span class="cust-badge" style="background:#27ae6022;color:#27ae60">Active</span>';
+    o+='<tr><td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+a.n+'">'+a.n+'</td>'
+      +'<td style="font-size:10px;color:var(--muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(a.p||'—')+'</td>'
+      +'<td style="font-family:var(--font-mono);text-align:right">'+(a.s?'$'+Math.round(a.s).toLocaleString('en-AU'):'—')+'</td>'
+      +'<td style="text-align:center">'+q4+'</td>'
+      +'<td style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">'+lastMo+'</td>'
+      +'</tr>';
+  });
+  o+='</tbody></table></div>';
+  if(totalPages>1){
+    o+='<div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;font-family:var(--font-mono);font-size:11px;color:var(--muted)">'
+      +'<span>Page '+(custState_ri.page+1)+' of '+totalPages+' &middot; '+filteredAccts.length+' accounts</span>'
+      +'<div style="display:flex;gap:6px">'
+      +(custState_ri.page>0?'<button onclick="locPage('+ri+',-1)" style="padding:4px 12px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;font-family:var(--font-mono);font-size:11px">← Prev</button>':'')
+      +((custState_ri.page+1<totalPages)?'<button onclick="locPage('+ri+',1)" style="padding:4px 12px;border-radius:5px;border:none;background:var(--green);color:#fff;cursor:pointer;font-family:var(--font-mono);font-size:11px">Next →</button>':'')
+      +'</div></div>';
+  }
+  o+='</div>';
+  return o;
+}
+
+function init() {
+  const container = document.getElementById('views-container');
+
+  // Team view
+  const teamDiv = document.createElement('div');
+  teamDiv.id = 'view-team';
+  teamDiv.className = 'view active';
+  teamDiv.innerHTML = buildTeamView();
+  container.appendChild(teamDiv);
+
+  // Rep views
+  REPS_DATA.forEach((rep, ri) => {
+    const div = document.createElement('div');
+    div.id = `view-rep-${ri}`;
+    div.className = 'view';
+    div.innerHTML = buildRepView(ri);
+    container.appendChild(div);
+  });
+
+  var aD=document.createElement("div");aD.id="view-accounts";aD.className="view";aD.innerHTML='<div id="accounts-content" style="padding:24px">Loading\u2026</div>';container.appendChild(aD);
+
+  var raDiv = document.createElement('div');
+  raDiv.id = 'view-reps-admin';
+  raDiv.className = 'view';
+  raDiv.innerHTML = '<div id="reps-admin-content" style="padding:24px">Loading\u2026</div>';
+  container.appendChild(raDiv);
+
+  applyStoredTheme();
+
+  $$('.tab-btn').forEach(b => {
+    b.style.display = 'inline-flex';
+  });
+  document.getElementById('tab-team').style.display = 'inline-flex';
+}
+
+// ══════════════════════════════════════════════════════════════
+// THEME
+// ══════════════════════════════════════════════════════════════
+function applyStoredTheme() {
+  const stored = localStorage.getItem('se-theme') || 'dark';
+  document.body.classList.toggle('light', stored === 'light');
+  const btn = document.getElementById('theme-toggle-btn');
+  if (btn) btn.textContent = stored === 'light' ? '🌙 Dark' : '☀️ Light';
+}
+
+function openChangePw() { document.getElementById('change-pw-overlay').style.display='flex'; }
+function closeChangePw() { document.getElementById('change-pw-overlay').style.display='none'; }
+async function doChangePw() {
+  const cur = document.getElementById('cp-current').value;
+  const n1  = document.getElementById('cp-new1').value;
+  const n2  = document.getElementById('cp-new2').value;
+  const err = document.getElementById('cp-error');
+  if (!cur||!n1||!n2) { err.textContent='All fields required.'; return; }
+  if (n1 !== n2) { err.textContent='New passwords do not match.'; return; }
+  if (n1.length < 6) { err.textContent='Password must be at least 6 characters.'; return; }
+  try {
+    await window._fbChangePw(cur, n1);
+    err.style.color='var(--green)'; err.textContent='Password changed successfully!';
+    setTimeout(closeChangePw, 1500);
+  } catch(e) { err.style.color='#e05252'; err.textContent=e.message||'Error changing password.'; }
+}
+
+document.addEventListener('keydown', function(e) { if(e.key==='Escape') closeChangePw(); });
+</script>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+.leaflet-container { background: var(--surface2); }
+.leaflet-tile { filter: brightness(0.85) saturate(0.7); }
+body.light .leaflet-tile { filter: none; }
+.cust-map-popup { font-family: var(--font-mono); font-size:11px; }
+</style>
+
+<!-- Change Password Modal -->
+<div id="change-pw-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10002;align-items:center;justify-content:center;flex-direction:column">
+  <div style="background:#1e1e1e;border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:28px 32px;width:380px;max-width:95vw">
+    <h3 style="margin:0 0 20px;font-family:var(--font-sec),sans-serif;font-size:16px;color:#f0f0f0">Change Password</h3>
+    <div style="margin-bottom:12px"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Current Password</label><input type="password" id="cp-current" style="width:100%;background:#2a2a2a;border:1px solid var(--border);color:#f0f0f0;border-radius:5px;padding:8px 10px;font-family:var(--font-sec),sans-serif;font-size:13px;box-sizing:border-box"></div>
+    <div style="margin-bottom:12px"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">New Password</label><input type="password" id="cp-new1" style="width:100%;background:#2a2a2a;border:1px solid var(--border);color:#f0f0f0;border-radius:5px;padding:8px 10px;font-family:var(--font-sec),sans-serif;font-size:13px;box-sizing:border-box"></div>
+    <div style="margin-bottom:16px"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Confirm New Password</label><input type="password" id="cp-new2" style="width:100%;background:#2a2a2a;border:1px solid var(--border);color:#f0f0f0;border-radius:5px;padding:8px 10px;font-family:var(--font-sec),sans-serif;font-size:13px;box-sizing:border-box"></div>
+    <div id="cp-error" style="font-size:11px;color:#e05252;margin-bottom:12px;min-height:16px"></div>
+    <div style="display:flex;gap:10px">
+      <button onclick="doChangePw()" style="flex:1;background:var(--green);color:#fff;border:none;border-radius:6px;padding:9px;font-family:var(--font-sec),sans-serif;font-size:13px;font-weight:600;cursor:pointer">Change Password</button>
+      <button onclick="closeChangePw()" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:9px 16px;font-family:var(--font-sec),sans-serif;cursor:pointer">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Account Modal -->
+<div id="add-account-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10001;align-items:center;justify-content:center;flex-direction:column">
+  <div style="background:#1e1e1e;border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:28px 32px;width:420px;max-width:95vw;box-shadow:0 8px 40px rgba(0,0,0,0.6)">
+    <h3 style="margin:0 0 20px;font-family:var(--font-sec),sans-serif;font-size:16px;color:#f0f0f0">Add New Account</h3>
+    <div style="margin-bottom:12px"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Account Name</label><input type="text" id="aa-name" placeholder="e.g. MM Electrical : Branch Name" style="width:100%;background:#2a2a2a;border:1px solid var(--border);color:#f0f0f0;border-radius:5px;padding:8px 10px;font-family:var(--font-sec),sans-serif;font-size:13px;box-sizing:border-box"></div>
+    <div style="margin-bottom:12px"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Parent Company</label><input type="text" id="aa-parent" placeholder="e.g. MM Electrical & Data Supplies" style="width:100%;background:#2a2a2a;border:1px solid var(--border);color:#f0f0f0;border-radius:5px;padding:8px 10px;font-family:var(--font-sec),sans-serif;font-size:13px;box-sizing:border-box"></div>
+    <div style="margin-bottom:12px"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Assigned Rep</label>
+      <select id="aa-rep" style="width:100%;background:#2a2a2a;border:1px solid var(--border);color:#f0f0f0;border-radius:5px;padding:8px 10px;font-family:var(--font-sec),sans-serif;font-size:13px;box-sizing:border-box">
+        <option value="0">Robert Schaffer</option><option value="1">Andrew Mobilia</option><option value="2">Alexander Poll</option><option value="3">Stivi Maticevski</option><option value="4">Melissa Goodridge</option>
+      </select></div>
+    <div style="margin-bottom:16px"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Region</label><input type="text" id="aa-region" placeholder="e.g. VIC" style="width:100%;background:#2a2a2a;border:1px solid var(--border);color:#f0f0f0;border-radius:5px;padding:8px 10px;font-family:var(--font-sec),sans-serif;font-size:13px;box-sizing:border-box"></div>
+    <div id="aa-error" style="font-size:11px;color:#e05252;margin-bottom:12px;min-height:16px;display:none"></div>
+    <div style="display:flex;gap:10px">
+      <button onclick="saveNewAccount()" style="flex:1;background:var(--green);color:#fff;border:none;border-radius:6px;padding:9px;font-family:var(--font-sec),sans-serif;font-size:13px;font-weight:600;cursor:pointer">Save Account</button>
+      <button onclick="closeAddAccountModal()" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:9px 16px;font-family:var(--font-sec),sans-serif;cursor:pointer">Cancel</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
+function getCurrentUserRole() {
+  const email = window._currentUser?.email?.toLowerCase().trim();
+  if (!email) { console.warn('[Auth] No user email'); return null; }
+  const adminList = ADMIN_EMAILS.map(e => e.toLowerCase().trim());
+  if (adminList.includes(email)) { console.log('[Auth] Admin:', email); window._isAdmin=true; return { role: 'admin', repIdx: null }; }
+  const repIdx = REP_EMAIL_MAP[email];
+  if (repIdx !== undefined) { console.log('[Auth] Rep:', email, 'idx:', repIdx); return { role: 'rep', repIdx }; }
+  console.warn('[Auth] Unknown email:', email);
+  return null;
+}
+
+function applyAccessControl() {
+  const access = getCurrentUserRole();
+  if (!access) { console.warn('[Auth] No access - signing out'); if (window._fbLogout) window._fbLogout(); return; }
+  const tabs = document.getElementById('mainTabs');
+  if (!tabs) { console.warn('[Auth] mainTabs not found'); return; }
+  console.log('[Auth] Applying:', access.role, 'repIdx:', access.repIdx);
+  if (access.role === 'admin') {
+    tabs.querySelectorAll('.tab-btn').forEach(b => b.style.display = 'inline-flex');
+    document.querySelectorAll('.admin-only').forEach(el => {
+      el.style.display = el.classList.contains('tab-divider') ? 'block' : 'inline-flex';
+    });
+    showView('team');
+  } else {
+    tabs.querySelectorAll('.tab-btn').forEach(b => b.style.display = 'none');
+    const myTab = document.getElementById('tab-rep-' + access.repIdx);
+    if (myTab) { myTab.style.display = 'inline-flex'; console.log('[Auth] Showing tab for rep', access.repIdx); }
+    else { console.warn('[Auth] Tab not found for repIdx:', access.repIdx); }
+    document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+    showView('rep-' + access.repIdx);
+  }
+}
+
+// ── Theme toggle ─────────────────────────────────────────────
+function toggleTheme() {
+  const isLight = document.body.classList.toggle('light');
+  const btn = document.getElementById('theme-toggle-btn');
+  if (btn) btn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+  localStorage.setItem('se-theme', isLight ? 'light' : 'dark');
+}
+
+// Apply saved theme on load
+(function() {
+  const saved = localStorage.getItem('se-theme');
+  if (saved === 'light') {
+    document.body.classList.add('light');
+    // Update button once DOM ready
+    window.addEventListener('DOMContentLoaded', () => {
+      const btn = document.getElementById('theme-toggle-btn');
+      if (btn) btn.textContent = '🌙 Dark';
+    });
+  }
+})();
+
+function doLogin() {
+  const email    = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl    = document.getElementById('login-error');
+  errEl.textContent = '';
+
+  if (!email || !password) { errEl.textContent = 'Please enter your email and password.'; return; }
+  if (!window._fbLogin)    { errEl.textContent = 'Still connecting, please wait a moment...'; return; }
+
+  const btn = document.querySelector('.login-btn');
+  btn.textContent = 'Signing in...'; btn.disabled = true;
+
+  window._fbLogin(email, password)
+    .then(() => { /* auth-changed event handles the rest */ })
+    .catch(err => {
+      btn.textContent = 'Sign In'; btn.disabled = false;
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
+        errEl.textContent = 'Incorrect email or password. Please try again.';
+      } else if (err.code === 'auth/too-many-requests') {
+        errEl.textContent = 'Too many failed attempts. Please wait a few minutes.';
+      } else if (err.code === 'auth/user-disabled') {
+        errEl.textContent = 'This account has been disabled.';
+      } else {
+        errEl.textContent = 'Sign in failed: ' + (err.code || err.message || 'unknown error');
+      }
+    });
+}
+
+function doLogout() {
+  if (window._fbLogout) window._fbLogout();
+}
+
+// Listen for auth state changes
+window.addEventListener('auth-changed', e => {
+  const user = e.detail.user;
+  if (user) {
+    // Ensure views are built before showing dashboard
+    if (!window._initDone) { window._initDone = true; init(); }
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('logout-btn').style.display = '';
+    document.getElementById('change-pw-btn').style.display = '';
+    const userInfo = document.getElementById('user-info');
+    if (userInfo) userInfo.textContent = '👤 ' + user.email;
+    applyAccessControl();
+    fbStartListening();
+  } else {
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('logout-btn').style.display = 'none';
+    document.getElementById('change-pw-btn').style.display = 'none';
+    const userInfo = document.getElementById('user-info');
+    if (userInfo) userInfo.textContent = '';
+    const btn = document.querySelector('.login-btn');
+    if (btn) { btn.textContent = 'Sign In'; btn.disabled = false; }
+  }
+});
+
+function fbSave() {
+  if (!window._fbSet) return;
+  window._fbSet('dashboard/classActuals', state.classActuals);
+  window._fbSet('dashboard/customTargets', state.customTargets);
+}
+
+function fbClear() {
+  if (!window._fbRemove) return;
+  window._fbRemove('dashboard/classActuals');
+  // Don't clear growthRates on data clear — targets should persist
+}
+
+function fbStartListening() {
+  if (!window._fbListen) return;
+
+  // Listen for actuals
+  window._fbListen('dashboard/classActuals', data => {
+    // Filter out any stale data beyond March 2026 (month index > 2)
+    if (data) {
+      Object.keys(data).forEach(k => {
+        const parts = k.split('-');
+        if (parts.length === 3 && parseInt(parts[2]) > 2) delete data[k];
+      });
+    }
+    state.classActuals = data || {};
+    REPS_DATA.forEach((_, ri) => {
+      const repView = document.getElementById(`view-rep-${ri}`);
+      if (repView && repView.classList.contains('active')) {
+        populateTracker(ri);
+        populateClassTrackers(ri);
+        drawRepCharts(ri);
+      }
+    });
+    refreshTeamView();
+  });
+
+  // prevActuals listener removed (manual upload mode)
+  // Listen for notes
+  window._fbListen('dashboard/notes', data => {
+    state.notes = data ? Object.values(data) : [];
+    refreshNotesViews();
+  });
+  // Listen for leave
+  window._fbListen('dashboard/leave', data => {
+    state.leave = data || {};
+    refreshLeaveViews();
+  });
+  // Listen for note insights
+  window._fbListen('dashboard/noteInsights', data => {
+    state.noteInsights = data || {};
+    refreshInsightsViews();
+  });
+
+  // Listen for dormant conversion tracking
+  window._fbListen('dashboard/acctStatusSnap', data => {
+    state.acctStatusSnap = data || {};
+  });
+
+  // Listen for per-account 2026 last-active data (set by Apps Script)
+  window._fbListen('dashboard/acctLastActive', data => {
+    state.acctLastActive = data || {};
+    // Update la field on ACCOUNTS_DATA for accounts that have 2026 activity
+    if (data) {
+      ACCOUNTS_DATA.forEach(function(a) {
+        var key = a.n.replace(/[.#$\[\]/]/g, '_');
+        var rec = data[key];
+        if (rec && rec.yr === 2026) {
+          // 2026 months: encode as 12 + mi so Jan2026=12, Feb2026=13 etc
+          a.la2026 = rec.mi; // store separately, use in dormant calc
+        }
+      });
+    }
+    buildAccountsView && buildAccountsView();
+  });
+
+
+  // Listen for custom targets (admin overrides)
+  window._fbListen('dashboard/customTargets', data => {
+    state.customTargets = data || {};
+    REPS_DATA.forEach((_, ri) => {
+      populateTracker(ri);
+      populateClassTrackers(ri);
+      drawRepCharts(ri);
+    });
+    refreshTeamView();
+  });
+}
+
+
+
+// Start Firebase listener once ready
+// fbStartListening is called from auth-changed event after login
+
+// ── Formatting ──────────────────────────────────────────────
+const $ = (s, ctx = document) => ctx.querySelector(s);
+const $$ = (s, ctx = document) => [...ctx.querySelectorAll(s)];
+const fmt = v => v == null || isNaN(v) ? '—' : (v < 0 ? '(' : '') + '$' + Math.abs(Math.round(v)).toLocaleString('en-AU') + (v < 0 ? ')' : '');
+const fmtK = v => v == null || isNaN(v) ? '—' : '$' + (Math.round(v / 1000)).toLocaleString('en-AU') + 'k';
+const fmtPct = v => isNaN(v) || !isFinite(v) ? '—' : (v * 100).toFixed(1) + '%';
+
+// ── Compute derived targets from growth rates ──────────────
+function getClassTarget(repIdx, clsIdx, monthIdx) {
+  // Use admin-set custom target if it exists, otherwise fall back to original data
+  const custom = state.customTargets[`${repIdx}-${clsIdx}-${monthIdx}`];
+  if (custom !== undefined) return custom;
+  return REPS_DATA[repIdx].classes[clsIdx].monthly[monthIdx].target;
+}
+function getTarget(repIdx, monthIdx) {
+  // Sum class targets
+  return REPS_DATA[repIdx].classes.reduce((sum, _, ci) => sum + getClassTarget(repIdx, ci, monthIdx), 0);
+}
+function getActual(repIdx, monthIdx) {
+  // Sum across product classes only (0=Server Racks, 1=Data Products, 2=Cabling)
+  // Class index 3 (Others) contains excluded items (freight, credits, rebates) — excluded
+  return REPS_DATA[repIdx].classes.reduce((sum, _, ci) => {
+    if (ci === 4) return sum; // exclude Others (now index 4) (freight charges, credits, rebates etc.)
+    return sum + getClassActual(repIdx, ci, monthIdx);
+  }, 0);
+}
+
+
+function takeStatusSnapshot() {
+  if (!window._fbSet) return;
+  var snap = {};
+  ACCOUNTS_DATA.forEach(function(a) {
+    var key = a.n.replace(/[.#$\[\]]/g, '_');
+    snap[key] = { dormant: isAcctDormant(a), la: a.la, ts: Date.now() };
+  });
+  window._fbSet('dashboard/acctStatusSnap', snap);
+  alert('Snapshot saved! ' + Object.keys(snap).length + ' accounts recorded.');
+}
+
+function getDormantConversions() {
+  var snap = state.acctStatusSnap || {};
+  var nowActive = [];   // was dormant, now active
+  var nowDormant = [];  // was active, now dormant
+  ACCOUNTS_DATA.forEach(function(a) {
+    var key = a.n.replace(/[.#$\[\]]/g, '_');
+    var prev = snap[key];
+    if (!prev) return;
+    var wasDormant = prev.dormant;
+    var isDormant  = isAcctDormant(a);
+    if (wasDormant && !isDormant) nowActive.push(a);
+    if (!wasDormant && isDormant)  nowDormant.push(a);
+  });
+  return { nowActive, nowDormant };
+}
+function getKRAScore(repIdx) {
+  // Established (70%): Server Racks(0) + Data Products(1) + Cabling(2) + Bulk Cables(3)
+  // Growth (30%): Others(4)
+  var estTarget = 0, estActual = 0, ncTarget = 0, grwActual = 0;
+  for (var mo = 0; mo < 12; mo++) {
+    for (var ci = 0; ci < 4; ci++) {
+      estTarget += getClassTarget(repIdx, ci, mo);
+      estActual += getClassActual(repIdx, ci, mo);
+    }
+    ncTarget += getClassTarget(repIdx, 4, mo);
+    grwActual += getClassActual(repIdx, 4, mo);
+  }
+  var estAch  = estTarget > 0 ? estActual / estTarget : 0;
+  var grwAch    = ncTarget   > 0 ? grwActual   / ncTarget   : 0;
+  var kraScore = (estAch * 0.7) + (grwAch * 0.3);
+  return { estAch, grwAch, kraScore, estActual, estTarget, grwActual, ncTarget };
+}
+
+function getClassActual(repIdx, clsIdx, monthIdx) {
+  return Math.round((state.classActuals[`${repIdx}-${clsIdx}-${monthIdx}`] || 0) * 100) / 100;
+}
+
+// Get 2025 prev actual — REPS_DATA (pivot) is always source of truth
+function getClassPrev(repIdx, clsIdx, monthIdx) {
+  return REPS_DATA[repIdx].classes[clsIdx]?.monthly[monthIdx]?.prev || 0;
+}
+
+function getRepPrev(repIdx, monthIdx) {
+  return REPS_DATA[repIdx].classes.reduce((s, _, ci) => s + getClassPrev(repIdx, ci, monthIdx), 0);
+}
+
+function getRepAcctPrev(repIdx, monthIdx) {
+  return REPS_DATA[repIdx].monthly[monthIdx]?.acctPrev || 0;
+}
+
+
+
+
+
+
+
+
+
+
+// ── Chart registry (to destroy/recreate) ──────────────────
+const charts = {};
+function destroyChart(id) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+function mkChart(id, config) {
+  destroyChart(id);
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  charts[id] = new Chart(ctx, config);
+  return charts[id];
+}
+
+const CHART_DEFAULTS = {
+  plugins: { legend: { labels: { color: '#888', font: { family: 'Plus Jakarta Sans', size: 10 }, boxWidth: 10 } } },
+  scales: {
+    x: { ticks: { color: '#666', font: { family: 'Plus Jakarta Sans', size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false } },
+    y: { ticks: { color: '#666', font: { family: 'Plus Jakarta Sans', size: 10 }, callback: v => '$' + (v/1000).toFixed(0) + 'k' }, grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false } }
+  }
+};
+
+// ══════════════════════════════════════════════════════════════
+// BUILD REP VIEW
+// ══════════════════════════════════════════════════════════════
+function buildRepView(repIdx) {
+  const rep = REPS_DATA[repIdx];
+  const months = rep.monthly.map(m => m.month);
+  const annualTarget = months.reduce((s, _, mi) => s + getTarget(repIdx, mi), 0);
+  const annualPrev     = rep.monthly.reduce((s, m, mi) => s + getRepPrev(repIdx, mi), 0);
+  const annualAcctPrev = rep.monthly.reduce((s, m) => s + (m.acctPrev || 0), 0);
+  const ytdActual    = months.reduce((s, _, mi) => s + getActual(repIdx, mi), 0);
+  const stillToGo    = Math.max(annualTarget - ytdActual, 0);
+  const monthsEntered = months.filter((_, mi) => getActual(repIdx, mi) > 0).length;
+
+  const clsColors = ['#4472C4','#70AD47','#ED7D31','#9E480E'];
+
+  return `
+  <div class="rep-tab-bar">
+    <button class="rep-tab-btn active" id="rtab-kpi-${repIdx}" onclick="switchRepTab(${repIdx},'kpi')">📊 KPI</button>
+    <button class="rep-tab-btn" id="rtab-notes-${repIdx}" onclick="switchRepTab(${repIdx},'notes')">📝 Notes</button>
+    <button class="rep-tab-btn" id="rtab-leave-${repIdx}" onclick="switchRepTab(${repIdx},'leave')">🏖️ Leave</button>
+    <button class="rep-tab-btn" id="rtab-loc-${repIdx}" onclick="switchRepTab(${repIdx},'loc')">📍 Customers</button>
+  </div>
+  <div class="rep-tab-pane active" id="rpane-kpi-${repIdx}">
+
+  
+  <div class="rep-header">
+    <div>
+      <div class="rep-title" style="color:${rep.color}">${rep.name}</div>
+      <div class="rep-subtitle">Region: ${rep.region} &nbsp;·&nbsp; All values in Australian Dollars (AUD)</div>
+      <div class="rep-accent-bar" style="background:${rep.color}"></div>
+    </div>
+    <div style="display:flex;gap:12px;align-items:center">
+      <div style="text-align:center;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 16px;min-width:130px">
+        <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:3px">MTD Achievement</div>
+        <div style="font-size:17px;font-weight:800;font-family:var(--font-head)" id="kpi-mtd-pct-${repIdx}">—</div>
+        <div style="font-size:9px;color:var(--muted);margin-top:2px" id="kpi-mtd-vals-${repIdx}">— of —</div>
+        <div style="margin-top:5px;background:var(--surface3);border-radius:3px;height:3px;overflow:hidden">
+          <div id="kpi-mtd-bar-${repIdx}" style="height:100%;width:0%;border-radius:3px;transition:width .4s"></div>
+        </div>
+      </div>
+      <div style="text-align:center;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 16px;min-width:130px">
+        <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:3px">YTD Achievement</div>
+        <div style="font-size:17px;font-weight:800;font-family:var(--font-head);color:${rep.color}" id="kpi-ytd-pct-${repIdx}">—</div>
+        <div style="font-size:9px;color:var(--muted);margin-top:2px">of annual target</div>
+        <div style="margin-top:5px;background:var(--surface3);border-radius:3px;height:3px;overflow:hidden">
+          <div id="kpi-ytd-bar-${repIdx}" style="height:100%;width:0%;background:${rep.color};border-radius:3px;transition:width .4s"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  
+  <div class="kpi-row">
+    <div class="kpi-card" style="--accent-color:${rep.color}">
+      <div class="kpi-label">2026 Annual Target</div>
+      <div class="kpi-value" style="color:var(--green)" id="kpi-anntgt-${repIdx}">${fmt(annualTarget)}</div>
+    </div>
+    <div class="kpi-card" style="--accent-color:#a78bfa">
+      <div class="kpi-label">Acct Ach 2025</div>
+      <div class="kpi-value" style="color:#a78bfa">${fmt(annualAcctPrev)}</div>
+      <div style="font-size:9px;color:var(--muted);margin-top:2px">2026-allocated · target base</div>
+    </div>
+    <div class="kpi-card" style="--accent-color:#888">
+      <div class="kpi-label">Achieved FY2025</div>
+      <div class="kpi-value" style="color:#6699cc">${fmt(annualPrev)}</div>
+    </div>
+    <div class="kpi-card" style="--accent-color:var(--amber)">
+      <div class="kpi-label">YTD Invoiced</div>
+      <div class="kpi-value" style="color:var(--amber)" id="kpi-ytd-${repIdx}">${fmt(ytdActual)}</div>
+      <div style="font-size:9px;color:var(--muted);margin-top:3px">Invoiced only · excludes open POs</div>
+    </div>
+    <div class="kpi-card" style="--accent-color:#e05252">
+      <div class="kpi-label">Still To Go</div>
+      <div class="kpi-value" style="color:#e05252" id="kpi-still-${repIdx}">${fmt(stillToGo)}</div>
+    </div>
+  </div>
+
+
+
+  <div class="section-hdr admin-only">🔮 End of Year Prediction — based on current run rate</div>
+  <div class="eoy-card admin-only" id="eoy-card-${repIdx}">
+    <div class="eoy-item"><div class="eoy-label">EOY Projection</div><div class="eoy-val" style="color:var(--muted);font-size:14px">Enter actuals to see projection</div></div>
+  </div>
+
+  
+  <div class="section-hdr">📊 Performance Charts</div>
+  <div class="team-stat-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px" id="rep-charts-${repIdx}">
+    <div class="chart-card">
+      <div class="chart-title">Monthly Target vs Actual</div>
+      <div class="chart-wrap tall"><canvas id="ch-rep-total-${repIdx}"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Target vs Actual by Class</div>
+      <div class="chart-wrap tall"><canvas id="ch-rep-class-${repIdx}"></canvas></div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;padding:10px;background:var(--surface2);border-radius:6px;border:1px solid var(--border)">
+        <div style="width:100%;font-size:9px;color:var(--muted);letter-spacing:.06em;margin-bottom:4px;font-family:var(--font-sec)">HOW TO READ THIS CHART</div>
+        <div style="display:flex;align-items:center;gap:6px"><span style="display:inline-block;width:18px;height:3px;background:#4472C4;border-radius:2px"></span><span style="font-size:11px;color:var(--text)">Server Racks</span></div>
+        <div style="display:flex;align-items:center;gap:6px"><span style="display:inline-block;width:18px;height:3px;background:#70AD47;border-radius:2px"></span><span style="font-size:11px;color:var(--text)">Data Products</span></div>
+        <div style="display:flex;align-items:center;gap:6px"><span style="display:inline-block;width:18px;height:3px;background:#ED7D31;border-radius:2px"></span><span style="font-size:11px;color:var(--text)">Cabling</span></div>
+        <div style="display:flex;align-items:center;gap:6px"><span style="display:inline-block;width:18px;height:3px;background:#9E480E;border-radius:2px"></span><span style="font-size:11px;color:var(--text)">Others</span></div>
+        <div style="width:100%;padding-top:6px;border-top:1px solid var(--border);display:flex;gap:16px">
+          <span style="font-size:10px;color:var(--muted);display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:16px;height:2px;background:#888;border-radius:2px"></span>Solid = Invoiced</span>
+          <span style="font-size:10px;color:var(--muted);display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:16px;border-top:2px dashed #888"></span>Dashed = Target</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  
+  <div style="background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.25);border-radius:6px;padding:7px 12px;font-size:11px;color:var(--amber);display:flex;align-items:center;gap:8px;margin-bottom:12px">
+    <span>⚠️</span>
+    <span><strong>Invoiced figures only.</strong> Achievement is based on invoiced revenue. Open purchase orders (POs) not yet invoiced are <strong>not included</strong> in these figures. Figures also exclude <strong>freight, rebates and credit notes</strong> (classified as "Others").</span>
+  </div>
+
+  
+
+  <!-- Monthly Tracker -->
+  <div class="section-hdr" id="kra-hdr-${repIdx}">🎯 KRA Achievement — Established Products (70%) + Growth Others (30%)</div>
+  <div id="kra-panel-${repIdx}" style="display:grid;grid-template-columns:1fr 1px 1fr 1px 1fr;gap:0;background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:18px">
+    <div style="padding:14px 18px">
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">🔵 Established Achievement</div>
+      <div id="kra-est-${repIdx}" style="font-size:22px;font-weight:800">—</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">Server Racks + Data Products + Cabling + Bulk Cables · 70% weight</div>
+    </div>
+    <div style="background:var(--border)"></div>
+    <div style="padding:14px 18px">
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">🟠 Growth Achievement</div>
+      <div id="kra-nc-${repIdx}" style="font-size:22px;font-weight:800">—</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">Networking + AV + Computer Accessories · 30% weight</div>
+    </div>
+    <div style="background:var(--border)"></div>
+    <div style="padding:14px 18px">
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">⭐ KRA Score</div>
+      <div id="kra-scoreEl-${repIdx}" style="font-size:22px;font-weight:800">—</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">Weighted: Core×70% + Growth×30%</div>
+    </div>
+  </div>
+
+  <div class="section-hdr">📋 Monthly Tracker — Auto-summed from class entries <span style="font-size:9px;font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0">(excludes freight, rebates &amp; credit notes)</span></div>
+  ${repIdx === 4 ? `<div id="melissa-2026-ytd-banner" style="display:none;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.25);border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:11px;color:var(--muted)">
+    <span style="color:#60a5fa;font-weight:600">ℹ 2026 YTD Sales (Jan–Feb context)</span>
+    &nbsp;&nbsp;<span style="font-family:var(--font-mono);font-size:12px;color:#ffe566" id="melissa-2026-ytd-amount"></span>
+  </div>` : ''}
+  <div class="tracker-wrap" style="margin-bottom:6px">
+    <table>
+      <thead>
+        <tr>
+          <th>Month</th><th>2026 Target</th><th style="color:#a78bfa">Acct Ach 2025</th><th>2025 Actual</th><th>2026 Invoiced</th><th>Ach%</th><th>vs Tgt ($)</th><th>vs Tgt (%)</th><th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="tracker-body-${repIdx}"></tbody>
+      <tfoot>
+        <tr class="total-row">
+          <td>Total</td>
+          <td id="tot-tgt-${repIdx}"></td>
+          <td style="color:#a78bfa">${fmt(annualAcctPrev)}</td>
+          <td>${fmt(annualPrev)}</td>
+          <td id="tot-act-${repIdx}"></td>
+          <td id="tot-ach-${repIdx}"></td>
+          <td id="tot-var-${repIdx}"></td>
+          <td id="tot-vpct-${repIdx}"></td>
+          <td id="tot-stat-${repIdx}"></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <!-- Core / Growth combined tracker -->
+  <div class="section-hdr">📦 Core &amp; Growth Performance</div>
+  <div style="font-size:10px;color:var(--muted);font-family:var(--font-mono);margin-bottom:8px">Core = Server Racks + Data Products + Cabling + Bulk Cables (70% weight) · Growth = Others (30% weight)</div>
+  <div class="tracker-wrap">
+    <table>
+      <thead><tr>
+        <th>Month</th>
+        <th>Established Target</th><th>Established Invoiced</th><th>Established Ach%</th>
+        <th>Growth Target</th><th>Growth Invoiced</th><th>Growth Ach%</th>
+        <th>KRA Score</th><th>Status</th>
+      </tr></thead>
+      <tbody id="cls-body-${repIdx}-combined"></tbody>
+      <tfoot><tr class="total-row">
+        <td>Total</td>
+        <td id="cls-tot-established-tgt-${repIdx}"></td><td id="cls-tot-established-act-${repIdx}"></td><td id="cls-tot-established-ach-${repIdx}"></td>
+        <td id="cls-tot-grw-tgt-${repIdx}"></td><td id="cls-tot-grw-act-${repIdx}"></td><td id="cls-tot-grw-ach-${repIdx}"></td>
+        <td id="cls-tot-kra-${repIdx}"></td><td id="cls-tot-kra-stat-${repIdx}"></td>
+      </tr></tfoot>
+    </table>
+  </div>
+
+  </div><!-- /rpane-kpi -->
+
+
+
+
+
+  <div class="rep-tab-pane" id="rpane-loc-${repIdx}">
+    ${buildLocationsPane(repIdx)}
+  </div>
+
+  <div class="rep-tab-pane" id="rpane-notes-${repIdx}">
+    <div id="notes-panel-${repIdx}"><div style="padding:40px;text-align:center;color:var(--muted);font-family:var(--font-mono)">Loading notes...</div></div>
+  </div>
+
+  <div class="rep-tab-pane" id="rpane-leave-${repIdx}">
+    <div id="leave-panel-${repIdx}"><div style="padding:40px;text-align:center;color:var(--muted);font-family:var(--font-mono)">Loading leave...</div></div>
+  </div>
+
+  `;
+}
+
+// ── Populate tracker rows ────────────────────────────────────
+
+function updateKRAPanel(repIdx) {
+  var k = getKRAScore(repIdx);
+  var estEl  = document.getElementById('kra-est-'  + repIdx);
+  var ncEl    = document.getElementById('kra-nc-'    + repIdx);
+  var scoreEl = document.getElementById('kra-scoreEl-' + repIdx);
+  if (!estEl) return;
+
+  var estColor  = k.estAch  >= 1 ? 'var(--green)' : k.estAch  >= 0.8 ? 'var(--amber)' : '#e05252';
+  var ncColor    = k.grwAch    >= 1 ? 'var(--green)' : k.grwAch    >= 0.8 ? 'var(--amber)' : '#e05252';
+  var sestColor = k.kraScore >= 1 ? 'var(--green)' : k.kraScore >= 0.8 ? 'var(--amber)' : '#e05252';
+
+  estEl.style.color  = k.estActual > 0 ? estColor  : 'var(--muted)';
+  ncEl.style.color    = k.grwActual   > 0 ? ncColor    : 'var(--muted)';
+  scoreEl.style.color = (k.estActual > 0 || k.grwActual > 0) ? sestColor : 'var(--muted)';
+
+  estEl.textContent  = k.estActual  > 0 ? (k.estAch  * 100).toFixed(1) + '%' : '—';
+  ncEl.textContent    = k.grwActual    > 0 ? (k.grwAch    * 100).toFixed(1) + '%' : '—';
+  scoreEl.textContent = (k.estActual > 0 || k.grwActual > 0) ? (k.kraScore * 100).toFixed(1) + '%' : '—';
 }
 
 function switchCoreTab(repIdx, tab) {}
@@ -1671,6 +2876,455 @@ function showView(id) {
 // ══════════════════════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════════════════
+// TEAM VIEW
+// ══════════════════════════════════════════════════════════════
+function buildTeamView() {
+  const months = REPS_DATA[0].monthly.map(m => m.month);
+  return `
+  <div class="rep-header">
+    <div>
+      <div class="rep-title" style="color:var(--green)">Team Overview</div>
+      <div class="rep-subtitle">All Associates · Manager View · All values in AUD</div>
+      <div class="rep-accent-bar" style="background:var(--green)"></div>
+    </div>
+    <div class="rep-badges">
+      <span id="team-mtd-badge" style="font-size:11px;padding:4px 10px;border-radius:12px;border:1px solid var(--border);font-family:var(--font-mono)">MTD —</span>
+      <span id="team-ytd-badge" style="font-size:11px;padding:4px 10px;border-radius:12px;border:1px solid var(--border);font-family:var(--font-mono)">YTD —</span>
+    </div>
+  </div>
+  <div id="team-kpi-strip" style="margin-bottom:18px"></div>
+  <div class="section-hdr">📊 Team Achievement — Target vs Actual vs 2025</div>
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:18px">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button id="team-chart-all" onclick="filterTeamChart('all')" style="background:var(--green);color:#fff;border:none;border-radius:20px;padding:5px 14px;font-size:11px;font-family:var(--font-mono);cursor:pointer">All Year</button>
+      ${months.map(m => `<button onclick="filterTeamChart('${m}')" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:11px;font-family:var(--font-mono);cursor:pointer">${m}</button>`).join('')}
+    </div>
+    <div style="height:260px"><canvas id="ch-team-main"></canvas></div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-size:10px;font-family:var(--font-mono);color:var(--muted)">
+      <span>— 2026 Target</span><span>- - 2025 Actual</span><span style="color:#ffe566">▬ 2026 Invoiced</span>
+    </div>
+  </div>
+  <div id="team-assoc-summary" style="margin-bottom:18px"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px">
+      <div class="section-hdr" style="margin-bottom:10px">Target vs Achievement by Associate</div>
+      <div style="height:220px"><canvas id="ch-team-bar"></canvas></div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:10px;font-family:var(--font-mono);color:var(--muted)">
+        <span style="color:#4472C4">■ 2026 Target</span><span>■ FY2025 Actual</span><span style="color:#ffe566">■ 2026 Invoiced</span>
+      </div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div class="section-hdr">Class Mix — 2025 Achievement</div>
+        <select onchange="filterClassChart(this.value)" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-family:var(--font-mono);font-size:10px;border-radius:4px;padding:3px 6px">
+          <option value="ytd">Full Year</option>
+          ${months.map(m => `<option value="${m}">${m}</option>`).join('')}
+        </select>
+      </div>
+      <div style="height:220px"><canvas id="ch-team-class"></canvas></div>
+    </div>
+  </div>
+  <div class="section-hdr">📋 Monthly Team Performance</div>
+  <div class="tracker-wrap" style="margin-bottom:18px">
+    <table>
+      <thead><tr>
+        <th>Month</th>
+        ${REPS_DATA.map(r => `<th style="color:${r.color}">${r.shortName||r.name.split(' ')[0]}</th>`).join('')}
+        <th>Team Total</th><th style="color:#a78bfa">2025 Ach</th><th>Team Target</th><th>Achiev %</th><th>vs Target</th><th>Remarks</th>
+      </tr></thead>
+      <tbody id="team-monthly-body"></tbody>
+      <tfoot><tr class="total-row">
+        <td>Total</td>
+        ${REPS_DATA.map((_,ri) => `<td id="team-col-tot-${ri}"></td>`).join('')}
+        <td id="team-tot-act"></td><td id="team-tot-prev" style="color:#a78bfa"></td><td id="team-tot-tgt"></td><td id="team-tot-ach"></td><td id="team-tot-var"></td><td></td>
+      </tr></tfoot>
+    </table>
+  </div>
+  <div class="section-hdr">📊 Class Achievement — Team</div>
+  <div class="tracker-wrap" style="margin-bottom:6px">
+    <table>
+      <thead><tr>
+        <th>Month</th><th>Team Target</th><th>Team Invoiced</th><th>Achiev %</th>
+      </tr></thead>
+      <tbody id="team-class-body"></tbody>
+    </table>
+  </div>
+  `;
+}
+
+function refreshTeamView() {
+  const teamView = document.getElementById('view-team');
+  if (!teamView || !teamView.classList.contains('active')) return;
+  const months = REPS_DATA[0].monthly.map(m => m.month);
+  const now = new Date();
+  const currentMi = now.getMonth();
+  const clsColors = ['#4472C4','#70AD47','#ED7D31','#9E480E','#C00000'];
+
+  const teamYtdAct = REPS_DATA.reduce((s,_,ri) => s + months.reduce((s2,_,mi) => s2 + getActual(ri,mi), 0), 0);
+  const teamYtdTgt = REPS_DATA.reduce((s,_,ri) => s + months.reduce((s2,_,mi) => s2 + getTarget(ri,mi), 0), 0);
+  const teamMtdAct = REPS_DATA.reduce((s,_,ri) => s + getActual(ri,currentMi), 0);
+  const teamMtdTgt = REPS_DATA.reduce((s,_,ri) => s + getTarget(ri,currentMi), 0);
+  const teamPrev   = 10580119;
+
+  const ytdPct = teamYtdTgt > 0 ? teamYtdAct/teamYtdTgt : 0;
+  const mtdPct = teamMtdTgt > 0 ? teamMtdAct/teamMtdTgt : 0;
+  const ytdColor = ytdPct >= 1 ? 'var(--green)' : ytdPct >= 0.8 ? 'var(--amber)' : '#e05252';
+  const mtdColor = mtdPct >= 1 ? 'var(--green)' : mtdPct >= 0.8 ? 'var(--amber)' : '#e05252';
+
+  const mtdBadge = document.getElementById('team-mtd-badge');
+  const ytdBadge = document.getElementById('team-ytd-badge');
+  if (mtdBadge) { mtdBadge.textContent = `MTD ${fmtPct(mtdPct)}`; mtdBadge.style.color = mtdColor; mtdBadge.style.borderColor = mtdColor; }
+  if (ytdBadge) { ytdBadge.textContent = `YTD ${fmtPct(ytdPct)}`; ytdBadge.style.color = ytdColor; ytdBadge.style.borderColor = ytdColor; }
+
+  const trendAnnual = teamPrev * 1.1;
+  const trendColor = '#a78bfa';
+
+  const kpiStrip = document.getElementById('team-kpi-strip');
+  if (kpiStrip) {
+    var isMobile=window.innerWidth<768;
+    kpiStrip.innerHTML = '<div class="team-big-cards" style="display:grid;grid-template-columns:'+(isMobile?'1fr 1fr':'1fr 1px 1fr 1px 1fr 1px 1fr')+';gap:'+(isMobile?'1px':'0')+';margin-bottom:18px;width:100%;box-sizing:border-box;overflow:hidden;background:var(--surface);border:1px solid var(--border);border-radius:10px">'
+      + '<div style="text-align:center;padding:16px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">2026 Annual Target</div><div style="font-size:26px;font-weight:800;font-family:var(--font-head);color:var(--green)">' + fmt(teamYtdTgt) + '</div><div style="font-size:11px;color:var(--muted);margin-top:3px">Full Year</div></div>'
+      + '<div style="background:var(--border)"></div>'
+      + '<div style="text-align:center;padding:16px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">YTD Annual Achievement</div><div style="font-size:26px;font-weight:800;font-family:var(--font-head);color:' + ytdColor + '">' + fmt(teamYtdAct) + '</div><div style="font-size:11px;color:' + ytdColor + ';margin-top:3px">' + fmtPct(ytdPct) + ' of target</div></div>'
+      + '<div style="background:var(--border)"></div>'
+      + '<div style="text-align:center;padding:16px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">Predicted Achievement</div><div style="font-size:26px;font-weight:800;font-family:var(--font-head);color:' + trendColor + '">' + fmt(trendAnnual) + '</div><div style="font-size:11px;color:var(--muted);margin-top:3px">' + fmtPct(trendAnnual/teamYtdTgt) + ' of target · 3yr trend +10%</div></div>'
+      + '<div style="background:var(--border)"></div>'
+      + '<div style="text-align:center;padding:16px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">2025 Achieved</div><div style="font-size:26px;font-weight:800;font-family:var(--font-head);color:#6699cc">' + fmt(teamPrev) + '</div><div style="font-size:11px;color:var(--muted);margin-top:3px">Prior year reference</div></div>'
+      + '</div>';
+  }
+
+  // YTD/MTD boxes
+  const teamYtdEl = document.getElementById('team-assoc-summary');
+  if (teamYtdEl) {
+    teamYtdEl.innerHTML = '<div class="team-ytd-row" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px">'
+      + '<div style="background:var(--surface2);border-radius:8px;padding:14px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:10px;font-weight:600">📅 Year to Date</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'
+      + '<div><div style="font-size:10px;color:var(--muted)">YTD Target</div><div style="font-size:16px;font-weight:700;font-family:var(--font-head);color:var(--green)">' + fmtK(teamYtdTgt) + '</div></div>'
+      + '<div><div style="font-size:10px;color:var(--muted)">YTD Invoiced</div><div style="font-size:16px;font-weight:700;font-family:var(--font-head);color:' + ytdColor + '">' + fmtK(teamYtdAct) + '</div></div>'
+      + '<div><div style="font-size:10px;color:var(--muted)">Achievement</div><div style="font-size:16px;font-weight:700;font-family:var(--font-head);color:' + ytdColor + '">' + fmtPct(ytdPct) + '</div></div>'
+      + '</div><div style="margin-top:10px;height:4px;background:var(--border);border-radius:2px"><div style="height:4px;border-radius:2px;background:' + ytdColor + ';width:' + Math.min(ytdPct*100,100) + '%;transition:width .4s"></div></div></div>'
+      + '<div style="background:var(--surface2);border-radius:8px;padding:14px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:10px;font-weight:600">📅 Month to Date — ' + months[currentMi] + '</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'
+      + '<div><div style="font-size:10px;color:var(--muted)">MTD Target</div><div style="font-size:16px;font-weight:700;font-family:var(--font-head);color:var(--green)">' + fmtK(teamMtdTgt) + '</div></div>'
+      + '<div><div style="font-size:10px;color:var(--muted)">MTD Actual</div><div style="font-size:16px;font-weight:700;font-family:var(--font-head);color:' + mtdColor + '">' + fmtK(teamMtdAct) + '</div></div>'
+      + '<div><div style="font-size:10px;color:var(--muted)">Achievement</div><div style="font-size:16px;font-weight:700;font-family:var(--font-head);color:' + mtdColor + '">' + fmtPct(mtdPct) + '</div></div>'
+      + '</div><div style="margin-top:10px;height:4px;background:var(--border);border-radius:2px"><div style="height:4px;border-radius:2px;background:' + mtdColor + ';width:' + Math.min(mtdPct*100,100) + '%;transition:width .4s"></div></div></div>'
+      + '</div>';
+  }
+
+  // Monthly table
+  const tbody = document.getElementById('team-monthly-body');
+  if (tbody) {
+    tbody.innerHTML = '';
+    let totActs = REPS_DATA.map(() => 0), totTgts = 0, totAct = 0, totPrevTot = 0;
+    months.forEach((mo, mi) => {
+      const repActs = REPS_DATA.map((_,ri) => getActual(ri,mi));
+      const teamAct = repActs.reduce((s,v) => s+v, 0);
+      const teamTgt = REPS_DATA.reduce((s,_,ri) => s+getTarget(ri,mi), 0);
+      const teamPrevMo = REPS_DATA.reduce((s,_,ri) => s+getRepPrev(ri,mi), 0);
+      totAct += teamAct; totTgts += teamTgt; totPrevTot += teamPrevMo;
+      repActs.forEach((v,i) => totActs[i] += v);
+      const ach = teamTgt > 0 && teamAct > 0 ? teamAct/teamTgt : null;
+      const vari = teamAct > 0 ? teamAct - teamTgt : null;
+      const isCur = mi === currentMi;
+      tbody.innerHTML += '<tr class="'+(isCur?'current-month-row':'')+'"><td>'+mo+' 2026'+(isCur?'<span class="current-month-badge">▶ Now</span>':'')+'</td>'
+        + repActs.map((v,ri) => '<td style="color:'+REPS_DATA[ri].color+';font-family:var(--font-mono)">'+(v>0?fmt(v):'—')+'</td>').join('')
+        + '<td style="font-weight:600">'+(teamAct>0?fmt(teamAct):'—')+'</td>'
+        + '<td style="color:#a78bfa;font-family:var(--font-mono)">'+fmt(teamPrevMo)+'</td>'
+        + '<td>'+fmt(teamTgt)+'</td>'
+        + '<td>'+(ach!==null?'<span style="color:'+(ach>=1?'var(--green)':ach>=0.8?'var(--amber)':'#e05252')+'">'+(ach*100).toFixed(1)+'%</span>':'—')+'</td>'
+        + '<td>'+(vari!==null?'<span class="'+(vari>=0?'variance-pos':'variance-neg')+'">'+fmt(vari)+'</span>':'—')+'</td>'
+        + '<td></td></tr>';
+    });
+    const el = id => document.getElementById(id);
+    REPS_DATA.forEach((_,ri) => { if(el('team-col-tot-'+ri)) el('team-col-tot-'+ri).textContent = totActs[ri]>0?fmt(totActs[ri]):'—'; });
+    if(el('team-tot-act'))  el('team-tot-act').textContent  = totAct>0?fmt(totAct):'—';
+    if(el('team-tot-prev')) el('team-tot-prev').textContent = fmt(totPrevTot);
+    if(el('team-tot-tgt'))  el('team-tot-tgt').textContent  = fmt(totTgts);
+    const totAch = totTgts>0&&totAct>0?totAct/totTgts:null;
+    if(el('team-tot-ach'))  el('team-tot-ach').innerHTML    = totAch!==null?'<span style="color:'+(totAch>=1?'var(--green)':totAch>=0.8?'var(--amber)':'#e05252')+'">'+(totAch*100).toFixed(1)+'%</span>':'—';
+    if(el('team-tot-var'))  el('team-tot-var').innerHTML    = totAct>0?'<span class="'+(totAct-totTgts>=0?'variance-pos':'variance-neg')+'">'+fmt(totAct-totTgts)+'</span>':'—';
+  }
+
+  // Draw charts
+  const labels = months;
+  const teamTargets = labels.map((_,mi) => Math.round(REPS_DATA.reduce((s,_,ri)=>s+getTarget(ri,mi),0)));
+  const teamActuals = labels.map((_,mi) => { const a=REPS_DATA.reduce((s,_,ri)=>s+getActual(ri,mi),0); return a>0?Math.round(a):null; });
+  const teamTrend   = labels.map((_,mi) => Math.round(REPS_DATA.reduce((s,_,ri)=>s+getRepPrev(ri,mi),0)*1.1));
+
+  mkChart('ch-team-main', {
+    type:'line',
+    data:{labels, datasets:[
+      {label:'2026 Target',data:teamTargets,borderColor:'#6bbf33',backgroundColor:'rgba(107,191,51,0.08)',borderWidth:2.5,tension:0.4,pointRadius:3,fill:true},
+      {label:'2025 Actual',data:teamTrend,borderColor:'rgba(255,255,255,0.3)',backgroundColor:'transparent',borderWidth:1.5,borderDash:[5,4],tension:0.4,pointRadius:2,fill:false},
+      {label:'2026 Invoiced',data:teamActuals,borderColor:'#ffe566',backgroundColor:'rgba(255,229,102,0.12)',borderWidth:2.5,tension:0.4,pointRadius:4,spanGaps:false,fill:false}
+    ]},
+    options:{...CHART_DEFAULTS,responsive:true,maintainAspectRatio:false,
+      plugins:{...CHART_DEFAULTS.plugins,legend:{display:false}}}
+  });
+
+  mkChart('ch-team-bar', {
+    type:'bar',
+    data:{
+      labels:REPS_DATA.map(r=>r.shortName||r.name.split(' ')[0]),
+      datasets:[
+        {label:'2026 Target',data:REPS_DATA.map((_,ri)=>Math.round(REPS_DATA[ri].monthly.reduce((s,_,mi)=>s+getTarget(ri,mi),0))),backgroundColor:'#4472C4aa',borderRadius:3},
+        {label:'FY2025 Actual',data:REPS_DATA.map((_,ri)=>Math.round(REPS_DATA[ri].monthly.reduce((s,m)=>s+(m.prev||0),0))),backgroundColor:'rgba(150,150,150,0.5)',borderRadius:3},
+        {label:'2026 Invoiced',data:REPS_DATA.map((_,ri)=>Math.round(REPS_DATA[ri].monthly.reduce((s,_,mi)=>s+getActual(ri,mi),0))||null),backgroundColor:'#ffe56688',borderRadius:3}
+      ]
+    },
+    options:{...CHART_DEFAULTS,responsive:true,maintainAspectRatio:false,
+      plugins:{...CHART_DEFAULTS.plugins,legend:{display:false}}}
+  });
+
+  // Class mix pie
+  const clsNames=['Server Racks','Data Products','Cabling','Bulk Cables','Others'];
+  const clsTotals=clsNames.map((_,ci)=>REPS_DATA.reduce((s,_,ri)=>s+REPS_DATA[ri].monthly.reduce((s2,_,mi)=>s2+(REPS_DATA[ri].classes[ci]?.monthly[mi]?.prev||0),0),0));
+  mkChart('ch-team-class', {
+    type:'doughnut',
+    data:{labels:clsNames,datasets:[{data:clsTotals.map(Math.round),backgroundColor:clsColors,borderWidth:0}]},
+    options:{...CHART_DEFAULTS,responsive:true,maintainAspectRatio:false,cutout:'55%',
+      plugins:{...CHART_DEFAULTS.plugins,legend:{display:true,position:'right',labels:{color:'var(--muted)',font:{size:10},boxWidth:12}}}}
+  });
+
+  // Inject leave panel
+  var teamLeaveEl = document.getElementById('team-leave-panel');
+  if (!teamLeaveEl) {
+    var tleaveDiv = document.createElement('div');
+    tleaveDiv.id = 'team-leave-panel';
+    tleaveDiv.style.cssText = 'margin-top:20px';
+    var tview2 = document.getElementById('view-team');
+    if (tview2) tview2.appendChild(tleaveDiv);
+    teamLeaveEl = tleaveDiv;
+  }
+  renderTeamLeave(teamLeaveEl);
+
+  // Inject notes panel
+  var teamNotesEl = document.getElementById('team-notes-panel');
+  if (!teamNotesEl) {
+    var tnotesDiv = document.createElement('div');
+    tnotesDiv.id = 'team-notes-panel';
+    tnotesDiv.style.cssText = 'margin-top:24px';
+    var tview = document.getElementById('view-team');
+    if (tview) tview.appendChild(tnotesDiv);
+    teamNotesEl = tnotesDiv;
+  }
+  renderTeamNotes(teamNotesEl);
+}
+
+function filterTeamChart(mo) {}
+function filterClassChart(mo) {}
+
+// ══════════════════════════════════════════════════════════════
+// ACCOUNTS VIEW
+// ══════════════════════════════════════════════════════════════
+function acctFilterBtn(f, label) {
+  var cls = 'acct-filter-btn' + (_acctState.filter === f ? ' active' : '');
+  var reset = f !== 'dormant' ? "_acctState.dormantAge=\'all\';" : '';
+  return '<button class="' + cls + '" onclick="_acctState.filter=\'' + f + '\';' + reset + '_acctState.page=0;window._hmPage=0;buildAccountsView()">' + label + '</button>';
+}
+function buildAccountsView() {
+  var el = document.getElementById('accounts-content'); if(!el) return;
+  var RN=['Robert Schaffer','Andrew Mobilia','Alexander Poll','Stivi Maticevski','Melissa Goodridge'];
+  var repOpts='<option value="all"'+('all'===_acctState.rep?' selected':'')+'>All Reps</option>'+RN.map(function(r){return '<option value="'+r+'"'+(r===_acctState.rep?' selected':'')+'>'+r+'</option>';}).join('')+'<option value="unassigned"'+('unassigned'===_acctState.rep?' selected':'')+'>Unassigned</option>';
+  var companies=['all'].concat(Array.from(new Set(ACCOUNTS_DATA.map(function(a){return a.p||'';}).filter(Boolean))).sort());
+  var coOpts=companies.map(function(c){return '<option value="'+c+'"'+(c===_acctState.company?' selected':'')+'>'+( c==='all'?'All Companies':c)+'</option>';}).join('');
+  el.innerHTML='<div class="acct-toolbar">'
+    +'<select onchange="_acctState.rep=this.value;_acctState.page=0;window._hmPage=0;buildAccountsView()">'+repOpts+'</select>'
+    +'<select onchange="_acctState.company=this.value;_acctState.page=0;window._hmPage=0;buildAccountsView()" style="max-width:220px">'+coOpts+'</select>'
+    +acctFilterBtn('all','All')
+    +acctFilterBtn('dormant','&#9889; Dormant')
+    +acctFilterBtn('active','Active')
+    +buildDormantAgeSelect()
+    +'<input type="text" placeholder="Search accounts…" value="'+_acctState.search+'" id="acct-search-input" oninput="acctSearch(this.value)" />'
+    +'<button onclick="openAddAccountModal(-1)" class="admin-only" style="margin-left:auto;background:var(--green);color:#fff;border:none;border-radius:6px;padding:7px 16px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-main);white-space:nowrap">+ Add Account</button>'
+    +'</div>'
+    +buildAcctTabs()
+    +'<div id="acct-tab-content"></div>';
+  renderAccountsTab();
+}
+
+// ══════════════════════════════════════════════════════════════
+// REPS ADMIN VIEW
+// ══════════════════════════════════════════════════════════════
+function buildRepsAdminView() {
+  var el = document.getElementById('reps-admin-content'); if(!el) return;
+  var MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var COLORS=['#4472C4','#70AD47','#ED7D31','#9E480E','#C00000'];
+  function repRow(ri, rep) {
+    var isVisible = !rep.hidden;
+    var monthTargets = rep.monthly.map(function(m,mi){
+      return '<td style="padding:2px 4px"><input type="number" value="'+Math.round(m.target)+'" min="0" step="1000" style="width:72px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:10px;border-radius:3px;padding:2px 4px;font-family:var(--font-mono)" onchange="updateRepMonthTarget('+ri+','+mi+',this.value)"></td>';
+    }).join('');
+    return '<tr id="rep-admin-row-'+ri+'" style="border-bottom:1px solid var(--border);opacity:'+(isVisible?'1':'0.4')+'">'
+      +'<td style="padding:6px 8px;width:32px"><input type="color" value="'+rep.color+'" title="Rep colour" style="width:28px;height:28px;border:none;border-radius:4px;cursor:pointer;background:none;padding:0" onchange="updateRepColor('+ri+',this.value)"></td>'
+      +'<td style="padding:6px 8px;min-width:160px"><input type="text" value="'+rep.name+'" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:12px;border-radius:3px;padding:4px 8px;width:150px;font-family:var(--font-head)" onchange="updateRepName('+ri+',this.value)"></td>'
+      +'<td style="padding:6px 8px;width:90px"><input type="text" value="'+(rep.shortName||rep.name.split(' ')[0])+'" maxlength="12" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:12px;border-radius:3px;padding:4px 8px;width:80px;font-family:var(--font-head)" onchange="updateRepShortName('+ri+',this.value)"></td>'
+      +'<td style="padding:6px 8px;width:80px"><input type="text" value="'+(rep.region||'')+'" maxlength="20" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:11px;border-radius:3px;padding:4px 8px;width:70px;font-family:var(--font-mono)" onchange="updateRepRegion('+ri+',this.value)"></td>'
+      +'<td style="padding:6px 8px;min-width:180px"><input type="text" value="'+(rep.email||'')+'" placeholder="rep[at]serveredge.com.au" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:10px;border-radius:3px;padding:4px 8px;width:170px;font-family:var(--font-mono)" onchange="updateRepEmail('+ri+',this.value)"></td>'
+      +'<td style="padding:6px 8px;width:70px"><input type="number" value="'+(rep.growthRates?rep.growthRates[0]:20)+'" min="0" max="100" style="width:56px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:11px;border-radius:3px;padding:3px 6px;font-family:var(--font-mono)" onchange="updateRepGrowth('+ri+',this.value)"><span style="font-size:10px;color:var(--muted)"> %</span></td>'
+      +monthTargets
+      +'</tr>';
+  }
+  var rows = REPS_DATA.map(function(rep,ri){ return repRow(ri,rep); }).join('');
+  var monthHdrs = MO.map(function(m){return '<th>'+m+' Target</th>';}).join('');
+  el.innerHTML='<div style="max-width:100%;overflow-x:auto">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'
+    +'<div><div style="font-size:18px;font-weight:700;font-family:var(--font-head)">Rep Management</div><div style="font-size:12px;color:var(--muted);margin-top:4px">Edit rep details, monthly targets, visibility. Changes apply immediately.</div></div>'
+    +'<div style="display:flex;gap:8px"><button onclick="openAddRepModal()" style="background:var(--green);color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-main)">+ Add Rep</button>'
+    +'<button onclick="saveRepsToFirebase()" title="Save targets to Firebase" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:8px 12px;font-size:13px;cursor:pointer">🚩</button></div>'
+    +'</div>'
+    +'<div style="background:rgba(245,166,35,0.1);border:1px solid var(--amber);border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:11px;color:var(--amber)">⚠️ Target changes here take effect for ALL months shown. To adjust from current month only, use the account-level reassign on the Accounts tab.</div>'
+    +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">'
+    +'<thead><tr style="background:var(--green-dk)"><th style="padding:8px;text-align:left">  </th><th>Full Name</th><th>Tab Label</th><th>Region</th><th>Email</th><th>Growth</th>'+monthHdrs+'</tr></thead>'
+    +'<tbody>'+rows+'</tbody></table></div>'
+    +'</div>'
+    +'<div style="margin-top:32px">'
+    +'<div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:12px">📊 Upload Invoice Data (CSV)</div>'
+    +'<div id="csv-upload-panel" ondragover="event.preventDefault()" ondrop="handleCsvDrop(event)" onclick="document.getElementById(\'csv-file-input\').click()" style="border:2px dashed var(--border);border-radius:10px;padding:32px;text-align:center;background:var(--surface);cursor:pointer">'
+    +'<div style="font-size:28px;margin-bottom:8px">📄</div>'
+    +'<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">Drop CSV file here or click to browse</div>'
+    +'<div style="font-size:11px;color:var(--muted)">NetSuite invoice export · CSV format</div>'
+    +'<input type="file" id="csv-file-input" accept=".csv" style="display:none" onchange="if(this.files[0])handleCsvFile(this.files[0])">'
+    +'</div>'
+    +'<div id="csv-status" style="margin-top:10px;font-family:var(--font-mono);font-size:11px;color:var(--muted)"></div>'
+    +'<div style="display:flex;gap:10px;margin-top:12px">'
+    +'<button onclick="if(confirm(\'Clear all uploaded data for everyone?\'))fbClear()" style="background:transparent;border:1px solid #e05252;color:#e05252;border-radius:6px;padding:6px 14px;font-size:11px;cursor:pointer;font-family:var(--font-mono)">🗑 Clear All Data</button>'
+    +'</div></div>'
+    +'<div style="margin-top:32px">'
+    +'<div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:12px">📝 Upload Notes (XLS/CSV from NetSuite)</div>'
+    +'<div id="notes-upload-panel" ondragover="event.preventDefault()" ondrop="handleNotesFileDrop(event)" onclick="document.getElementById(\'notes-file-input\').click()" style="border:2px dashed var(--border);border-radius:10px;padding:28px;text-align:center;background:var(--surface);cursor:pointer">'
+    +'<div style="font-size:28px;margin-bottom:8px">📝</div>'
+    +'<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">Drop Notes XLS/CSV or click to browse</div>'
+    +'<div style="font-size:11px;color:var(--muted)">NetSuite User Notes export · auto-deduplicates on re-upload</div>'
+    +'<input type="file" id="notes-file-input" accept=".xls,.csv" style="display:none" onchange="if(this.files[0])handleNotesFile(this.files[0])">'
+    +'</div>'
+    +'<div id="notes-upload-status" style="margin-top:10px;font-family:var(--font-mono);font-size:11px;color:var(--muted)"></div>'
+    +'</div>'
+    +'<div style="margin-top:32px">'
+    +'<div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:12px">🔄 Reassignment Log</div>'
+    +'<div id="reassign-log" style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">Loading...</div>'
+    +'</div>';
+  renderReassignLog();
+}
+
+// Stub functions to prevent errors
+function updateRepMonthTarget(ri,mi,val){REPS_DATA[ri].monthly[mi].target=parseFloat(val)||0;}
+function updateRepColor(ri,val){REPS_DATA[ri].color=val;}
+function updateRepName(ri,val){REPS_DATA[ri].name=val;}
+function updateRepShortName(ri,val){REPS_DATA[ri].shortName=val;}
+function updateRepRegion(ri,val){REPS_DATA[ri].region=val;}
+function updateRepEmail(ri,val){REPS_DATA[ri].email=val;}
+function updateRepGrowth(ri,val){if(!REPS_DATA[ri].growthRates)REPS_DATA[ri].growthRates=[20,20,20,20];REPS_DATA[ri].growthRates[0]=parseFloat(val)||20;}
+function openAddRepModal(){}
+function saveRepsToFirebase(){if(window._fbSet)window._fbSet('dashboard/customTargets',{});alert('Targets saved.');}
+function openAddAccountModal(ri){_addAccountRepIdx=ri<0?0:ri;document.getElementById('aa-rep').value=_addAccountRepIdx;['aa-name','aa-parent','aa-region'].forEach(function(id){document.getElementById(id).value='';});document.getElementById('aa-error').style.display='none';document.getElementById('add-account-overlay').style.display='flex';}
+function closeAddAccountModal(){document.getElementById('add-account-overlay').style.display='none';}
+var _addAccountRepIdx=0;
+function saveNewAccount(){
+  var name=document.getElementById('aa-name').value.trim();
+  var parent=document.getElementById('aa-parent').value.trim();
+  var ri=parseInt(document.getElementById('aa-rep').value);
+  var region=document.getElementById('aa-region').value.trim();
+  if(!name){document.getElementById('aa-error').style.display='block';document.getElementById('aa-error').textContent='Account name is required.';return;}
+  var newAcct={ri:ri,n:name,p:parent||name.split(' : ')[0],s:0,l3:0,la:-1,m:[0,0,0,0,0,0,0,0,0,0,0,0],ad:'',ph:'',em:'',mo:''};
+  ACCOUNTS_DATA.push(newAcct);
+  if(window._fbSet){var customAccts={};(state.customAccounts||[]).forEach(function(a){customAccts[a.n.replace(/[.#$[\]]/g,'_')]=a;});customAccts[name.replace(/[.#$[\]]/g,'_')]=newAcct;window._fbSet('dashboard/customAccounts',customAccts);}
+  closeAddAccountModal();
+  buildAccountsView();
+}
+function reassignAccount(sel){
+  var name=decodeURIComponent(sel.dataset.acct);
+  var newRi=parseInt(sel.value);
+  var acct=ACCOUNTS_DATA.find(function(a){return a.n===name;});
+  if(acct){acct.ri=newRi;}
+}
+function renderReassignLog(){
+  var el=document.getElementById('reassign-log');if(!el)return;
+  if(!window._fbListen){el.innerHTML='Loading...';return;}
+  window._fbListen('dashboard/reassignments',function(data){
+    if(!data||!Object.keys(data).length){el.innerHTML='No reassignments recorded.';return;}
+    var MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var RN=['Robert','Andrew','Alexander','Stivi','Melissa'];
+    var keys=Object.keys(data);
+    el.innerHTML=keys.map(function(k){
+      var r=data[k];
+      var dt=new Date(r.ts).toLocaleDateString('en-AU');
+      return '<div style="padding:4px 0;border-bottom:1px solid var(--border)">'
+        +'<span style="color:var(--text)">'+k+'</span> '
+        +'<span style="color:#e05252">'+(RN[r.from]||r.from)+'</span> → '
+        +'<span style="color:var(--green)">'+(RN[r.to]||r.to)+'</span> '
+        +'from '+MO[r.mi]+' ('+dt+' by '+(r.by||'admin')+')'
+        +(r.undo?'<button onclick="undoReassign(\''+k+'\')" style="margin-left:8px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:4px;padding:1px 6px;font-size:9px;cursor:pointer">Undo</button>':'')
+        +'</div>';
+    }).join('');
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// LOCATIONS PANE (simplified)
+// ══════════════════════════════════════════════════════════════
+function buildLocationsPane(ri) {
+  var accts=(ACCOUNTS_DATA||[]).filter(function(a){return a.ri===ri;});
+  if(!accts.length)return '<div style="padding:40px;text-align:center;color:var(--muted);font-family:var(--font-mono)">No customer data.</div>';
+  var MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var dormant=accts.filter(function(a){return isAcctDormant(a);}).sort(function(a,b){return (b.s||0)-(a.s||0);});
+  var active=accts.filter(function(a){return isAcctActive(a);});
+  var mapped=accts.filter(function(a){return a.ad&&a.ad.trim();});
+  var mapId='cust-map-'+ri;
+  var o='<div>';
+  o+='<div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button onclick="openAddAccountModal('+ri+')" style="background:var(--green);color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-main)">+ Add Account</button></div>';
+  o+='<div class="loc-stat-row">'
+    +'<div class="loc-stat"><div class="loc-stat-val">'+accts.length+'</div><div class="loc-stat-lbl">Total Customers</div></div>'
+    +'<div class="loc-stat"><div class="loc-stat-val" style="color:var(--green)">'+active.length+'</div><div class="loc-stat-lbl">Active</div></div>'
+    +'<div class="loc-stat"><div class="loc-stat-val" style="color:#e05252">'+dormant.length+'</div><div class="loc-stat-lbl">Dormant</div></div>'
+    +'<div class="loc-stat"><div class="loc-stat-val">'+mapped.length+'</div><div class="loc-stat-lbl">On Map</div></div>'
+    +'</div>';
+  o+='<div id="'+mapId+'" class="cust-map" style="height:420px;border-radius:10px;border:1px solid var(--border);margin-bottom:24px"></div>';
+
+  // Paginated table
+  var custState_ri=window['_custState_'+ri]||(window['_custState_'+ri]={page:0,company:'all',search:''});
+  var companies_ri=['all'].concat(Array.from(new Set(accts.map(function(a){return a.p||'';}).filter(Boolean))).sort());
+  var filteredAccts=accts.filter(function(a){
+    if(custState_ri.company!=='all'&&(a.p||'')!==custState_ri.company)return false;
+    if(custState_ri.search&&!(a.n+' '+(a.p||'')).toLowerCase().includes(custState_ri.search.toLowerCase()))return false;
+    return true;
+  });
+  var PAGE=50;
+  var totalPages=Math.max(1,Math.ceil(filteredAccts.length/PAGE));
+  if(custState_ri.page>=totalPages)custState_ri.page=0;
+  var pageAccts=filteredAccts.slice(custState_ri.page*PAGE,(custState_ri.page+1)*PAGE);
+  var coOpts_ri=companies_ri.map(function(c){return '<option value="'+c+'"'+(c===custState_ri.company?' selected':'')+'>'+( c==='all'?'All Companies':c)+'</option>';}).join('');
+  o+='<div class="cust-section-title">📋 All Customers <span style="color:var(--muted);font-size:10px;font-weight:400">('+filteredAccts.length+' accounts)</span></div>';
+  o+='<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">'
+    +'<select onchange="window['_custState_'+'+ri+'].company=this.value;window['_custState_'+'+ri+'].page=0;var p=document.getElementById('loc-pane-'+ri+'');if(p)p.innerHTML=buildLocationsPane('+ri+')" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:11px;border-radius:5px;padding:5px 10px;max-width:200px">'+coOpts_ri+'</select>'
+    +'<input type="text" placeholder="Search customers…" value="'+custState_ri.search+'" oninput="window['_custState_'+'+ri+'].search=this.value;window['_custState_'+'+ri+'].page=0;var p=document.getElementById('loc-pane-'+ri+'');if(p)p.innerHTML=buildLocationsPane('+ri+')" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 10px;font-family:var(--font-mono);font-size:11px;outline:none;width:200px"/>'
+    +'</div>';
+  o+='<div class="loc-table-wrap"><table class="loc-table"><thead><tr><th>Customer</th><th>Parent Company</th><th style="text-align:right">2025 Rev</th><th>Status</th><th>Last Order</th></tr></thead><tbody>';
+  pageAccts.forEach(function(a){
+    var dorm=isAcctDormant(a);
+    var lastMo=(a.la>=0&&a.la<12)?MO[a.la]:'—';
+    var q4=dorm?'<span class="cust-badge" style="background:#e0525222;color:#e05252">Dormant</span>':'<span class="cust-badge" style="background:#27ae6022;color:#27ae60">Active</span>';
+    o+='<tr><td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+a.n+'">'+a.n+'</td>'
+      +'<td style="font-size:10px;color:var(--muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(a.p||'—')+'</td>'
+      +'<td style="font-family:var(--font-mono);text-align:right">'+(a.s?'$'+Math.round(a.s).toLocaleString('en-AU'):'—')+'</td>'
+      +'<td style="text-align:center">'+q4+'</td>'
+      +'<td style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">'+lastMo+'</td>'
+      +'</tr>';
+  });
+  o+='</tbody></table></div>';
+  if(totalPages>1){
+    o+='<div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;font-family:var(--font-mono);font-size:11px;color:var(--muted)">'
+      +'<span>Page '+(custState_ri.page+1)+' of '+totalPages+' &middot; '+filteredAccts.length+' accounts</span>'
+      +'<div style="display:flex;gap:6px">'
+      +(custState_ri.page>0?'<button onclick="locPage('+ri+',-1)" style="padding:4px 12px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;font-family:var(--font-mono);font-size:11px">← Prev</button>':'')
+      +((custState_ri.page+1<totalPages)?'<button onclick="locPage('+ri+',1)" style="padding:4px 12px;border-radius:5px;border:none;background:var(--green);color:#fff;cursor:pointer;font-family:var(--font-mono);font-size:11px">Next →</button>':'')
+      +'</div></div>';
+  }
+  o+='</div>';
+  return o;
+}
+
 function init() {
   const container = document.getElementById('views-container');
 
@@ -1715,16 +3369,7 @@ function applyStoredTheme() {
   const btn = document.getElementById('theme-toggle-btn');
   if (btn) btn.textContent = stored === 'light' ? '🌙 Dark' : '☀️ Light';
 }
-function toggleTheme() {
-  const isLight = document.body.classList.toggle('light');
-  localStorage.setItem('se-theme', isLight ? 'light' : 'dark');
-  const btn = document.getElementById('theme-toggle-btn');
-  if (btn) btn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
-}
 
-// ══════════════════════════════════════════════════════════════
-// CHANGE PASSWORD MODAL
-// ══════════════════════════════════════════════════════════════
 function openChangePw() { document.getElementById('change-pw-overlay').style.display='flex'; }
 function closeChangePw() { document.getElementById('change-pw-overlay').style.display='none'; }
 async function doChangePw() {
