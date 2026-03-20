@@ -875,6 +875,7 @@ function isAcctActive(a)  { return a.la >= ACCT_ACTIVE_THRESHOLD; }
 function isAcctNever(a)   { return a.la < 0; }
 
 
+const _preloadedActuals = {"0-4-0":4292.47,"2-1-0":29699.8,"3-0-0":31694.31,"3-3-0":22074.54,"0-0-0":75610.4,"0-2-0":18825.64,"0-3-0":47432.2,"2-0-0":34651.45,"2-2-0":26003.06,"3-2-0":11281.69,"2-4-0":2208.11,"0-1-0":47316.85,"1-3-0":36473.19,"3-1-0":19549.19,"1-2-0":49141.78,"1-1-0":28991.62,"1-0-0":102017.11,"2-3-0":34803.37,"4-0-0":8624.89,"1-4-0":2726.92,"4-1-0":1931.92,"4-3-0":11845.39,"4-2-0":1420.64,"3-4-0":1398.22,"4-4-0":60.0,"1-0-1":193845.96,"1-2-1":48322.64,"1-1-1":42621.21,"3-1-1":16922.72,"3-0-1":59409.57,"3-2-1":19499.08,"2-0-1":67388.67,"2-1-1":37507.12,"0-0-1":108739.56,"0-2-1":34653.98,"1-3-1":63945.82,"1-4-1":5946.51,"4-3-1":11209.29,"4-0-1":7382.32,"0-1-1":62304.4,"2-2-1":11926.75,"2-3-1":30429.34,"0-4-1":3933.6,"3-3-1":32423.98,"2-4-1":2263.65,"0-3-1":76845.49,"3-4-1":1149.66,"4-2-1":1122.59,"4-4-1":896.18,"4-1-1":2510.74,"1-0-2":211918.49,"3-4-2":903.57,"1-2-2":22337.52,"1-1-2":41547.17,"0-2-2":20187.28,"0-0-2":98768.74,"0-1-2":49116.39,"0-3-2":49217.85,"1-4-2":4048.13,"4-2-2":497.45,"4-0-2":16417.26,"2-2-2":5373.3,"3-2-2":19667.3,"3-3-2":13891.44,"2-1-2":22939.41,"2-0-2":51165.0,"3-0-2":46204.05,"1-3-2":31335.64,"4-4-2":399.85,"2-4-2":779.72,"3-1-2":13333.2,"2-3-2":19138.75,"0-4-2":3375.69,"4-1-2":192.29,"4-3-2":1399.88};
 const state = {
   acctStatusSnap: {},
   notes: [],
@@ -1015,6 +1016,8 @@ function fbStartListening() {
 
   // Listen for actuals
   window._fbListen('dashboard/classActuals', data => {
+    // Merge pre-loaded 2026 actuals with any Firebase overrides
+    data = Object.assign({}, _preloadedActuals, data || {});
     // Filter out any stale data beyond March 2026 (month index > 2)
     if (data) {
       Object.keys(data).forEach(k => {
@@ -1110,8 +1113,8 @@ function getTarget(repIdx, monthIdx) {
   return REPS_DATA[repIdx].classes.reduce((sum, _, ci) => sum + getClassTarget(repIdx, ci, monthIdx), 0);
 }
 function getActual(repIdx, monthIdx) {
-  // Sum across product classes only (0=Server Racks, 1=Data Products, 2=Cabling)
-  // Class index 3 (Others) contains excluded items (freight, credits, rebates) — excluded
+  // Sum Established classes only (0=Server Racks, 1=Data Products, 2=Cabling, 3=Bulk Cables)
+  // Class 4 (Others/Growth) excluded from revenue achievement
   return REPS_DATA[repIdx].classes.reduce((sum, _, ci) => {
     if (ci === 4) return sum; // exclude Others (now index 4) (freight charges, credits, rebates etc.)
     return sum + getClassActual(repIdx, ci, monthIdx);
@@ -1449,13 +1452,13 @@ function updateKRAPanel(repIdx) {
   var scoreEl = document.getElementById('kra-scoreEl-' + repIdx);
   if (!estEl) return;
 
-  var estColor  = k.estAch  >= 1 ? 'var(--green)' : k.estAch  >= 0.8 ? 'var(--amber)' : '#e05252';
-  var ncColor    = k.grwAch    >= 1 ? 'var(--green)' : k.grwAch    >= 0.8 ? 'var(--amber)' : '#e05252';
-  var sestColor = k.kraScore >= 1 ? 'var(--green)' : k.kraScore >= 0.8 ? 'var(--amber)' : '#e05252';
+  var estColor   = k.estAch  >= 1 ? 'var(--green)' : k.estAch  >= 0.8 ? 'var(--amber)' : '#e05252';
+  var ncColor    = k.grwAch  >= 1 ? 'var(--green)' : k.grwAch  >= 0.8 ? 'var(--amber)' : '#e05252';
+  var scoreColor = k.kraScore >= 1 ? 'var(--green)' : k.kraScore >= 0.8 ? 'var(--amber)' : '#e05252';
 
   estEl.style.color  = k.estActual > 0 ? estColor  : 'var(--muted)';
   ncEl.style.color    = k.grwActual   > 0 ? ncColor    : 'var(--muted)';
-  scoreEl.style.color = (k.estActual > 0 || k.grwActual > 0) ? sestColor : 'var(--muted)';
+  scoreEl.style.color = (k.estActual > 0 || k.grwActual > 0) ? scoreColor : 'var(--muted)';
 
   estEl.textContent  = k.estActual  > 0 ? (k.estAch  * 100).toFixed(1) + '%' : '—';
   ncEl.textContent    = k.grwActual    > 0 ? (k.grwAch    * 100).toFixed(1) + '%' : '—';
@@ -2411,6 +2414,9 @@ function init() {
 
   applyStoredTheme();
 
+  // Pre-load 2026 actuals so charts render immediately
+  state.classActuals = Object.assign({}, _preloadedActuals, state.classActuals || {});
+
   $$('.tab-btn').forEach(b => {
     b.style.display = 'inline-flex';
   });
@@ -2437,6 +2443,18 @@ function applyStoredTheme() {
   if (btn) btn.textContent = stored === 'light' ? '🌙 Dark' : '☀️ Light';
 }
 
+function toggleTheme() {
+  const isLight = document.body.classList.toggle('light');
+  localStorage.setItem('se-theme', isLight ? 'light' : 'dark');
+  const btn = document.getElementById('theme-toggle-btn');
+  if (btn) btn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+}
+function applyStoredTheme() {
+  const stored = localStorage.getItem('se-theme') || 'dark';
+  document.body.classList.toggle('light', stored === 'light');
+  const btn = document.getElementById('theme-toggle-btn');
+  if (btn) btn.textContent = stored === 'light' ? '🌙 Dark' : '☀️ Light';
+}
 function openChangePw() { document.getElementById('change-pw-overlay').style.display='flex'; }
 function closeChangePw() { document.getElementById('change-pw-overlay').style.display='none'; }
 async function doChangePw() {
