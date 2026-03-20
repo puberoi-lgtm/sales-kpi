@@ -70,6 +70,7 @@
     --text:      #e8e8e8;
     --muted:     #888;
     --faint:     #444;
+    --card:      #141414;
     --cls1:      #4472c4;
     --cls2:      #6bbf33;
     --cls3:      #ed7d31;
@@ -867,6 +868,16 @@
 </div>
 
 <script>
+// Apply theme immediately to prevent flash of wrong theme
+(function() {
+  var stored = localStorage.getItem('se-theme') || 'dark';
+  if (stored === 'light') document.body.classList.add('light');
+  // Set button text once DOM is ready
+  document.addEventListener('DOMContentLoaded', function() {
+    var btn = document.getElementById('theme-toggle-btn');
+    if (btn) btn.textContent = stored === 'light' ? '🌙 Dark' : '☀️ Light';
+  });
+})();
 const ACCT_WINDOW_LEN = 12;
 const ACCT_ACTIVE_THRESHOLD = ACCT_WINDOW_LEN - 3; // = 9
 
@@ -876,6 +887,9 @@ function isAcctNever(a)   { return a.la < 0; }
 
 
 const _preloadedActuals = {"0-4-0":4292.47,"2-1-0":29699.8,"3-0-0":31694.31,"3-3-0":22074.54,"0-0-0":75610.4,"0-2-0":18825.64,"0-3-0":47432.2,"2-0-0":34651.45,"2-2-0":26003.06,"3-2-0":11281.69,"2-4-0":2208.11,"0-1-0":47316.85,"1-3-0":36473.19,"3-1-0":19549.19,"1-2-0":49141.78,"1-1-0":28991.62,"1-0-0":102017.11,"2-3-0":34803.37,"4-0-0":8624.89,"1-4-0":2726.92,"4-1-0":1931.92,"4-3-0":11845.39,"4-2-0":1420.64,"3-4-0":1398.22,"4-4-0":60.0,"1-0-1":193845.96,"1-2-1":48322.64,"1-1-1":42621.21,"3-1-1":16922.72,"3-0-1":59409.57,"3-2-1":19499.08,"2-0-1":67388.67,"2-1-1":37507.12,"0-0-1":108739.56,"0-2-1":34653.98,"1-3-1":63945.82,"1-4-1":5946.51,"4-3-1":11209.29,"4-0-1":7382.32,"0-1-1":62304.4,"2-2-1":11926.75,"2-3-1":30429.34,"0-4-1":3933.6,"3-3-1":32423.98,"2-4-1":2263.65,"0-3-1":76845.49,"3-4-1":1149.66,"4-2-1":1122.59,"4-4-1":896.18,"4-1-1":2510.74,"1-0-2":211918.49,"3-4-2":903.57,"1-2-2":22337.52,"1-1-2":41547.17,"0-2-2":20187.28,"0-0-2":98768.74,"0-1-2":49116.39,"0-3-2":49217.85,"1-4-2":4048.13,"4-2-2":497.45,"4-0-2":16417.26,"2-2-2":5373.3,"3-2-2":19667.3,"3-3-2":13891.44,"2-1-2":22939.41,"2-0-2":51165.0,"3-0-2":46204.05,"1-3-2":31335.64,"4-4-2":399.85,"2-4-2":779.72,"3-1-2":13333.2,"2-3-2":19138.75,"0-4-2":3375.69,"4-1-2":192.29,"4-3-2":1399.88};
+
+// Pre-populate classActuals so charts work before Firebase connects
+state.classActuals = Object.assign({}, _preloadedActuals);
 const state = {
   acctStatusSnap: {},
   notes: [],
@@ -1018,6 +1032,7 @@ function fbStartListening() {
   window._fbListen('dashboard/classActuals', data => {
     // Merge pre-loaded 2026 actuals with any Firebase overrides
     data = Object.assign({}, _preloadedActuals, data || {});
+    state.classActuals = data;
     // Filter out any stale data beyond March 2026 (month index > 2)
     if (data) {
       Object.keys(data).forEach(k => {
@@ -1083,7 +1098,8 @@ function fbStartListening() {
     REPS_DATA.forEach((_, ri) => {
       populateTracker(ri);
       populateClassTrackers(ri);
-      drawRepCharts(ri);
+      const rv = document.getElementById('view-rep-'+ri);
+      if (rv && rv.classList.contains('active')) drawRepCharts(ri);
     });
     refreshTeamView();
   });
@@ -1637,6 +1653,17 @@ function showView(id) {
   if (tab)  tab.classList.add('active');
   if (id === 'accounts') { buildAccountsView(); }
   if (id === 'reps-admin') { buildRepsAdminView(); }
+  if (id === 'team') { try { refreshTeamView(); } catch(e) {} }
+  // Redraw rep charts when view becomes visible (Chart.js needs visible canvas)
+  const riMatch = id.match(/^rep-(\d+)$/);
+  if (riMatch) {
+    const ri = parseInt(riMatch[1]);
+    setTimeout(function() {
+      try { populateTracker(ri); } catch(e) {}
+      try { populateClassTrackers(ri); } catch(e) {}
+      try { drawRepCharts(ri); } catch(e) {}
+    }, 50);
+  }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1708,13 +1735,20 @@ function buildTeamView() {
       </tr></tfoot>
     </table>
   </div>
-  <div class="section-hdr">🤝 Meeting KRA — Weekly Summary</div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+    <div class="section-hdr" style="margin-bottom:0">🤝 Meeting KRA</div>
+    <div style="display:flex;gap:6px">
+      <button id="mtg-filter-week" onclick="setTeamMtgFilter('week')" style="padding:4px 12px;border-radius:12px;border:none;background:var(--green);color:#fff;font-size:10px;font-family:var(--font-mono);cursor:pointer">This Week</button>
+      <button id="mtg-filter-month" onclick="setTeamMtgFilter('month')" style="padding:4px 12px;border-radius:12px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:10px;font-family:var(--font-mono);cursor:pointer">This Month</button>
+      <button id="mtg-filter-prev" onclick="setTeamMtgFilter('prev')" style="padding:4px 12px;border-radius:12px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:10px;font-family:var(--font-mono);cursor:pointer">Last Month</button>
+    </div>
+  </div>
   <div id="team-meeting-kra" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px">
     ${REPS_DATA.map((rep, ri) => `
     <div style="background:var(--surface);border:1px solid var(--border);border-top:3px solid ${rep.color};border-radius:8px;padding:12px 14px;text-align:center">
       <div style="font-size:11px;font-weight:700;color:${rep.color};margin-bottom:8px">${rep.shortName||rep.name.split(' ')[0]}</div>
       <div id="team-mtg-week-${ri}" style="font-size:20px;font-weight:800;color:var(--muted)">—</div>
-      <div style="font-size:9px;color:var(--muted);margin-bottom:6px">this week</div>
+      <div id="team-mtg-period-${ri}" style="font-size:9px;color:var(--muted);margin-bottom:6px">this week</div>
       <div id="team-mtg-month-${ri}" style="font-size:14px;font-weight:600;color:var(--muted)">—</div>
       <div style="font-size:9px;color:var(--muted)">this month</div>
       <div id="team-mtg-bar-${ri}" style="margin-top:8px;height:3px;background:var(--border);border-radius:2px"></div>
@@ -1733,6 +1767,52 @@ function buildTeamView() {
   `;
 }
 
+
+var _teamMtgFilter = 'week';
+function setTeamMtgFilter(filter) {
+  _teamMtgFilter = filter;
+  ['week','month','prev'].forEach(function(f) {
+    var btn = document.getElementById('mtg-filter-'+f);
+    if (!btn) return;
+    btn.style.background = f===filter ? 'var(--green)' : 'transparent';
+    btn.style.color = f===filter ? '#fff' : 'var(--muted)';
+    btn.style.border = f===filter ? 'none' : '1px solid var(--border)';
+  });
+  updateTeamMtgKRA();
+}
+
+function updateTeamMtgKRA() {
+  var now4 = new Date();
+  var range;
+  var label;
+  if (_teamMtgFilter === 'week') {
+    range = getWeekRange(0);
+    label = 'this week';
+  } else if (_teamMtgFilter === 'month') {
+    range = { start: new Date(now4.getFullYear(), now4.getMonth(), 1),
+               end:   new Date(now4.getFullYear(), now4.getMonth()+1, 0) };
+    label = 'this month';
+  } else {
+    range = { start: new Date(now4.getFullYear(), now4.getMonth()-1, 1),
+               end:   new Date(now4.getFullYear(), now4.getMonth(), 0) };
+    label = 'last month';
+  }
+
+  for (var ri4=0; ri4<5; ri4++) {
+    var notes4 = getRepNotesInRange(ri4, range.start, range.end);
+    var tgt4   = getMeetingTarget(ri4, range.start, range.end);
+    var pct4   = tgt4>0 ? notes4.length/tgt4 : 0;
+    var col4   = pct4>=1?'var(--green)':pct4>=0.7?'var(--amber)':'#e05252';
+    var we4 = document.getElementById('team-mtg-week-'+ri4);
+    var lb4 = document.getElementById('team-mtg-period-'+ri4);
+    var mo4 = document.getElementById('team-mtg-month-'+ri4);
+    var ba4 = document.getElementById('team-mtg-bar-'+ri4);
+    if (we4) { we4.textContent = notes4.length+'/'+tgt4; we4.style.color = notes4.length>0?col4:'var(--muted)'; }
+    if (lb4) lb4.textContent = label;
+    if (mo4) { mo4.style.display='none'; } // hide second row, main card shows selected period
+    if (ba4) ba4.innerHTML = '<div style="height:3px;border-radius:2px;background:'+col4+';width:'+Math.min(pct4*100,100)+'%"></div>';
+  }
+}
 function refreshTeamView() {
   const teamView = document.getElementById('view-team');
   if (!teamView || !teamView.classList.contains('active')) return;
@@ -1849,28 +1929,7 @@ function refreshTeamView() {
   }
 
   // Update team meeting KRA
-  (function() {
-    var now3 = new Date();
-    var wr3 = getWeekRange(0);
-    var ms3 = new Date(now3.getFullYear(), now3.getMonth(), 1);
-    var me3 = new Date(now3.getFullYear(), now3.getMonth()+1, 0);
-    for (var ri3=0; ri3<5; ri3++) {
-      var wn3 = getRepNotesInRange(ri3, wr3.start, wr3.end);
-      var mn3 = getRepNotesInRange(ri3, ms3, me3);
-      var wt3 = getMeetingTarget(ri3, wr3.start, wr3.end);
-      var mt3 = getMeetingTarget(ri3, ms3, me3);
-      var wp3 = wt3>0?wn3.length/wt3:0;
-      var mp3 = mt3>0?mn3.length/mt3:0;
-      var wc3 = wp3>=1?'var(--green)':wp3>=0.7?'var(--amber)':'#e05252';
-      var mc3 = mp3>=1?'var(--green)':mp3>=0.7?'var(--amber)':'#e05252';
-      var we = document.getElementById('team-mtg-week-'+ri3);
-      var me2 = document.getElementById('team-mtg-month-'+ri3);
-      var be = document.getElementById('team-mtg-bar-'+ri3);
-      if (we) { we.textContent = wn3.length+'/'+wt3; we.style.color = wn3.length>0?wc3:'var(--muted)'; }
-      if (me2) { me2.textContent = mn3.length+'/'+mt3; me2.style.color = mn3.length>0?mc3:'var(--muted)'; }
-      if (be) be.innerHTML = '<div style="height:3px;border-radius:2px;background:'+wc3+';width:'+Math.min(wp3*100,100)+'%"></div>';
-    }
-  })();
+  setTimeout(updateTeamMtgKRA, 100);
 
   // Draw charts
   const labels = months;
@@ -1904,7 +1963,7 @@ function refreshTeamView() {
   });
 
   // Class mix pie
-  const clsNames=['Server Racks','Data Products','Cabling','Bulk Cables','Others'];
+  const clsNames=['Server Racks','Data Products','Cabling','Bulk Cables','Growth (Others)'];
   const clsTotals=clsNames.map((_,ci)=>REPS_DATA.reduce((s,_,ri)=>s+REPS_DATA[ri].monthly.reduce((s2,_,mi)=>s2+(REPS_DATA[ri].classes[ci]?.monthly[mi]?.prev||0),0),0));
   mkChart('ch-team-class', {
     type:'doughnut',
@@ -2214,7 +2273,7 @@ async function generateAndSaveTeamInsight(){var btn=event.target;btn.textContent
 function renderLeavePanel(repIdx,container){if(!container)container=document.getElementById('leave-panel-'+repIdx);if(!container)return;var rk=getRepLeave(repIdx);var now=new Date();var ms=new Date(now.getFullYear(),now.getMonth(),1);var me=new Date(now.getFullYear(),now.getMonth()+1,0);var adjDays=getWorkingDaysInRange(ms,me,repIdx);var cr=getCurrentUserRole();var isAdmin=window._isAdmin;var canEdit=isAdmin||(cr&&cr.repIdx==repIdx);var html='<div style="padding:20px 24px">';html+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px"><div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:4px">Leave Days</div><div style="font-size:24px;font-weight:800;color:var(--text)">'+rk.length+'</div></div><div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:4px">Public Holidays</div><div style="font-size:24px;font-weight:800;color:var(--text)">'+VIC_HOLIDAYS_2026.length+'</div></div><div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:4px">Adjusted Meeting Days</div><div style="font-size:24px;font-weight:800;color:var(--green)">'+adjDays+'</div><div style="font-size:10px;color:var(--muted)">this month</div></div></div>';if(canEdit){html+='<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:20px"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">➕ Mark Leave</div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><input type="date" id="leave-from-'+repIdx+'" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:6px 10px;font-family:var(--font-mono);font-size:11px"><span style="color:var(--muted);font-size:11px">to</span><input type="date" id="leave-to-'+repIdx+'" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:6px 10px;font-family:var(--font-mono);font-size:11px"><button onclick="markLeaveRange('+repIdx+')" style="background:var(--green);color:#fff;border:none;border-radius:5px;padding:6px 14px;font-size:11px;cursor:pointer">Mark Leave</button></div></div>';}html+='<div style="margin-bottom:16px"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">🇦🇺 VIC Public Holidays 2026</div><div class="loc-table-wrap"><table class="loc-table"><thead><tr><th>Holiday</th><th>Date</th></tr></thead><tbody>';Object.entries(VIC_HOLIDAY_NAMES).forEach(function(e){var dt=new Date(e[0]+'T00:00:00');html+='<tr><td>'+e[1]+'</td><td style="font-family:var(--font-mono);font-size:10px">'+dt.toLocaleDateString('en-AU',{weekday:'short',day:'2-digit',month:'short'})+'</td></tr>';});html+='</tbody></table></div></div>';if(rk.length){html+='<div><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">📋 Marked Leave</div><div class="loc-table-wrap"><table class="loc-table"><thead><tr><th>Date</th><th></th></tr></thead><tbody>';rk.sort().forEach(function(d){var dt=new Date(d+'T00:00:00');html+='<tr><td style="font-family:var(--font-mono)">'+dt.toLocaleDateString('en-AU',{weekday:'short',day:'2-digit',month:'short',year:'numeric'})+'</td><td>'+(canEdit?'<button onclick="removeLeave('+repIdx+',\''+d+'\')" style="background:transparent;border:1px solid #e05252;color:#e05252;border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer">Remove</button>':'')+'</td></tr>';});html+='</tbody></table></div></div>';}html+='</div>';container.innerHTML=html;}
 
 // ── Team Notes & Leave ───────────────────────────────────────
-function renderTeamNotes(container){if(!container)return;var RN=['Robert','Andrew','Alexander','Stivi','Melissa'];var RC=['#4472C4','#70AD47','#ED7D31','#9E480E','#C00000'];var now=new Date();var wr=getWeekRange(0);var an=state.notes.sort(function(a,b){return b.date.localeCompare(a.date);});var ei=state.noteInsights['team']||'';var html='<div style="padding:0">';html+='<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:20px">';for(var ri=0;ri<5;ri++){var wn=getRepNotesInRange(ri,wr.start,wr.end);var wt=getMeetingTarget(ri,wr.start,wr.end);var wp=wt>0?wn.length/wt:0;var wc=wp>=1?'var(--green)':wp>=0.7?'var(--amber)':'#e05252';html+='<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;text-align:center"><div style="font-size:10px;color:'+RC[ri]+';font-weight:700;margin-bottom:4px">'+RN[ri]+'</div><div style="font-size:18px;font-weight:800;color:'+wc+'">'+wn.length+'/'+wt+'</div><div style="font-size:9px;color:var(--muted)">meetings this week</div><div style="margin-top:6px;height:3px;background:var(--border);border-radius:2px"><div style="height:3px;border-radius:2px;background:'+wc+';width:'+Math.min(wp*100,100)+'%"></div></div></div>';}html+='</div>';html+='<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:20px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">🤖 Team Intelligence</div><button onclick="generateAndSaveTeamInsight()" style="background:var(--green);color:#fff;border:none;border-radius:5px;padding:5px 12px;font-size:11px;cursor:pointer">✨ Generate</button></div><div id="team-insights-panel">'+(ei?formatInsight(ei):'<span style="color:var(--muted);font-size:11px">Click Generate to analyse all team notes.</span>')+'</div></div>';html+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:10px">📋 Recent Activity ('+an.length+' notes)</div>';if(!an.length){html+='<div style="padding:24px;text-align:center;color:var(--muted);font-family:var(--font-mono);font-size:11px">No notes uploaded yet.</div>';}else{an.slice(0,30).forEach(function(n){var ri2=n.ri!==undefined?n.ri:-1;var rc=ri2>=0?RC[ri2]:'#888';var rn=ri2>=0?RN[ri2]:(n.rep||'');html+='<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid '+rc+';border-radius:8px;padding:10px 14px;margin-bottom:6px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="font-size:10px;font-weight:700;color:'+rc+'">'+rn+'</span><span style="font-size:10px;color:var(--muted);font-family:var(--font-mono)">'+n.date+'</span><span style="font-size:10px;font-weight:600;color:var(--text)">'+(n.company||'')+'</span>'+(n.title?'<span style="font-size:9px;padding:1px 6px;border-radius:8px;background:var(--green)22;color:var(--green)">'+n.title+'</span>':'')+'</div><div style="font-size:11px;color:var(--muted);line-height:1.4">'+(n.memo||'').slice(0,200)+'</div></div>';});}html+='</div>';container.innerHTML=html;}
+function renderTeamNotes(container){if(!container)return;var RN=['Robert','Andrew','Alexander','Stivi','Melissa'];var RC=['#4472C4','#70AD47','#ED7D31','#9E480E','#C00000'];var now=new Date();var wr=getWeekRange(0);var an=state.notes.sort(function(a,b){return b.date.localeCompare(a.date);});var ei=state.noteInsights['team']||'';var html='<div style="padding:0">';html+='<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:20px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">🤖 Team Intelligence</div><button onclick="generateAndSaveTeamInsight()" style="background:var(--green);color:#fff;border:none;border-radius:5px;padding:5px 12px;font-size:11px;cursor:pointer">✨ Generate</button></div><div id="team-insights-panel">'+(ei?formatInsight(ei):'<span style="color:var(--muted);font-size:11px">Click Generate to analyse all team notes.</span>')+'</div></div>';html+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:10px">📋 Recent Activity ('+an.length+' notes)</div>';if(!an.length){html+='<div style="padding:24px;text-align:center;color:var(--muted);font-family:var(--font-mono);font-size:11px">No notes uploaded yet.</div>';}else{an.slice(0,30).forEach(function(n){var ri2=n.ri!==undefined?n.ri:-1;var rc=ri2>=0?RC[ri2]:'#888';var rn=ri2>=0?RN[ri2]:(n.rep||'');html+='<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid '+rc+';border-radius:8px;padding:10px 14px;margin-bottom:6px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="font-size:10px;font-weight:700;color:'+rc+'">'+rn+'</span><span style="font-size:10px;color:var(--muted);font-family:var(--font-mono)">'+n.date+'</span><span style="font-size:10px;font-weight:600;color:var(--text)">'+(n.company||'')+'</span>'+(n.title?'<span style="font-size:9px;padding:1px 6px;border-radius:8px;background:var(--green)22;color:var(--green)">'+n.title+'</span>':'')+'</div><div style="font-size:11px;color:var(--muted);line-height:1.4">'+(n.memo||'').slice(0,200)+'</div></div>';});}html+='</div>';container.innerHTML=html;}
 
 function renderTeamLeave(container){if(!container)return;var RN=['Robert Schaffer','Andrew Mobilia','Alexander Poll','Stivi Maticevski','Melissa Goodridge'];var RC=['#4472C4','#70AD47','#ED7D31','#9E480E','#C00000'];var today=new Date();var todayStr=dateStr(today);var next30=new Date(today);next30.setDate(today.getDate()+30);var onToday=[];for(var ri=0;ri<5;ri++){if(isRepOnLeave(ri,todayStr))onToday.push(ri);}var upcoming=[];for(var ri=0;ri<5;ri++){var lv=getRepLeave(ri).filter(function(d){return d>todayStr&&d<=dateStr(next30);});if(lv.length)upcoming.push({ri:ri,leaves:lv.sort()});}var upHols=VIC_HOLIDAYS_2026.filter(function(d){return d>todayStr&&d<=dateStr(next30);});var html='<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:16px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:12px">🏖️ Leave & Holidays</div>';if(onToday.length){html+='<div style="margin-bottom:10px"><span style="font-size:11px;font-weight:600;color:#e05252">On Leave Today: </span>';onToday.forEach(function(ri){html+='<span style="display:inline-block;padding:2px 10px;border-radius:10px;background:'+RC[ri]+'22;color:'+RC[ri]+';font-size:10px;font-weight:600;margin-right:6px">'+RN[ri]+'</span>';});html+='</div>';}else{html+='<div style="font-size:11px;color:var(--muted);margin-bottom:10px">✅ No one on leave today</div>';}if(upHols.length){html+='<div style="margin-bottom:10px"><span style="font-size:11px;font-weight:600;color:var(--amber)">🇦🇺 Upcoming: </span>';upHols.forEach(function(d){var dt=new Date(d+'T00:00:00');html+='<span style="font-size:10px;color:var(--text);font-family:var(--font-mono);margin-right:12px">'+dt.toLocaleDateString('en-AU',{day:'2-digit',month:'short'})+' '+VIC_HOLIDAY_NAMES[d]+'</span>';});html+='</div>';}if(upcoming.length){html+='<div style="display:flex;flex-wrap:wrap;gap:8px">';upcoming.forEach(function(u){var rc=RC[u.ri];var fd=new Date(u.leaves[0]+'T00:00:00');var ld=new Date(u.leaves[u.leaves.length-1]+'T00:00:00');html+='<div style="background:'+rc+'11;border:1px solid '+rc+'44;border-radius:6px;padding:6px 10px"><div style="font-size:10px;font-weight:700;color:'+rc+'">'+RN[u.ri]+'</div><div style="font-size:9px;color:var(--muted);font-family:var(--font-mono)">'+fd.toLocaleDateString('en-AU',{day:'2-digit',month:'short'})+(u.leaves.length>1?' – '+ld.toLocaleDateString('en-AU',{day:'2-digit',month:'short'}):'')+'</div><div style="font-size:9px;color:var(--muted)">'+u.leaves.length+' day(s)</div></div>';});html+='</div>';}html+='</div>';container.innerHTML=html;}
 
@@ -2412,24 +2471,23 @@ function init() {
   raDiv.innerHTML = '<div id="reps-admin-content" style="padding:24px">Loading\u2026</div>';
   container.appendChild(raDiv);
 
-  applyStoredTheme();
-
   // Pre-load 2026 actuals so charts render immediately
   state.classActuals = Object.assign({}, _preloadedActuals, state.classActuals || {});
+
+  applyStoredTheme();
 
   $$('.tab-btn').forEach(b => {
     b.style.display = 'inline-flex';
   });
   document.getElementById('tab-team').style.display = 'inline-flex';
 
-  // Populate all rep trackers and charts
+  // Populate trackers for all reps (no charts yet - canvases are hidden)
   REPS_DATA.forEach((_, ri) => {
     try { populateTracker(ri); } catch(e) { console.warn('populateTracker '+ri, e); }
     try { populateClassTrackers(ri); } catch(e) { console.warn('populateClassTrackers '+ri, e); }
-    try { drawRepCharts(ri); } catch(e) { console.warn('drawRepCharts '+ri, e); }
   });
 
-  // Populate team view
+  // Populate team view (team is active so charts will render)
   try { refreshTeamView(); } catch(e) { console.warn('refreshTeamView', e); }
 }
 
