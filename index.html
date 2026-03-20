@@ -2272,15 +2272,21 @@ function buildLocationsPane(ri) {
 const VIC_HOLIDAYS_2026 = ['2026-01-01','2026-01-26','2026-03-09','2026-04-03','2026-04-04','2026-04-05','2026-04-06','2026-04-25','2026-06-08','2026-11-03','2026-12-25','2026-12-26','2026-12-28'];
 const VIC_HOLIDAY_NAMES = {'2026-01-01':"New Year's Day",'2026-01-26':'Australia Day','2026-03-09':'Labour Day','2026-04-03':'Good Friday','2026-04-04':'Saturday before Easter','2026-04-05':'Easter Sunday','2026-04-06':'Easter Monday','2026-04-25':'ANZAC Day','2026-06-08':"King's Birthday",'2026-11-03':'Melbourne Cup','2026-12-25':'Christmas Day','2026-12-26':'Boxing Day','2026-12-28':'Boxing Day (substitute)'};
 const MEETINGS_PER_DAY = 7;
+const KRA_START_DATE = '2026-04-01'; // Notes KRA tracking starts from this date
 function dateStr(d){return d.toISOString().slice(0,10);}
 function isWeekend(d){var day=d.getDay();return day===0||day===6;}
 function isHoliday(ds){return VIC_HOLIDAYS_2026.includes(ds);}
 function getRepLeave(repIdx){var k='rep_'+repIdx;var rl=state.leave[k]||{};return Object.keys(rl).filter(function(d){return rl[d];});}
 function isRepOnLeave(repIdx,ds){var k='rep_'+repIdx;return !!(state.leave[k]&&state.leave[k][ds]);}
 function getWorkingDaysInRange(startDate,endDate,repIdx){var count=0;var d=new Date(startDate);while(d<=endDate){var ds=dateStr(d);if(!isWeekend(d)&&!isHoliday(ds)&&!isRepOnLeave(repIdx,ds))count++;d.setDate(d.getDate()+1);}return count;}
-function getMeetingTarget(repIdx,startDate,endDate){return getWorkingDaysInRange(startDate,endDate,repIdx)*MEETINGS_PER_DAY;}
-function getRepNotes(repIdx){var codes=['E10003','E10076','E10004','E10228','E10384'];return state.notes.filter(function(n){return n.ri===repIdx||n.repCode===codes[repIdx];});}
-function getRepNotesInRange(repIdx,startDate,endDate){return getRepNotes(repIdx).filter(function(n){if(!n.date)return false;var d=n.date.slice(0,10);return d>=dateStr(startDate)&&d<=dateStr(endDate);});}
+function getMeetingTarget(repIdx,startDate,endDate){
+  // Don't count days before KRA start date
+  var effectiveStart = new Date(Math.max(startDate.getTime(), new Date(KRA_START_DATE+'T00:00:00').getTime()));
+  if(effectiveStart > endDate) return 0;
+  return getWorkingDaysInRange(effectiveStart,endDate,repIdx)*MEETINGS_PER_DAY;
+}
+function getRepNotes(repIdx){var codes=['E10003','E10076','E10004','E10228','E10384'];return state.notes.filter(function(n){return (n.ri===repIdx||n.repCode===codes[repIdx])&&n.date>=KRA_START_DATE;});}
+function getRepNotesInRange(repIdx,startDate,endDate){return getRepNotes(repIdx).filter(function(n){if(!n.date)return false;var d=n.date.slice(0,10);return d>=dateStr(startDate)&&d<=dateStr(endDate)&&d>=KRA_START_DATE;});}
 function getWeekRange(offsetWeeks){var now=new Date();var day=now.getDay();var mon=new Date(now);mon.setDate(now.getDate()-(day===0?6:day-1)+(offsetWeeks*7));var sun=new Date(mon);sun.setDate(mon.getDate()+6);return{start:mon,end:sun};}
 function refreshNotesViews(){for(var ri=0;ri<5;ri++){var p=document.getElementById('notes-panel-'+ri);if(p)renderRepNotes(ri,p);}var t=document.getElementById('team-notes-panel');if(t)renderTeamNotes(t);}
 function refreshLeaveViews(){for(var ri=0;ri<5;ri++){var p=document.getElementById('leave-panel-'+ri);if(p)renderLeavePanel(ri,p);}var tl=document.getElementById('team-leave-panel');if(tl)renderTeamLeave(tl);}
@@ -2295,11 +2301,61 @@ function switchRepTab(ri,tab){['kpi','loc','notes','leave'].forEach(function(t){
 // ── Rep Notes ────────────────────────────────────────────────
 function renderRepNotes(repIdx,container){if(!container){container=document.getElementById('notes-panel-'+repIdx);}if(!container)return;var notes=getRepNotes(repIdx).sort(function(a,b){return b.date.localeCompare(a.date);});var now=new Date();var wr=getWeekRange(0);var wn=getRepNotesInRange(repIdx,wr.start,wr.end);var wt=getMeetingTarget(repIdx,wr.start,wr.end);var wp=wt>0?wn.length/wt:0;var wc=wp>=1?'var(--green)':wp>=0.7?'var(--amber)':'#e05252';var ms=new Date(now.getFullYear(),now.getMonth(),1);var me=new Date(now.getFullYear(),now.getMonth()+1,0);var mn=getRepNotesInRange(repIdx,ms,me);var mt=getMeetingTarget(repIdx,ms,me);var mp=mt>0?mn.length/mt:0;var mc=mp>=1?'var(--green)':mp>=0.7?'var(--amber)':'#e05252';var ei=state.noteInsights['rep_'+repIdx]||'';var html='<div style="padding:20px 24px">';html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px"><div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px">📅 This Week</div><div style="font-size:24px;font-weight:800;color:'+wc+'">'+wn.length+' / '+wt+'</div><div style="font-size:10px;color:var(--muted);margin-top:4px">meetings · KRA: 7/working day</div><div style="margin-top:8px;height:4px;background:var(--border);border-radius:2px"><div style="height:4px;border-radius:2px;background:'+wc+';width:'+Math.min(wp*100,100)+'%"></div></div></div><div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px">📆 This Month</div><div style="font-size:24px;font-weight:800;color:'+mc+'">'+mn.length+' / '+mt+'</div><div style="font-size:10px;color:var(--muted);margin-top:4px">meetings · '+getWorkingDaysInRange(ms,me,repIdx)+' working days</div><div style="margin-top:8px;height:4px;background:var(--border);border-radius:2px"><div style="height:4px;border-radius:2px;background:'+mc+';width:'+Math.min(mp*100,100)+'%"></div></div></div></div>';html+='<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:20px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">🤖 AI Insights</div><button onclick="generateAndSaveInsight('+repIdx+')" style="background:var(--green);color:#fff;border:none;border-radius:5px;padding:5px 12px;font-size:11px;cursor:pointer">✨ Generate</button></div><div id="insights-panel-'+repIdx+'">'+(ei?formatInsight(ei):'<span style="color:var(--muted);font-size:11px">Click Generate to analyse notes with AI.</span>')+'</div></div>';html+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:12px">📋 All Notes ('+notes.length+')</div>';if(!notes.length){html+='<div style="padding:32px;text-align:center;color:var(--muted);font-family:var(--font-mono);font-size:11px;background:var(--surface);border:1px solid var(--border);border-radius:8px">No notes yet. Upload via Reps → Upload Notes.</div>';}else{notes.forEach(function(n){var dc=n.direction==='Outgoing'?'#4472C4':'var(--muted)';html+='<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:8px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px"><div style="font-size:12px;font-weight:600;color:var(--text)">'+(n.company||'Unknown')+'</div><div style="display:flex;gap:8px;align-items:center">'+(n.direction?'<span style="font-size:9px;padding:2px 7px;border-radius:8px;background:'+dc+'22;color:'+dc+'">'+n.direction+'</span>':'')+'<span style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">'+n.date+'</span></div></div>'+(n.title?'<div style="font-size:10px;color:var(--green);font-weight:600;margin-bottom:4px">'+n.title+'</div>':'')+'<div style="font-size:11px;color:var(--muted);line-height:1.5;white-space:pre-wrap">'+(n.memo||'')+'</div></div>';});}html+='</div>';container.innerHTML=html;}
 
-async function generateAndSaveInsight(repIdx){var btn=event.target;btn.textContent='⏳...';btn.disabled=true;var notes=getRepNotes(repIdx);var insight=await generateInsights(repIdx,notes);if(window._fbSet){var id2=Object.assign({},state.noteInsights);id2['rep_'+repIdx]=insight;window._fbSet('dashboard/noteInsights',id2);}state.noteInsights['rep_'+repIdx]=insight;var el=document.getElementById('insights-panel-'+repIdx);if(el)el.innerHTML=formatInsight(insight);btn.textContent='✨ Generate';btn.disabled=false;}
+async function generateAndSaveInsight(repIdx){var btn=event.target;btn.textContent='⏳...';btn.disabled=true;
+  // Reload key from Firebase in case it was just saved
+  if(!state.anthropicKey&&window._fbListen){await new Promise(function(r){window._fbListen('dashboard/config/anthropicKey',function(d){if(d)state.anthropicKey=d;r();});setTimeout(r,2000);});}
+  var notes=getRepNotes(repIdx);var insight=await generateInsights(repIdx,notes);if(window._fbSet){var id2=Object.assign({},state.noteInsights);id2['rep_'+repIdx]=insight;window._fbSet('dashboard/noteInsights',id2);}state.noteInsights['rep_'+repIdx]=insight;var el=document.getElementById('insights-panel-'+repIdx);if(el)el.innerHTML=formatInsight(insight);btn.textContent='✨ Generate';btn.disabled=false;}
 
-async function generateInsights(repIdx,notes){if(!state.anthropicKey)return'API key not configured. Ask your admin to set it in Firebase at dashboard/config/anthropicKey.';if(!notes||!notes.length)return'No notes available.';var RN=['Robert Schaffer','Andrew Mobilia','Alexander Poll','Stivi Maticevski','Melissa Goodridge'];var summary=notes.slice(0,50).map(function(n){return n.date+' | '+(n.company||'')+': '+(n.memo||'').slice(0,200);}).join('\n');try{var resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true','x-api-key':state.anthropicKey||''},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,messages:[{role:'user',content:'You are a sales manager reviewing field notes for '+RN[repIdx]+'. Analyse and provide:\n1. Key trends (2-3 bullets)\n2. Opportunities\n3. Risks\n4. Recommended actions\n\nNotes:\n'+summary+'\n\nBe concise and actionable.'}]})});var data=await resp.json();return data.content?.[0]?.text||'Could not generate insights.';}catch(e){return'Error: '+e.message;}}
+async function generateInsights(repIdx,notes){
+  if(!state.anthropicKey)return'API key not configured. Go to Reps tab → AI Insights — API Key.';
+  if(!notes||!notes.length)return'No notes available for this rep.';
+  var RN=['Robert Schaffer','Andrew Mobilia','Alexander Poll','Stivi Maticevski','Melissa Goodridge'];
+  var summary=notes.slice(0,50).map(function(n){return n.date+' | '+(n.company||'')+': '+(n.memo||'').slice(0,200);}).join('\n');
+  try{
+    var resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true',
+        'x-api-key':state.anthropicKey
+      },
+      body:JSON.stringify({
+        model:'claude-haiku-4-5-20251001',
+        max_tokens:600,
+        messages:[{role:'user',content:'You are a sales manager reviewing field notes for '+RN[repIdx]+'. Analyse and provide:\n1. Key trends (2-3 bullets)\n2. Opportunities\n3. Risks\n4. Recommended actions\n\nNotes:\n'+summary+'\n\nBe concise and actionable.'}]
+      })
+    });
+    var data=await resp.json();
+    if(data.error)return'API Error: '+data.error.message;
+    return(data.content&&data.content[0]&&data.content[0].text)||'No response from API.';
+  }catch(e){return'Network error: '+e.message;}
+}
 
-async function generateTeamInsights(notes){if(!state.anthropicKey)return'API key not configured. Ask your admin to set it in Firebase at dashboard/config/anthropicKey.';if(!notes||!notes.length)return'No notes available.';var summary=notes.slice(0,80).map(function(n){return n.date+' | ['+n.rep+'] '+(n.company||'')+': '+(n.memo||'').slice(0,150);}).join('\n');try{var resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true','x-api-key':state.anthropicKey||''},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,messages:[{role:'user',content:'You are a national sales manager. Analyse team field notes and provide:\n1. Overall team trends\n2. Common customer themes\n3. Competitive intelligence\n4. Top opportunities\n5. Risks\n\nNotes:\n'+summary+'\n\nBe concise.'}]})});var data=await resp.json();return data.content?.[0]?.text||'Could not generate.';}catch(e){return'Error: '+e.message;}}
+async function generateTeamInsights(notes){
+  if(!state.anthropicKey)return'API key not configured. Go to Reps tab → AI Insights — API Key.';
+  if(!notes||!notes.length)return'No notes available.';
+  var summary=notes.slice(0,80).map(function(n){return n.date+' | ['+(n.rep||'')+'] '+(n.company||'')+': '+(n.memo||'').slice(0,150);}).join('\n');
+  try{
+    var resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true',
+        'x-api-key':state.anthropicKey
+      },
+      body:JSON.stringify({
+        model:'claude-haiku-4-5-20251001',
+        max_tokens:800,
+        messages:[{role:'user',content:'You are a national sales manager. Analyse these team field notes and provide:\n1. Overall team trends\n2. Common customer themes\n3. Competitive intelligence\n4. Top opportunities\n5. Risks\n\nNotes:\n'+summary+'\n\nBe concise and actionable.'}]
+      })
+    });
+    var data=await resp.json();
+    if(data.error)return'API Error: '+data.error.message;
+    return(data.content&&data.content[0]&&data.content[0].text)||'No response from API.';
+  }catch(e){return'Network error: '+e.message;}
+}
 
 async function generateAndSaveTeamInsight(){var btn=event.target;btn.textContent='⏳...';btn.disabled=true;var insight=await generateTeamInsights(state.notes);if(window._fbSet){var id2=Object.assign({},state.noteInsights,{team:insight});window._fbSet('dashboard/noteInsights',id2);}state.noteInsights['team']=insight;var el=document.getElementById('team-insights-panel');if(el)el.innerHTML=formatInsight(insight);btn.textContent='✨ Generate';btn.disabled=false;}
 
