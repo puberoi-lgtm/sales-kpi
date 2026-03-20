@@ -889,6 +889,7 @@ function isAcctNever(a)   { return a.la < 0; }
 const _preloadedActuals = {"0-4-0":4292.47,"2-1-0":29699.8,"3-0-0":31694.31,"3-3-0":22074.54,"0-0-0":75610.4,"0-2-0":18825.64,"0-3-0":47432.2,"2-0-0":34651.45,"2-2-0":26003.06,"3-2-0":11281.69,"2-4-0":2208.11,"0-1-0":47316.85,"1-3-0":36473.19,"3-1-0":19549.19,"1-2-0":49141.78,"1-1-0":28991.62,"1-0-0":102017.11,"2-3-0":34803.37,"4-0-0":8624.89,"1-4-0":2726.92,"4-1-0":1931.92,"4-3-0":11845.39,"4-2-0":1420.64,"3-4-0":1398.22,"4-4-0":60.0,"1-0-1":193845.96,"1-2-1":48322.64,"1-1-1":42621.21,"3-1-1":16922.72,"3-0-1":59409.57,"3-2-1":19499.08,"2-0-1":67388.67,"2-1-1":37507.12,"0-0-1":108739.56,"0-2-1":34653.98,"1-3-1":63945.82,"1-4-1":5946.51,"4-3-1":11209.29,"4-0-1":7382.32,"0-1-1":62304.4,"2-2-1":11926.75,"2-3-1":30429.34,"0-4-1":3933.6,"3-3-1":32423.98,"2-4-1":2263.65,"0-3-1":76845.49,"3-4-1":1149.66,"4-2-1":1122.59,"4-4-1":896.18,"4-1-1":2510.74,"1-0-2":211918.49,"3-4-2":903.57,"1-2-2":22337.52,"1-1-2":41547.17,"0-2-2":20187.28,"0-0-2":98768.74,"0-1-2":49116.39,"0-3-2":49217.85,"1-4-2":4048.13,"4-2-2":497.45,"4-0-2":16417.26,"2-2-2":5373.3,"3-2-2":19667.3,"3-3-2":13891.44,"2-1-2":22939.41,"2-0-2":51165.0,"3-0-2":46204.05,"1-3-2":31335.64,"4-4-2":399.85,"2-4-2":779.72,"3-1-2":13333.2,"2-3-2":19138.75,"0-4-2":3375.69,"4-1-2":192.29,"4-3-2":1399.88};
 
 const state = {
+  anthropicKey: null,
   acctStatusSnap: {},
   notes: [],
   leave: {},
@@ -1051,6 +1052,11 @@ function fbStartListening() {
   });
 
   // prevActuals listener removed (manual upload mode)
+  // Listen for Anthropic API key (admin sets this once in Firebase)
+  window._fbListen('dashboard/config/anthropicKey', data => {
+    if (data) state.anthropicKey = data;
+  });
+
   // Listen for notes
   window._fbListen('dashboard/notes', data => {
     state.notes = data ? Object.values(data) : [];
@@ -2085,6 +2091,17 @@ function buildRepsAdminView() {
     +'<div id="notes-upload-status" style="margin-top:10px;font-family:var(--font-mono);font-size:11px;color:var(--muted)"></div>'
     +'</div>'
     +'<div style="margin-top:32px">'
+    +'<div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:12px">🤖 AI Insights — API Key</div>'
+    +'<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:8px">'
+    +'<div style="font-size:11px;color:var(--muted);margin-bottom:10px">Enter your Anthropic API key to enable AI-generated insights from notes. Stored securely in Firebase, not in the app code.</div>'
+    +'<div style="display:flex;gap:8px;align-items:center">'
+    +'<input type="password" id="anthropic-key-input" placeholder="sk-ant-..." value="'+(state.anthropicKey||'')+'\" style="flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:8px 12px;font-family:var(--font-mono);font-size:12px">'
+    +'<button onclick="saveAnthropicKey()" style="background:var(--green);color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer">Save Key</button>'
+    +'</div>'
+    +'<div id="key-save-status" style="font-size:11px;color:var(--muted);margin-top:8px">'+(state.anthropicKey?'✅ Key configured':'⚠️ No key set')+'</div>'
+    +'</div>'
+    +'</div>'
+    +'<div style="margin-top:32px">'
     +'<div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:12px">🔄 Reassignment Log</div>'
     +'<div id="reassign-log" style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">Loading...</div>'
     +'</div>';
@@ -2121,6 +2138,25 @@ function reassignAccount(sel){
   var newRi=parseInt(sel.value);
   var acct=ACCOUNTS_DATA.find(function(a){return a.n===name;});
   if(acct){acct.ri=newRi;}
+}
+
+function saveAnthropicKey() {
+  var input = document.getElementById('anthropic-key-input');
+  var status = document.getElementById('key-save-status');
+  if (!input || !input.value.trim()) {
+    if (status) { status.style.color = '#e05252'; status.textContent = '❌ Please enter a key'; }
+    return;
+  }
+  var key = input.value.trim();
+  if (!key.startsWith('sk-ant-')) {
+    if (status) { status.style.color = '#e05252'; status.textContent = '❌ Key should start with sk-ant-'; }
+    return;
+  }
+  if (!window._fbSet) return;
+  window._fbSet('dashboard/config/anthropicKey', key);
+  state.anthropicKey = key;
+  if (status) { status.style.color = 'var(--green)'; status.textContent = '✅ Key saved successfully'; }
+  input.value = key.slice(0, 12) + '...';
 }
 function renderReassignLog(){
   var el=document.getElementById('reassign-log');if(!el)return;
@@ -2261,9 +2297,9 @@ function renderRepNotes(repIdx,container){if(!container){container=document.getE
 
 async function generateAndSaveInsight(repIdx){var btn=event.target;btn.textContent='⏳...';btn.disabled=true;var notes=getRepNotes(repIdx);var insight=await generateInsights(repIdx,notes);if(window._fbSet){var id2=Object.assign({},state.noteInsights);id2['rep_'+repIdx]=insight;window._fbSet('dashboard/noteInsights',id2);}state.noteInsights['rep_'+repIdx]=insight;var el=document.getElementById('insights-panel-'+repIdx);if(el)el.innerHTML=formatInsight(insight);btn.textContent='✨ Generate';btn.disabled=false;}
 
-async function generateInsights(repIdx,notes){if(!notes||!notes.length)return'No notes available.';var RN=['Robert Schaffer','Andrew Mobilia','Alexander Poll','Stivi Maticevski','Melissa Goodridge'];var summary=notes.slice(0,50).map(function(n){return n.date+' | '+(n.company||'')+': '+(n.memo||'').slice(0,200);}).join('\n');try{var resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,messages:[{role:'user',content:'You are a sales manager reviewing field notes for '+RN[repIdx]+'. Analyse and provide:\n1. Key trends (2-3 bullets)\n2. Opportunities\n3. Risks\n4. Recommended actions\n\nNotes:\n'+summary+'\n\nBe concise and actionable.'}]})});var data=await resp.json();return data.content?.[0]?.text||'Could not generate insights.';}catch(e){return'Error: '+e.message;}}
+async function generateInsights(repIdx,notes){if(!state.anthropicKey)return'API key not configured. Ask your admin to set it in Firebase at dashboard/config/anthropicKey.';if(!notes||!notes.length)return'No notes available.';var RN=['Robert Schaffer','Andrew Mobilia','Alexander Poll','Stivi Maticevski','Melissa Goodridge'];var summary=notes.slice(0,50).map(function(n){return n.date+' | '+(n.company||'')+': '+(n.memo||'').slice(0,200);}).join('\n');try{var resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true','x-api-key':state.anthropicKey||''},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,messages:[{role:'user',content:'You are a sales manager reviewing field notes for '+RN[repIdx]+'. Analyse and provide:\n1. Key trends (2-3 bullets)\n2. Opportunities\n3. Risks\n4. Recommended actions\n\nNotes:\n'+summary+'\n\nBe concise and actionable.'}]})});var data=await resp.json();return data.content?.[0]?.text||'Could not generate insights.';}catch(e){return'Error: '+e.message;}}
 
-async function generateTeamInsights(notes){if(!notes||!notes.length)return'No notes available.';var summary=notes.slice(0,80).map(function(n){return n.date+' | ['+n.rep+'] '+(n.company||'')+': '+(n.memo||'').slice(0,150);}).join('\n');try{var resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,messages:[{role:'user',content:'You are a national sales manager. Analyse team field notes and provide:\n1. Overall team trends\n2. Common customer themes\n3. Competitive intelligence\n4. Top opportunities\n5. Risks\n\nNotes:\n'+summary+'\n\nBe concise.'}]})});var data=await resp.json();return data.content?.[0]?.text||'Could not generate.';}catch(e){return'Error: '+e.message;}}
+async function generateTeamInsights(notes){if(!state.anthropicKey)return'API key not configured. Ask your admin to set it in Firebase at dashboard/config/anthropicKey.';if(!notes||!notes.length)return'No notes available.';var summary=notes.slice(0,80).map(function(n){return n.date+' | ['+n.rep+'] '+(n.company||'')+': '+(n.memo||'').slice(0,150);}).join('\n');try{var resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true','x-api-key':state.anthropicKey||''},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,messages:[{role:'user',content:'You are a national sales manager. Analyse team field notes and provide:\n1. Overall team trends\n2. Common customer themes\n3. Competitive intelligence\n4. Top opportunities\n5. Risks\n\nNotes:\n'+summary+'\n\nBe concise.'}]})});var data=await resp.json();return data.content?.[0]?.text||'Could not generate.';}catch(e){return'Error: '+e.message;}}
 
 async function generateAndSaveTeamInsight(){var btn=event.target;btn.textContent='⏳...';btn.disabled=true;var insight=await generateTeamInsights(state.notes);if(window._fbSet){var id2=Object.assign({},state.noteInsights,{team:insight});window._fbSet('dashboard/noteInsights',id2);}state.noteInsights['team']=insight;var el=document.getElementById('team-insights-panel');if(el)el.innerHTML=formatInsight(insight);btn.textContent='✨ Generate';btn.disabled=false;}
 
