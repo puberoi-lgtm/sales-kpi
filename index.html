@@ -1302,7 +1302,7 @@ function buildRepView(repIdx) {
   <div class="kpi-row">
     <div class="kpi-card" style="--accent-color:${rep.color}">
       <div class="kpi-label">2026 Annual Target</div>
-      <div class="kpi-value" style="color:var(--green)" id="kpi-anntgt-${repIdx}">${fmt(annualTarget)}</div>
+      <div class="kpi-value" style="color:var(--green)" id="kpi-anntgt-${repIdx}"><span id="kpi-ann-${repIdx}">—</span></div>
     </div>
     <div class="kpi-card" style="--accent-color:#a78bfa">
       <div class="kpi-label">Acct Ach 2025</div>
@@ -1315,12 +1315,12 @@ function buildRepView(repIdx) {
     </div>
     <div class="kpi-card" style="--accent-color:var(--amber)">
       <div class="kpi-label">YTD Invoiced</div>
-      <div class="kpi-value" style="color:var(--amber)" id="kpi-ytd-${repIdx}">${fmt(ytdActual)}</div>
+      <div class="kpi-value" style="color:var(--amber)" id="kpi-ytd-${repIdx}">—</div>
       <div style="font-size:9px;color:var(--muted);margin-top:3px">Invoiced only · excludes open POs</div>
     </div>
     <div class="kpi-card" style="--accent-color:#e05252">
       <div class="kpi-label">Still To Go</div>
-      <div class="kpi-value" style="color:#e05252" id="kpi-still-${repIdx}">${fmt(stillToGo)}</div>
+      <div class="kpi-value" style="color:#e05252" id="kpi-still-${repIdx}"><span id="kpi-stg-${repIdx}">—</span></div>
     </div>
   </div>
 
@@ -1545,6 +1545,50 @@ function populateClassTrackers(repIdx) {
 }
 function populateTracker(repIdx) {
   updateKRAPanel(repIdx);
+
+  // ── Update KPI cards dynamically using correct element IDs ──
+  (function() {
+    const rep2 = REPS_DATA[repIdx];
+    const months2 = rep2.monthly;
+    const annTgt   = months2.reduce((_s,_v,mi) => _s + getTarget(repIdx,mi), 0);
+    const ytdAct   = months2.reduce((_s,_v,mi) => _s + getActual(repIdx,mi), 0);
+    const stillTgo = Math.max(annTgt - ytdAct, 0);
+    const ytdPct   = annTgt > 0 ? ytdAct / annTgt : 0;
+    const nowMi    = new Date().getMonth();
+    const mtdAct   = getActual(repIdx, nowMi);
+    const mtdTgt   = getTarget(repIdx, nowMi);
+    const mtdPct   = mtdTgt > 0 ? mtdAct / mtdTgt : 0;
+    const ytdCol   = ytdPct >= 1 ? 'var(--green)' : ytdPct >= 0.8 ? 'var(--amber)' : '#e05252';
+    const mtdCol   = mtdPct >= 1 ? 'var(--green)' : mtdPct >= 0.8 ? 'var(--amber)' : '#e05252';
+    const _g = id => document.getElementById(id + repIdx);
+
+    // YTD Invoiced card
+    const ytdEl = _g('kpi-ytd-');
+    if (ytdEl) { ytdEl.textContent = fmt(ytdAct); ytdEl.style.color = ytdAct>0?ytdCol:'var(--muted)'; }
+
+    // Still to go
+    const stgEl = _g('kpi-still-');
+    if (stgEl) stgEl.innerHTML = '<span id="kpi-stg-'+repIdx+'">'+fmt(stillTgo)+'</span>';
+
+    // Annual target
+    const annEl = _g('kpi-anntgt-');
+    if (annEl) { annEl.textContent = fmt(annTgt); annEl.style.color = 'var(--green)'; }
+
+    // MTD badge
+    const mtdPctEl = _g('kpi-mtd-pct-');
+    if (mtdPctEl) { mtdPctEl.textContent = mtdAct>0?fmtPct(mtdPct):'—'; mtdPctEl.style.color = mtdAct>0?mtdCol:'var(--muted)'; }
+    const mtdValEl = _g('kpi-mtd-vals-');
+    if (mtdValEl) mtdValEl.textContent = mtdAct>0?(fmt(mtdAct)+' of '+fmt(mtdTgt)):'— of —';
+    const mtdBarEl = _g('kpi-mtd-bar-');
+    if (mtdBarEl) { mtdBarEl.style.width = Math.min(mtdPct*100,100)+'%'; mtdBarEl.style.background = mtdCol; }
+
+    // YTD badge
+    const ytdPctEl = _g('kpi-ytd-pct-');
+    if (ytdPctEl) { ytdPctEl.textContent = ytdAct>0?fmtPct(ytdPct):'—'; ytdPctEl.style.color = ytdAct>0?ytdCol:'var(--muted)'; }
+    const ytdBarEl = _g('kpi-ytd-bar-');
+    if (ytdBarEl) { ytdBarEl.style.width = Math.min(ytdPct*100,100)+'%'; ytdBarEl.style.background = ytdCol; }
+  })();
+
   // Meeting KRA
   var mtgNow = new Date();
   var wr = getWeekRange(0);
