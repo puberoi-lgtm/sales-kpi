@@ -1030,7 +1030,14 @@ function fbStartListening() {
   // Listen for actuals
   window._fbListen('dashboard/classActuals', data => {
     // Merge pre-loaded 2026 actuals with any Firebase overrides
-    data = Object.assign({}, _preloadedActuals, data || {});
+    // Only keep Firebase data for months NOT covered by preloaded (Apr-Dec 2026)
+    var filtered = {};
+    Object.keys(data || {}).forEach(function(k) {
+      var mo = parseInt(k.split('-')[2]);
+      if (mo >= 3) filtered[k] = data[k]; // Keep Apr (mo=3) onwards from Firebase
+    });
+    // Preloaded Jan-Mar always takes precedence
+    data = Object.assign({}, filtered, _preloadedActuals);
     state.classActuals = data;
     // Filter out any stale data beyond March 2026 (month index > 2)
     if (data) {
@@ -1061,6 +1068,13 @@ function fbStartListening() {
   window._fbListen('dashboard/notes', data => {
     state.notes = data ? Object.values(data) : [];
     refreshNotesViews();
+    // Refresh meeting KRA on all rep KPI pages
+    REPS_DATA.forEach(function(_, ri) {
+      var rv = document.getElementById('view-rep-'+ri);
+      if (rv && rv.classList.contains('active')) {
+        try { populateTracker(ri); } catch(e) {}
+      }
+    });
   });
   // Listen for leave
   window._fbListen('dashboard/leave', data => {
@@ -2285,7 +2299,7 @@ function getMeetingTarget(repIdx,startDate,endDate){
   if(effectiveStart > endDate) return 0;
   return getWorkingDaysInRange(effectiveStart,endDate,repIdx)*MEETINGS_PER_DAY;
 }
-function getRepNotes(repIdx){var codes=['E10003','E10076','E10004','E10228','E10384'];return state.notes.filter(function(n){return (n.ri===repIdx||n.repCode===codes[repIdx])&&n.date>=KRA_START_DATE;});}
+function getRepNotes(repIdx){var codes=['E10003','E10076','E10004','E10228','E10384'];return state.notes.filter(function(n){return (n.ri==repIdx||n.repCode===codes[repIdx])&&n.date>=KRA_START_DATE;});}
 function getRepNotesInRange(repIdx,startDate,endDate){return getRepNotes(repIdx).filter(function(n){if(!n.date)return false;var d=n.date.slice(0,10);return d>=dateStr(startDate)&&d<=dateStr(endDate)&&d>=KRA_START_DATE;});}
 function getWeekRange(offsetWeeks){var now=new Date();var day=now.getDay();var mon=new Date(now);mon.setDate(now.getDate()-(day===0?6:day-1)+(offsetWeeks*7));var sun=new Date(mon);sun.setDate(mon.getDate()+6);return{start:mon,end:sun};}
 function refreshNotesViews(){for(var ri=0;ri<5;ri++){var p=document.getElementById('notes-panel-'+ri);if(p)renderRepNotes(ri,p);}var t=document.getElementById('team-notes-panel');if(t)renderTeamNotes(t);}
@@ -2299,7 +2313,17 @@ function removeLeave(repIdx,d){if(!window._fbSet)return;var ld=JSON.parse(JSON.s
 function switchRepTab(ri,tab){['kpi','loc','notes','leave'].forEach(function(t){var btn=document.getElementById('rtab-'+t+'-'+ri);var pane=document.getElementById('rpane-'+t+'-'+ri);if(btn){btn.classList.toggle('active',t===tab);btn.style.borderBottomColor=(t===tab)?REPS_DATA[ri].color:'transparent';}if(pane){pane.classList.toggle('active',t===tab);}});if(tab==='notes'){var p=document.getElementById('notes-panel-'+ri);if(p)renderRepNotes(ri,p);}if(tab==='leave'){var p2=document.getElementById('leave-panel-'+ri);if(p2)renderLeavePanel(ri,p2);}}
 
 // ── Rep Notes ────────────────────────────────────────────────
-function renderRepNotes(repIdx,container){if(!container){container=document.getElementById('notes-panel-'+repIdx);}if(!container)return;var notes=state.notes.filter(function(n){var codes=['E10003','E10076','E10004','E10228','E10384'];return n.ri===repIdx||n.repCode===codes[repIdx];}).sort(function(a,b){return b.date.localeCompare(a.date);});var now=new Date();var wr=getWeekRange(0);var wn=getRepNotesInRange(repIdx,wr.start,wr.end);var wt=getMeetingTarget(repIdx,wr.start,wr.end);var wp=wt>0?wn.length/wt:0;var wc=wp>=1?'var(--green)':wp>=0.7?'var(--amber)':'#e05252';var ms=new Date(now.getFullYear(),now.getMonth(),1);var me=new Date(now.getFullYear(),now.getMonth()+1,0);var mn=getRepNotesInRange(repIdx,ms,me);var mt=getMeetingTarget(repIdx,ms,me);var mp=mt>0?mn.length/mt:0;var mc=mp>=1?'var(--green)':mp>=0.7?'var(--amber)':'#e05252';var ei=state.noteInsights['rep_'+repIdx]||'';var html='<div style="padding:20px 24px">';html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px"><div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px">📅 This Week</div><div style="font-size:24px;font-weight:800;color:'+wc+'">'+wn.length+' / '+wt+'</div><div style="font-size:10px;color:var(--muted);margin-top:4px">meetings · KRA: 7/working day</div><div style="margin-top:8px;height:4px;background:var(--border);border-radius:2px"><div style="height:4px;border-radius:2px;background:'+wc+';width:'+Math.min(wp*100,100)+'%"></div></div></div><div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px">📆 This Month</div><div style="font-size:24px;font-weight:800;color:'+mc+'">'+mn.length+' / '+mt+'</div><div style="font-size:10px;color:var(--muted);margin-top:4px">meetings · '+getWorkingDaysInRange(ms,me,repIdx)+' working days</div><div style="margin-top:8px;height:4px;background:var(--border);border-radius:2px"><div style="height:4px;border-radius:2px;background:'+mc+';width:'+Math.min(mp*100,100)+'%"></div></div></div></div>';html+='<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:20px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">🤖 AI Insights</div><button onclick="generateAndSaveInsight('+repIdx+')" style="background:var(--green);color:#fff;border:none;border-radius:5px;padding:5px 12px;font-size:11px;cursor:pointer">✨ Generate</button></div><div id="insights-panel-'+repIdx+'">'+(ei?formatInsight(ei):'<span style="color:var(--muted);font-size:11px">Click Generate to analyse notes with AI.</span>')+'</div></div>';html+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:12px">📋 All Notes ('+notes.length+')</div>';if(!notes.length){html+='<div style="padding:32px;text-align:center;color:var(--muted);font-family:var(--font-mono);font-size:11px;background:var(--surface);border:1px solid var(--border);border-radius:8px">No notes yet. Upload via Reps → Upload Notes.</div>';}else{notes.forEach(function(n){var dc=n.direction==='Outgoing'?'#4472C4':'var(--muted)';html+='<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:8px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px"><div style="font-size:12px;font-weight:600;color:var(--text)">'+(n.company||'Unknown')+'</div><div style="display:flex;gap:8px;align-items:center">'+(n.direction?'<span style="font-size:9px;padding:2px 7px;border-radius:8px;background:'+dc+'22;color:'+dc+'">'+n.direction+'</span>':'')+'<span style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">'+n.date+'</span></div></div>'+(n.title?'<div style="font-size:10px;color:var(--green);font-weight:600;margin-bottom:4px">'+n.title+'</div>':'')+'<div style="font-size:11px;color:var(--muted);line-height:1.5;white-space:pre-wrap">'+(n.memo||'')+'</div></div>';});}html+='</div>';container.innerHTML=html;}
+function _getRepAllNotes(repIdx){var codes=['E10003','E10076','E10004','E10228','E10384'];return state.notes.filter(function(n){return n.ri==repIdx||n.repCode===codes[repIdx];});}
+function renderRepNotes(repIdx,container,fromDate,toDate){if(!container){container=document.getElementById('notes-panel-'+repIdx);}if(!container)return;var allNotes=_getRepAllNotes(repIdx);var notes=allNotes;if(fromDate)notes=notes.filter(function(n){return n.date>=fromDate;});if(toDate)notes=notes.filter(function(n){return n.date<=toDate;});notes=notes.sort(function(a,b){return b.date.localeCompare(a.date);});var ei=state.noteInsights['rep_'+repIdx]||'';var today=new Date().toISOString().slice(0,10);var thirtyAgo=new Date(Date.now()-30*86400000).toISOString().slice(0,10);var html='<div style="padding:20px 24px">';// Date filter
+html+='<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:16px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px">'
+  +'<span style="font-size:11px;color:var(--muted);font-weight:600">Filter:</span>'
+  +'<input type="date" id="notes-from-'+repIdx+'" value="'+(fromDate||'')+'\" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 8px;font-family:var(--font-mono);font-size:11px">'
+  +'<span style="font-size:11px;color:var(--muted)">to</span>'
+  +'<input type="date" id="notes-to-'+repIdx+'" value="'+(toDate||'')+'\" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 8px;font-family:var(--font-mono);font-size:11px">'
+  +'<button onclick="(function(){var f=document.getElementById(\'notes-from-'+repIdx+'\').value;var t=document.getElementById(\'notes-to-'+repIdx+'\').value;renderRepNotes('+repIdx+',null,f||null,t||null)})()" style="background:var(--green);color:#fff;border:none;border-radius:5px;padding:5px 12px;font-size:11px;cursor:pointer">Apply</button>'
+  +'<button onclick="renderRepNotes('+repIdx+',null,null,null)" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:5px 10px;font-size:11px;cursor:pointer">Clear</button>'
+  +'<span style="font-size:10px;color:var(--muted);margin-left:4px">'+notes.length+' of '+allNotes.length+' notes</span>'
+  +'</div>';html+='<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:20px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">🤖 AI Insights</div><button onclick="generateAndSaveInsight('+repIdx+')" style="background:var(--green);color:#fff;border:none;border-radius:5px;padding:5px 12px;font-size:11px;cursor:pointer">✨ Generate</button></div><div id="insights-panel-'+repIdx+'">'+(ei?formatInsight(ei):'<span style="color:var(--muted);font-size:11px">Click Generate to analyse notes with AI.</span>')+'</div></div>';html+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:12px">📋 All Notes ('+notes.length+')</div>';if(!notes.length){html+='<div style="padding:32px;text-align:center;color:var(--muted);font-family:var(--font-mono);font-size:11px;background:var(--surface);border:1px solid var(--border);border-radius:8px">No notes yet. Upload via Reps → Upload Notes.</div>';}else{notes.forEach(function(n){var dc=n.direction==='Outgoing'?'#4472C4':'var(--muted)';html+='<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:8px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px"><div style="font-size:12px;font-weight:600;color:var(--text)">'+(n.company||'Unknown')+'</div><div style="display:flex;gap:8px;align-items:center">'+(n.direction?'<span style="font-size:9px;padding:2px 7px;border-radius:8px;background:'+dc+'22;color:'+dc+'">'+n.direction+'</span>':'')+'<span style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">'+n.date+'</span></div></div>'+(n.title?'<div style="font-size:10px;color:var(--green);font-weight:600;margin-bottom:4px">'+n.title+'</div>':'')+'<div style="font-size:11px;color:var(--muted);line-height:1.5;white-space:pre-wrap">'+(n.memo||'')+'</div></div>';});}html+='</div>';container.innerHTML=html;}
 
 async function generateAndSaveInsight(repIdx){var btn=event.target;btn.textContent='⏳...';btn.disabled=true;
   // Reload key from Firebase in case it was just saved
@@ -2363,7 +2387,18 @@ async function generateAndSaveTeamInsight(){var btn=event.target;btn.textContent
 function renderLeavePanel(repIdx,container){if(!container)container=document.getElementById('leave-panel-'+repIdx);if(!container)return;var rk=getRepLeave(repIdx);var now=new Date();var ms=new Date(now.getFullYear(),now.getMonth(),1);var me=new Date(now.getFullYear(),now.getMonth()+1,0);var adjDays=getWorkingDaysInRange(ms,me,repIdx);var cr=getCurrentUserRole();var isAdmin=window._isAdmin;var canEdit=isAdmin||(cr&&cr.repIdx==repIdx);var html='<div style="padding:20px 24px">';html+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px"><div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:4px">Leave Days</div><div style="font-size:24px;font-weight:800;color:var(--text)">'+rk.length+'</div></div><div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:4px">Public Holidays</div><div style="font-size:24px;font-weight:800;color:var(--text)">'+VIC_HOLIDAYS_2026.length+'</div></div><div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:4px">Adjusted Meeting Days</div><div style="font-size:24px;font-weight:800;color:var(--green)">'+adjDays+'</div><div style="font-size:10px;color:var(--muted)">this month</div></div></div>';if(canEdit){html+='<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:20px"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">➕ Mark Leave</div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><input type="date" id="leave-from-'+repIdx+'" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:6px 10px;font-family:var(--font-mono);font-size:11px"><span style="color:var(--muted);font-size:11px">to</span><input type="date" id="leave-to-'+repIdx+'" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:6px 10px;font-family:var(--font-mono);font-size:11px"><button onclick="markLeaveRange('+repIdx+')" style="background:var(--green);color:#fff;border:none;border-radius:5px;padding:6px 14px;font-size:11px;cursor:pointer">Mark Leave</button></div></div>';}html+='<div style="margin-bottom:16px"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">🇦🇺 VIC Public Holidays 2026</div><div class="loc-table-wrap"><table class="loc-table"><thead><tr><th>Holiday</th><th>Date</th></tr></thead><tbody>';Object.entries(VIC_HOLIDAY_NAMES).forEach(function(e){var dt=new Date(e[0]+'T00:00:00');html+='<tr><td>'+e[1]+'</td><td style="font-family:var(--font-mono);font-size:10px">'+dt.toLocaleDateString('en-AU',{weekday:'short',day:'2-digit',month:'short'})+'</td></tr>';});html+='</tbody></table></div></div>';if(rk.length){html+='<div><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">📋 Marked Leave</div><div class="loc-table-wrap"><table class="loc-table"><thead><tr><th>Date</th><th></th></tr></thead><tbody>';rk.sort().forEach(function(d){var dt=new Date(d+'T00:00:00');html+='<tr><td style="font-family:var(--font-mono)">'+dt.toLocaleDateString('en-AU',{weekday:'short',day:'2-digit',month:'short',year:'numeric'})+'</td><td>'+(canEdit?'<button onclick="removeLeave('+repIdx+',\''+d+'\')" style="background:transparent;border:1px solid #e05252;color:#e05252;border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer">Remove</button>':'')+'</td></tr>';});html+='</tbody></table></div></div>';}html+='</div>';container.innerHTML=html;}
 
 // ── Team Notes & Leave ───────────────────────────────────────
-function renderTeamNotes(container){if(!container)return;var RN=['Robert','Andrew','Alexander','Stivi','Melissa'];var RC=['#4472C4','#70AD47','#ED7D31','#9E480E','#C00000'];var now=new Date();var wr=getWeekRange(0);var an=state.notes.sort(function(a,b){return b.date.localeCompare(a.date);});var ei=state.noteInsights['team']||'';var html='<div style="padding:0">';html+='<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:20px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">🤖 Team Intelligence</div><button onclick="generateAndSaveTeamInsight()" style="background:var(--green);color:#fff;border:none;border-radius:5px;padding:5px 12px;font-size:11px;cursor:pointer">✨ Generate</button></div><div id="team-insights-panel">'+(ei?formatInsight(ei):'<span style="color:var(--muted);font-size:11px">Click Generate to analyse all team notes.</span>')+'</div></div>';html+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:10px">📋 Recent Activity ('+an.length+' notes)</div>';if(!an.length){html+='<div style="padding:24px;text-align:center;color:var(--muted);font-family:var(--font-mono);font-size:11px">No notes uploaded yet.</div>';}else{an.slice(0,30).forEach(function(n){var ri2=n.ri!==undefined?n.ri:-1;var rc=ri2>=0?RC[ri2]:'#888';var rn=ri2>=0?RN[ri2]:(n.rep||'');html+='<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid '+rc+';border-radius:8px;padding:10px 14px;margin-bottom:6px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="font-size:10px;font-weight:700;color:'+rc+'">'+rn+'</span><span style="font-size:10px;color:var(--muted);font-family:var(--font-mono)">'+n.date+'</span><span style="font-size:10px;font-weight:600;color:var(--text)">'+(n.company||'')+'</span>'+(n.title?'<span style="font-size:9px;padding:1px 6px;border-radius:8px;background:var(--green)22;color:var(--green)">'+n.title+'</span>':'')+'</div><div style="font-size:11px;color:var(--muted);line-height:1.4">'+(n.memo||'').slice(0,200)+'</div></div>';});}html+='</div>';container.innerHTML=html;}
+function renderTeamNotes(container,fromDate,toDate,filterRep){if(!container)return;var RN=['Robert','Andrew','Alexander','Stivi','Melissa'];var RC=['#4472C4','#70AD47','#ED7D31','#9E480E','#C00000'];var now=new Date();var wr=getWeekRange(0);var an=state.notes.filter(function(n){if(filterRep&&filterRep!=='all'){var ri=parseInt(filterRep);if(n.ri!=ri)return false;}if(fromDate&&n.date<fromDate)return false;if(toDate&&n.date>toDate)return false;return true;}).sort(function(a,b){return b.date.localeCompare(a.date);});var ei=state.noteInsights['team']||'';var html='<div style="padding:0">';
+  // Date + rep filter bar
+  html+='<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:16px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px">'
+  +'<span style="font-size:11px;color:var(--muted);font-weight:600">Filter:</span>'
+  +'<select id="team-notes-rep" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 8px;font-family:var(--font-mono);font-size:11px"><option value="all">All Reps</option><option value="0">Robert</option><option value="1">Andrew</option><option value="2">Alexander</option><option value="3">Stivi</option><option value="4">Melissa</option></select>'
+  +'<input type="date" id="team-notes-from" value="'+(fromDate||'')+'\" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 8px;font-family:var(--font-mono);font-size:11px">'
+  +'<span style="font-size:11px;color:var(--muted)">to</span>'
+  +'<input type="date" id="team-notes-to" value="'+(toDate||'')+'\" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 8px;font-family:var(--font-mono);font-size:11px">'
+  +'<button onclick="(function(){var r=document.getElementById(\'team-notes-rep\').value;var f=document.getElementById(\'team-notes-from\').value;var t=document.getElementById(\'team-notes-to\').value;var c=document.getElementById(\'team-notes-panel\');if(c)renderTeamNotes(c,f||null,t||null,r)})()" style="background:var(--green);color:#fff;border:none;border-radius:5px;padding:5px 12px;font-size:11px;cursor:pointer">Apply</button>'
+  +'<button onclick="var c=document.getElementById(\'team-notes-panel\');if(c)renderTeamNotes(c,null,null,\'all\')" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:5px 10px;font-size:11px;cursor:pointer">Clear</button>'
+  +'<span style="font-size:10px;color:var(--muted);margin-left:4px">'+an.length+' of '+state.notes.length+' notes</span>'
+  +'</div>';html+='<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:20px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">🤖 Team Intelligence</div><button onclick="generateAndSaveTeamInsight()" style="background:var(--green);color:#fff;border:none;border-radius:5px;padding:5px 12px;font-size:11px;cursor:pointer">✨ Generate</button></div><div id="team-insights-panel">'+(ei?formatInsight(ei):'<span style="color:var(--muted);font-size:11px">Click Generate to analyse all team notes.</span>')+'</div></div>';html+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:10px">📋 Recent Activity ('+an.length+' notes)</div>';if(!an.length){html+='<div style="padding:24px;text-align:center;color:var(--muted);font-family:var(--font-mono);font-size:11px">No notes uploaded yet.</div>';}else{an.slice(0,30).forEach(function(n){var ri2=n.ri!==undefined?n.ri:-1;var rc=ri2>=0?RC[ri2]:'#888';var rn=ri2>=0?RN[ri2]:(n.rep||'');html+='<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid '+rc+';border-radius:8px;padding:10px 14px;margin-bottom:6px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="font-size:10px;font-weight:700;color:'+rc+'">'+rn+'</span><span style="font-size:10px;color:var(--muted);font-family:var(--font-mono)">'+n.date+'</span><span style="font-size:10px;font-weight:600;color:var(--text)">'+(n.company||'')+'</span>'+(n.title?'<span style="font-size:9px;padding:1px 6px;border-radius:8px;background:var(--green)22;color:var(--green)">'+n.title+'</span>':'')+'</div><div style="font-size:11px;color:var(--muted);line-height:1.4">'+(n.memo||'').slice(0,200)+'</div></div>';});}html+='</div>';container.innerHTML=html;}
 
 function renderTeamLeave(container){if(!container)return;var RN=['Robert Schaffer','Andrew Mobilia','Alexander Poll','Stivi Maticevski','Melissa Goodridge'];var RC=['#4472C4','#70AD47','#ED7D31','#9E480E','#C00000'];var today=new Date();var todayStr=dateStr(today);var next30=new Date(today);next30.setDate(today.getDate()+30);var onToday=[];for(var ri=0;ri<5;ri++){if(isRepOnLeave(ri,todayStr))onToday.push(ri);}var upcoming=[];for(var ri=0;ri<5;ri++){var lv=getRepLeave(ri).filter(function(d){return d>todayStr&&d<=dateStr(next30);});if(lv.length)upcoming.push({ri:ri,leaves:lv.sort()});}var upHols=VIC_HOLIDAYS_2026.filter(function(d){return d>todayStr&&d<=dateStr(next30);});var html='<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:16px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:12px">🏖️ Leave & Holidays</div>';if(onToday.length){html+='<div style="margin-bottom:10px"><span style="font-size:11px;font-weight:600;color:#e05252">On Leave Today: </span>';onToday.forEach(function(ri){html+='<span style="display:inline-block;padding:2px 10px;border-radius:10px;background:'+RC[ri]+'22;color:'+RC[ri]+';font-size:10px;font-weight:600;margin-right:6px">'+RN[ri]+'</span>';});html+='</div>';}else{html+='<div style="font-size:11px;color:var(--muted);margin-bottom:10px">✅ No one on leave today</div>';}if(upHols.length){html+='<div style="margin-bottom:10px"><span style="font-size:11px;font-weight:600;color:var(--amber)">🇦🇺 Upcoming: </span>';upHols.forEach(function(d){var dt=new Date(d+'T00:00:00');html+='<span style="font-size:10px;color:var(--text);font-family:var(--font-mono);margin-right:12px">'+dt.toLocaleDateString('en-AU',{day:'2-digit',month:'short'})+' '+VIC_HOLIDAY_NAMES[d]+'</span>';});html+='</div>';}if(upcoming.length){html+='<div style="display:flex;flex-wrap:wrap;gap:8px">';upcoming.forEach(function(u){var rc=RC[u.ri];var fd=new Date(u.leaves[0]+'T00:00:00');var ld=new Date(u.leaves[u.leaves.length-1]+'T00:00:00');html+='<div style="background:'+rc+'11;border:1px solid '+rc+'44;border-radius:6px;padding:6px 10px"><div style="font-size:10px;font-weight:700;color:'+rc+'">'+RN[u.ri]+'</div><div style="font-size:9px;color:var(--muted);font-family:var(--font-mono)">'+fd.toLocaleDateString('en-AU',{day:'2-digit',month:'short'})+(u.leaves.length>1?' – '+ld.toLocaleDateString('en-AU',{day:'2-digit',month:'short'}):'')+'</div><div style="font-size:9px;color:var(--muted)">'+u.leaves.length+' day(s)</div></div>';});html+='</div>';}html+='</div>';container.innerHTML=html;}
 
@@ -2396,132 +2431,105 @@ function renderHeatmap(ct){var accts=getFilteredAccounts();var MO=['Jan','Feb','
 function renderConversions(ct) {
   var RN=['Robert Schaffer','Andrew Mobilia','Alexander Poll','Stivi Maticevski','Melissa Goodridge'];
   var RC=['#4472C4','#70AD47','#ED7D31','#9E480E','#C00000'];
-  var snap=state.acctStatusSnap||{};
-  var snapKeys=Object.keys(snap);
-  var hasSnap=snapKeys.length>0;
-  var snapDate=hasSnap?new Date(snap[snapKeys[0]].ts).toLocaleDateString('en-AU'):null;
+  var MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var now = new Date();
+  var curMo = now.getMonth();
 
-  // Classify accounts
-  var dormantAtStart=[],activeAtStart=[];
-  var nowActive=[],nowDormant=[];
-  if(hasSnap){
-    ACCOUNTS_DATA.forEach(function(a){
-      var key=a.n.replace(/[.#$\[\]]/g,'_');
-      var prev=snap[key];
-      if(!prev)return;
-      var wasDormant=prev.dormant;
-      var isDormant=isAcctDormant(a);
-      if(wasDormant){
-        dormantAtStart.push(a);
-        if(!isDormant)nowActive.push(a);
-      }else{
-        activeAtStart.push(a);
-        if(isDormant)nowDormant.push(a);
+  // Build dormancy info per account from 2025 data (monthly revenue array)
+  var dormAccts = ACCOUNTS_DATA.filter(function(a){ return a.ri >= 0; })
+    .map(function(a) {
+      // Find first and last active month from monthly data
+      var months = a.m || [];
+      var activeMonths = [];
+      months.forEach(function(v, i) { if (v > 0) activeMonths.push(i); });
+      var firstActive = activeMonths.length ? activeMonths[0] : -1;
+      var lastActive = a.la !== undefined ? a.la : (activeMonths.length ? activeMonths[activeMonths.length-1] : -1);
+      var isDormant = isAcctDormant(a);
+      // Gap months (months with no revenue between first and last active)
+      var gapMonths = [];
+      if (activeMonths.length >= 2) {
+        for (var m = activeMonths[0]; m <= lastActive; m++) {
+          if ((months[m] || 0) === 0) gapMonths.push(m);
+        }
       }
+      return Object.assign({}, a, {
+        isDormant: isDormant,
+        firstActive: firstActive,
+        lastActive: lastActive,
+        gapMonths: gapMonths,
+        activeCount: activeMonths.length
+      });
     });
-  }
 
-  var totalDormStart=dormantAtStart.length;
-  var totalActStart=activeAtStart.length;
-  var converted=nowActive.length;
-  var lost=nowDormant.length;
-  var convRate=totalDormStart>0?converted/totalDormStart:0;
-  var attrRate=totalActStart>0?lost/totalActStart:0;
-  var retentionRate=totalActStart>0?(totalActStart-lost)/totalActStart:0;
+  // Filters
+  var filterState = window._convFilter || {rep:'all', status:'all', search:''};
+  var filtered = dormAccts.filter(function(a) {
+    if (filterState.rep !== 'all' && a.ri !== parseInt(filterState.rep)) return false;
+    if (filterState.status === 'dormant' && !a.isDormant) return false;
+    if (filterState.status === 'active' && a.isDormant) return false;
+    if (filterState.search && !(a.n + ' ' + (a.p||'')).toLowerCase().includes(filterState.search.toLowerCase())) return false;
+    return true;
+  }).sort(function(a,b) { return (b.s||0) - (a.s||0); });
 
-  var html='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:8px">'
-    +'<div><div style="font-size:14px;font-weight:700;color:var(--text)">🔄 Account Conversion & Retention Tracker</div>'
-    +'<div style="font-size:11px;color:var(--muted);margin-top:3px">'+(hasSnap?'Baseline: '+snapDate+' · '+snapKeys.length+' accounts tracked':'No baseline set — click to record current state')+'</div></div>'
-    +'<button onclick="takeStatusSnapshot()" class="admin-only" style="background:var(--green);color:#fff;border:none;border-radius:6px;padding:7px 14px;font-size:11px;font-weight:600;cursor:pointer">📸 Set Baseline</button>'
-    +'</div>';
+  var dormCount = dormAccts.filter(function(a){ return a.isDormant; }).length;
+  var activeCount = dormAccts.filter(function(a){ return !a.isDormant; }).length;
 
-  if(!hasSnap){
-    html+='<div style="padding:48px;text-align:center;background:var(--surface);border:1px solid var(--border);border-radius:10px">'
-      +'<div style="font-size:32px;margin-bottom:12px">📸</div>'
-      +'<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px">Set a baseline snapshot to start tracking</div>'
-      +'<div style="font-size:11px;color:var(--muted);max-width:400px;margin:0 auto">Click "Set Baseline" to record which accounts are dormant vs active today. Return here anytime to track how many dormant accounts have been re-activated, and how many active accounts have gone dormant.</div>'
-      +'</div>';
-    ct.innerHTML=html;
-    ct.querySelectorAll('.admin-only').forEach(function(el){el.style.display='inline-flex';});
-    return;
-  }
+  var html = '<div>';
 
-  // ── KPI Cards ──
-  html+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px">';
-  // Dormant conversion
-  html+='<div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid #27ae60;border-radius:8px;padding:16px">'
-    +'<div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:8px">Dormant → Active</div>'
-    +'<div style="font-size:28px;font-weight:800;color:#27ae60">'+converted+' <span style="font-size:14px">/ '+totalDormStart+'</span></div>'
-    +'<div style="font-size:11px;color:var(--muted);margin-top:4px">Conversion Rate</div>'
-    +'<div style="font-size:20px;font-weight:700;color:#27ae60;margin-top:2px">'+(convRate*100).toFixed(1)+'%</div>'
-    +'<div style="margin-top:10px;height:6px;background:var(--border);border-radius:3px"><div style="height:6px;border-radius:3px;background:#27ae60;width:'+Math.min(convRate*100,100)+'%"></div></div>'
-    +'</div>';
-  // Retention
-  html+='<div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--green);border-radius:8px;padding:16px">'
-    +'<div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:8px">Active Account Retention</div>'
-    +'<div style="font-size:28px;font-weight:800;color:var(--green)">'+(totalActStart-lost)+' <span style="font-size:14px">/ '+totalActStart+'</span></div>'
-    +'<div style="font-size:11px;color:var(--muted);margin-top:4px">Retention Rate</div>'
-    +'<div style="font-size:20px;font-weight:700;color:var(--green);margin-top:2px">'+(retentionRate*100).toFixed(1)+'%</div>'
-    +'<div style="margin-top:10px;height:6px;background:var(--border);border-radius:3px"><div style="height:6px;border-radius:3px;background:var(--green);width:'+Math.min(retentionRate*100,100)+'%"></div></div>'
-    +'</div>';
-  // Attrition
-  html+='<div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid #e05252;border-radius:8px;padding:16px">'
-    +'<div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:8px">Active → Dormant</div>'
-    +'<div style="font-size:28px;font-weight:800;color:#e05252">'+lost+' <span style="font-size:14px">/ '+totalActStart+'</span></div>'
-    +'<div style="font-size:11px;color:var(--muted);margin-top:4px">Attrition Rate</div>'
-    +'<div style="font-size:20px;font-weight:700;color:#e05252;margin-top:2px">'+(attrRate*100).toFixed(1)+'%</div>'
-    +'<div style="margin-top:10px;height:6px;background:var(--border);border-radius:3px"><div style="height:6px;border-radius:3px;background:#e05252;width:'+Math.min(attrRate*100,100)+'%"></div></div>'
-    +'</div>';
-  html+='</div>';
+  // Summary KPIs
+  html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">'
+    + '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:4px">Total Accounts</div><div style="font-size:26px;font-weight:800;color:var(--text)">' + dormAccts.length + '</div></div>'
+    + '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:4px">Active</div><div style="font-size:26px;font-weight:800;color:var(--green)">' + activeCount + '</div></div>'
+    + '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:4px">Dormant</div><div style="font-size:26px;font-weight:800;color:#e05252">' + dormCount + '</div><div style="font-size:10px;color:var(--muted);margin-top:2px">' + (dormCount/(dormAccts.length||1)*100).toFixed(1) + '% of total</div></div>'
+    + '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:4px">Retention Rate</div><div style="font-size:26px;font-weight:800;color:var(--green)">' + (activeCount/(dormAccts.length||1)*100).toFixed(1) + '%</div></div>'
+    + '</div>';
 
-  // ── Dormant accounts list with conversion status ──
-  html+='<div style="margin-bottom:24px">'
-    +'<div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px">📋 Dormant Accounts at Baseline ('+totalDormStart+')</div>'
-    +'<div style="font-size:11px;color:var(--muted);margin-bottom:8px">Track which dormant accounts have been re-activated since baseline was set.</div>';
-  if(dormantAtStart.length){
-    html+='<div class="loc-table-wrap"><table class="loc-table"><thead><tr>'
-      +'<th>Account</th><th>Parent</th><th>Rep</th><th style="text-align:right">2025 Rev</th><th>Status</th>'
-      +'</tr></thead><tbody>';
-    dormantAtStart.sort(function(a,b){return(b.s||0)-(a.s||0);}).forEach(function(a){
-      var converted2=!isAcctDormant(a);
-      var badge=converted2
-        ?'<span style="background:#27ae6022;color:#27ae60;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:600">✅ Re-activated</span>'
-        :'<span style="background:#e0525222;color:#e05252;padding:2px 8px;border-radius:8px;font-size:10px">Still Dormant</span>';
-      html+='<tr><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+a.n+'">'+a.n+'</td>'
-        +'<td style="font-size:10px;color:var(--muted)">'+(a.p||'—')+'</td>'
-        +'<td style="color:'+(RC[a.ri]||'#888')+';font-size:10px">'+(RN[a.ri]||'—')+'</td>'
-        +'<td style="font-family:var(--font-mono);text-align:right">'+(a.s?'$'+Math.round(a.s).toLocaleString('en-AU'):'—')+'</td>'
-        +'<td>'+badge+'</td></tr>';
-    });
-    html+='</tbody></table></div>';
-  }
-  html+='</div>';
+  // Filters
+  html += '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px">'
+    + '<select onchange="window._convFilter=window._convFilter||{};window._convFilter.rep=this.value;renderConversions(document.getElementById(\'acct-tab-content\'))" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:11px;border-radius:5px;padding:5px 8px">'
+    + '<option value="all"' + (filterState.rep==='all'?' selected':'') + '>All Reps</option>'
+    + RN.map(function(r,i){ return '<option value="'+i+'"'+(filterState.rep==i?' selected':'')+'>'+r+'</option>'; }).join('')
+    + '</select>'
+    + '<select onchange="window._convFilter=window._convFilter||{};window._convFilter.status=this.value;renderConversions(document.getElementById(\'acct-tab-content\'))" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:11px;border-radius:5px;padding:5px 8px">'
+    + '<option value="all"' + (filterState.status==='all'?' selected':'') + '>All Status</option>'
+    + '<option value="active"' + (filterState.status==='active'?' selected':'') + '>Active</option>'
+    + '<option value="dormant"' + (filterState.status==='dormant'?' selected':'') + '>Dormant</option>'
+    + '</select>'
+    + '<input type="text" placeholder="Search accounts..." onchange="window._convFilter=window._convFilter||{};window._convFilter.search=this.value;renderConversions(document.getElementById(\'acct-tab-content\'))" value="' + (filterState.search||'') + '" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 10px;font-family:var(--font-mono);font-size:11px;width:200px">'
+    + '<span style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">' + filtered.length + ' accounts</span>'
+    + '</div>';
 
-  // ── Newly dormant accounts ──
-  html+='<div>'
-    +'<div style="font-size:12px;font-weight:700;color:#e05252;margin-bottom:10px">⚠️ Gone Dormant Since Baseline ('+lost+')</div>';
-  if(lost){
-    html+='<div class="loc-table-wrap"><table class="loc-table"><thead><tr>'
-      +'<th>Account</th><th>Parent</th><th>Rep</th><th style="text-align:right">2025 Rev</th>'
-      +'</tr></thead><tbody>';
-    nowDormant.sort(function(a,b){return(b.s||0)-(a.s||0);}).forEach(function(a){
-      html+='<tr><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+a.n+'">'+a.n+'</td>'
-        +'<td style="font-size:10px;color:var(--muted)">'+(a.p||'—')+'</td>'
-        +'<td style="color:'+(RC[a.ri]||'#888')+';font-size:10px">'+(RN[a.ri]||'—')+'</td>'
-        +'<td style="font-family:var(--font-mono);text-align:right">'+(a.s?'$'+Math.round(a.s).toLocaleString('en-AU'):'—')+'</td></tr>';
-    });
-    html+='</tbody></table></div>';
-  } else {
-    html+='<div style="padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:11px">No active accounts have gone dormant since baseline. 🎉</div>';
-  }
-  html+='</div>';
+  // Account table
+  html += '<div class="loc-table-wrap"><table class="loc-table"><thead><tr>'
+    + '<th>Account</th><th>Rep</th><th style="text-align:right">2025 Rev</th>'
+    + '<th>Status</th><th>Last Active</th><th>First Active</th><th>Active Months</th><th>Gap Months (no orders)</th>'
+    + '</tr></thead><tbody>';
 
-  ct.innerHTML=html;
-  ct.querySelectorAll('.admin-only').forEach(function(el){el.style.display='inline-flex';});
+  filtered.forEach(function(a) {
+    var rc = RC[a.ri] || '#888';
+    var rn = RN[a.ri] || '—';
+    var statusBadge = a.isDormant
+      ? '<span style="background:#e0525222;color:#e05252;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:600">Dormant</span>'
+      : '<span style="background:#27ae6022;color:#27ae60;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:600">Active</span>';
+    var lastMo = a.lastActive >= 0 ? MO[a.lastActive] + ' 2025' : '—';
+    var firstMo = a.firstActive >= 0 ? MO[a.firstActive] + ' 2025' : '—';
+    var gaps = a.gapMonths.length ? a.gapMonths.map(function(m){ return MO[m]; }).join(', ') : '—';
+    html += '<tr>'
+      + '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + a.n + '">' + a.n + '</td>'
+      + '<td style="color:' + rc + ';font-size:10px;white-space:nowrap">' + rn + '</td>'
+      + '<td style="font-family:var(--font-mono);text-align:right">' + (a.s ? '$' + Math.round(a.s).toLocaleString('en-AU') : '—') + '</td>'
+      + '<td>' + statusBadge + '</td>'
+      + '<td style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">' + lastMo + '</td>'
+      + '<td style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">' + firstMo + '</td>'
+      + '<td style="font-family:var(--font-mono);font-size:10px;text-align:center">' + a.activeCount + '/12</td>'
+      + '<td style="font-size:10px;color:var(--amber);max-width:180px">' + gaps + '</td>'
+      + '</tr>';
+  });
+
+  html += '</tbody></table></div></div>';
+  ct.innerHTML = html;
 }
 
-// ── Accounts tab helpers ──────────────────────────────────────
-function buildAcctTabs(){var tabs=[['heatmap','■ Heatmap'],['conversions','🔄 Conversions']];return'<div class="acct-tabs">'+tabs.map(function(t){return'<button class="acct-tab-btn'+(_acctState.tab===t[0]?' active':'')+'\" onclick="_acctState.tab=\''+t[0]+'\';renderAccountsTab()">'+t[1]+'</button>';}).join('')+'</div>';}
 function renderAccountsTab(){var ct=document.getElementById('acct-tab-content');if(!ct)return;if(_acctState.tab==='conversions')renderConversions(ct);else renderHeatmap(ct);}
 function buildDormantAgeSelect(){if(_acctState.filter!=='dormant')return'';return'<select onchange="_acctState.dormantAge=this.value;_acctState.page=0;buildAccountsView()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:11px;border-radius:6px;padding:5px 8px"><option value="all"'+((_acctState.dormantAge==='all')?' selected':'')+'>All Dormant</option><option value="3"'+((_acctState.dormantAge==='3')?' selected':'')+'>3+ months</option><option value="6"'+((_acctState.dormantAge==='6')?' selected':'')+'>6+ months</option><option value="9"'+((_acctState.dormantAge==='9')?' selected':'')+'>9+ months</option><option value="12"'+((_acctState.dormantAge==='12')?' selected':'')+'>12+ months/Never</option></select>';}
 function getFilteredAccounts(){var accts=ACCOUNTS_DATA.filter(function(a){if(_acctState.rep!=='all'){if(_acctState.rep==='unassigned')return a.ri===-1;var RN=['Robert Schaffer','Andrew Mobilia','Alexander Poll','Stivi Maticevski','Melissa Goodridge'];if(RN.indexOf(_acctState.rep)!==-1&&a.ri!==RN.indexOf(_acctState.rep))return false;}if(_acctState.company!=='all'&&(a.p||'')!==_acctState.company)return false;if(_acctState.filter==='dormant'){if(!isAcctDormant(a))return false;if(_acctState.dormantAge&&_acctState.dormantAge!=='all'){var age=parseInt(_acctState.dormantAge);if(_acctState.dormantAge==='12'){if(a.la>=0&&a.la>=(12-age))return false;}else{var mo=new Date().getMonth();if(a.la>=0&&(mo-a.la+12)%12<age)return false;}}}if(_acctState.filter==='active'&&!isAcctActive(a))return false;if(_acctState.search&&!(a.n+' '+(a.p||'')).toLowerCase().includes(_acctState.search.toLowerCase()))return false;return true;});return accts;}
