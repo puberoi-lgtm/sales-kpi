@@ -1277,12 +1277,35 @@ function mkChart(id, config) {
 }
 
 const CHART_DEFAULTS = {
-  plugins: { legend: { labels: { color: '#888', font: { family: 'Plus Jakarta Sans', size: 10 }, boxWidth: 10 } } },
+  plugins: { legend: { labels: { color: '#cccccc', font: { family: 'Plus Jakarta Sans', size: 11 }, boxWidth: 12, padding: 10 } } },
   scales: {
-    x: { ticks: { color: '#666', font: { family: 'Plus Jakarta Sans', size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false } },
-    y: { ticks: { color: '#666', font: { family: 'Plus Jakarta Sans', size: 10 }, callback: v => '$' + (v/1000).toFixed(0) + 'k' }, grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false } }
+    x: { ticks: { color: '#aaaaaa', font: { family: 'Plus Jakarta Sans', size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false } },
+    y: { ticks: { color: '#aaaaaa', font: { family: 'Plus Jakarta Sans', size: 10 }, callback: v => '$' + (v/1000).toFixed(0) + 'k' }, grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false } }
   }
 };
+
+// Call after theme switch to update chart legend colors
+function updateChartColors() {
+  var isLight = document.body.classList.contains('light');
+  var textCol = isLight ? '#333333' : '#cccccc';
+  var gridCol = isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.04)';
+  Object.values(charts).forEach(function(chart) {
+    if (!chart) return;
+    try {
+      if (chart.options.plugins && chart.options.plugins.legend)
+        chart.options.plugins.legend.labels.color = textCol;
+      if (chart.options.scales) {
+        ['x','y'].forEach(function(ax) {
+          if (chart.options.scales[ax]) {
+            if (chart.options.scales[ax].ticks) chart.options.scales[ax].ticks.color = textCol;
+            if (chart.options.scales[ax].grid)  chart.options.scales[ax].grid.color  = gridCol;
+          }
+        });
+      }
+      chart.update('none');
+    } catch(e) {}
+  });
+}
 
 // ══════════════════════════════════════════════════════════════
 // BUILD REP VIEW
@@ -2143,14 +2166,33 @@ function refreshTeamView() {
       plugins:{...CHART_DEFAULTS.plugins,legend:{display:false}}}
   });
 
-  // Class mix pie
-  const clsNames=['Server Racks','Data Products','Cabling & Adapters','Bulk Cables','Growth (Others)'];
-  const clsTotals=clsNames.map((_,ci)=>REPS_DATA.reduce((s,_,ri)=>s+REPS_DATA[ri].monthly.reduce((s2,_,mi)=>s2+(REPS_DATA[ri].classes[ci]?.monthly[mi]?.prev||0),0),0));
+  // Class mix pie — Established vs Growth only
+  const estTotal2025 = REPS_DATA.reduce((s,_,ri) =>
+    s + [0,1,2,3].reduce((s2,ci) =>
+      s2 + REPS_DATA[ri].monthly.reduce((s3,_,mi) => s3 + (REPS_DATA[ri].classes[ci]?.monthly[mi]?.prev||0), 0)
+    , 0)
+  , 0);
+  const grwTotal2025 = REPS_DATA.reduce((s,_,ri) =>
+    s + REPS_DATA[ri].monthly.reduce((s2,_,mi) => s2 + (REPS_DATA[ri].classes[4]?.monthly[mi]?.prev||0), 0)
+  , 0);
   mkChart('ch-team-class', {
     type:'doughnut',
-    data:{labels:clsNames,datasets:[{data:clsTotals.map(Math.round),backgroundColor:clsColors,borderWidth:0}]},
-    options:{responsive:true,maintainAspectRatio:false,cutout:'55%',
-      plugins:{legend:{display:true,position:'right',labels:{color:'var(--text)',font:{size:11},boxWidth:14,padding:8}},tooltip:{callbacks:{label:function(ctx){return ctx.label+': $'+Math.round(ctx.raw).toLocaleString('en-AU');}}}},
+    data:{
+      labels:['Established (Server Racks, Data, Cabling, Bulk Cables)','Growth (Others)'],
+      datasets:[{
+        data:[Math.round(estTotal2025), Math.round(grwTotal2025)],
+        backgroundColor:['#4472C4','#9E480E'],
+        borderWidth:0
+      }]
+    },
+    options:{responsive:true,maintainAspectRatio:false,cutout:'60%',
+      plugins:{
+        legend:{display:true,position:'right',labels:{color:'#cccccc',font:{size:11},boxWidth:14,padding:12}},
+        tooltip:{callbacks:{label:function(ctx){
+          var pct=(ctx.raw/(estTotal2025+grwTotal2025)*100).toFixed(1);
+          return ctx.label+': $'+Math.round(ctx.raw).toLocaleString('en-AU')+' ('+pct+'%)';
+        }}}
+      },
       scales:{x:{display:false},y:{display:false}}}
   });
 
@@ -3049,6 +3091,7 @@ function toggleTheme() {
   localStorage.setItem('se-theme', isLight ? 'light' : 'dark');
   const btn = document.getElementById('theme-toggle-btn');
   if (btn) btn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+  setTimeout(updateChartColors, 50);
 }
 function applyStoredTheme() {
   const stored = localStorage.getItem('se-theme') || 'dark';
