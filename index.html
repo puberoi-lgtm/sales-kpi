@@ -1326,6 +1326,44 @@ function buildRepView(repIdx) {
 
 
 
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+    <div class="section-hdr" style="margin-bottom:0">🤝 Meeting KRA — 7 Meetings per Working Day</div>
+    <select id="rep-mtg-month-${repIdx}" onchange="repMtgFilter(${repIdx},this.value)" style="padding:4px 10px;border-radius:12px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-size:10px;font-family:var(--font-mono);cursor:pointer">
+      <option value="week">This Week</option>
+      <option value="month" selected>This Month</option>
+      <option value="2026-01">Jan 2026</option>
+      <option value="2026-02">Feb 2026</option>
+      <option value="2026-03">Mar 2026</option>
+      <option value="2026-04">Apr 2026</option>
+      <option value="2026-05">May 2026</option>
+      <option value="2026-06">Jun 2026</option>
+      <option value="2026-07">Jul 2026</option>
+      <option value="2026-08">Aug 2026</option>
+      <option value="2026-09">Sep 2026</option>
+      <option value="2026-10">Oct 2026</option>
+      <option value="2026-11">Nov 2026</option>
+      <option value="2026-12">Dec 2026</option>
+    </select>
+  </div>
+  <div id="meeting-kra-${repIdx}" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px">
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px">📅 This Week</div>
+      <div id="mtg-week-${repIdx}" style="font-size:22px;font-weight:800">—</div>
+      <div id="mtg-week-sub-${repIdx}" style="font-size:10px;color:var(--muted);margin-top:4px">meetings</div>
+      <div id="mtg-week-bar-${repIdx}" style="margin-top:8px;height:4px;background:var(--border);border-radius:2px"><div style="height:4px;border-radius:2px;background:var(--muted);width:0%"></div></div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px">
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px">📆 This Month</div>
+      <div id="mtg-month-${repIdx}" style="font-size:22px;font-weight:800">—</div>
+      <div id="mtg-month-sub-${repIdx}" style="font-size:10px;color:var(--muted);margin-top:4px">meetings</div>
+      <div id="mtg-month-bar-${repIdx}" style="margin-top:8px;height:4px;background:var(--border);border-radius:2px"><div style="height:4px;border-radius:2px;background:var(--muted);width:0%"></div></div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px">
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px">📊 YTD Meetings</div>
+      <div id="mtg-ytd-${repIdx}" style="font-size:22px;font-weight:800">—</div>
+      <div id="mtg-ytd-sub-${repIdx}" style="font-size:10px;color:var(--muted);margin-top:4px">total notes uploaded</div>
+    </div>
+  </div>
   <div class="section-hdr admin-only">🔮 End of Year Prediction — based on current run rate</div>
   <div class="eoy-card admin-only" id="eoy-card-${repIdx}">
     <div class="eoy-item"><div class="eoy-label">EOY Projection</div><div class="eoy-val" style="color:var(--muted);font-size:14px">Enter actuals to see projection</div></div>
@@ -1393,44 +1431,6 @@ function buildRepView(repIdx) {
     </div>
   </div>
 
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
-    <div class="section-hdr" style="margin-bottom:0">🤝 Meeting KRA — 7 Meetings per Working Day</div>
-    <select id="rep-mtg-month-${repIdx}" onchange="repMtgFilter(${repIdx},this.value)" style="padding:4px 10px;border-radius:12px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-size:10px;font-family:var(--font-mono);cursor:pointer">
-      <option value="week">This Week</option>
-      <option value="month" selected>This Month</option>
-      <option value="2026-01">Jan 2026</option>
-      <option value="2026-02">Feb 2026</option>
-      <option value="2026-03">Mar 2026</option>
-      <option value="2026-04">Apr 2026</option>
-      <option value="2026-05">May 2026</option>
-      <option value="2026-06">Jun 2026</option>
-      <option value="2026-07">Jul 2026</option>
-      <option value="2026-08">Aug 2026</option>
-      <option value="2026-09">Sep 2026</option>
-      <option value="2026-10">Oct 2026</option>
-      <option value="2026-11">Nov 2026</option>
-      <option value="2026-12">Dec 2026</option>
-    </select>
-  </div>
-  <div id="meeting-kra-${repIdx}" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px">
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px">
-      <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px">📅 This Week</div>
-      <div id="mtg-week-${repIdx}" style="font-size:22px;font-weight:800">—</div>
-      <div id="mtg-week-sub-${repIdx}" style="font-size:10px;color:var(--muted);margin-top:4px">meetings</div>
-      <div id="mtg-week-bar-${repIdx}" style="margin-top:8px;height:4px;background:var(--border);border-radius:2px"><div style="height:4px;border-radius:2px;background:var(--muted);width:0%"></div></div>
-    </div>
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px">
-      <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px">📆 This Month</div>
-      <div id="mtg-month-${repIdx}" style="font-size:22px;font-weight:800">—</div>
-      <div id="mtg-month-sub-${repIdx}" style="font-size:10px;color:var(--muted);margin-top:4px">meetings</div>
-      <div id="mtg-month-bar-${repIdx}" style="margin-top:8px;height:4px;background:var(--border);border-radius:2px"><div style="height:4px;border-radius:2px;background:var(--muted);width:0%"></div></div>
-    </div>
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px">
-      <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px">📊 YTD Meetings</div>
-      <div id="mtg-ytd-${repIdx}" style="font-size:22px;font-weight:800">—</div>
-      <div id="mtg-ytd-sub-${repIdx}" style="font-size:10px;color:var(--muted);margin-top:4px">total notes uploaded</div>
-    </div>
-  </div>
 
   <div class="section-hdr">📋 Monthly Tracker — Auto-summed from class entries <span style="font-size:9px;font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0">(excludes freight, rebates &amp; credit notes)</span></div>
   ${repIdx === 4 ? `<div id="melissa-2026-ytd-banner" style="display:none;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.25);border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:11px;color:var(--muted)">
