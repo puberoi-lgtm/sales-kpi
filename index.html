@@ -1851,7 +1851,6 @@ function buildTeamView() {
       <span>— 2026 Target</span><span>- - 2025 Actual</span><span style="color:#ffe566">▬ 2026 Invoiced</span>
     </div>
   </div>
-  <div id="team-assoc-summary" style="margin-bottom:18px"></div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px">
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px">
       <div class="section-hdr" style="margin-bottom:10px">Target vs Achievement by Associate</div>
@@ -2062,22 +2061,6 @@ function refreshTeamView() {
       + '</div>';
   }
 
-  // YTD/MTD boxes
-  const teamYtdEl = document.getElementById('team-assoc-summary');
-  if (teamYtdEl) {
-    teamYtdEl.innerHTML = '<div class="team-ytd-row" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px">'
-      + '<div style="background:var(--surface2);border-radius:8px;padding:14px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:10px;font-weight:600">📅 Year to Date</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'
-      + '<div><div style="font-size:10px;color:var(--muted)">YTD Target</div><div style="font-size:16px;font-weight:700;font-family:var(--font-head);color:var(--green)">' + fmtK(teamYtdTgt) + '</div></div>'
-      + '<div><div style="font-size:10px;color:var(--muted)">YTD Invoiced</div><div style="font-size:16px;font-weight:700;font-family:var(--font-head);color:' + ytdColor + '">' + fmtK(teamYtdAct) + '</div></div>'
-      + '<div><div style="font-size:10px;color:var(--muted)">Achievement</div><div style="font-size:16px;font-weight:700;font-family:var(--font-head);color:' + ytdColor + '">' + fmtPct(ytdPct) + '</div></div>'
-      + '</div><div style="margin-top:10px;height:4px;background:var(--border);border-radius:2px"><div style="height:4px;border-radius:2px;background:' + ytdColor + ';width:' + Math.min(ytdPct*100,100) + '%;transition:width .4s"></div></div></div>'
-      + '<div style="background:var(--surface2);border-radius:8px;padding:14px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:10px;font-weight:600">📅 Month to Date — ' + months[currentMi] + '</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'
-      + '<div><div style="font-size:10px;color:var(--muted)">MTD Target</div><div style="font-size:16px;font-weight:700;font-family:var(--font-head);color:var(--green)">' + fmtK(teamMtdTgt) + '</div></div>'
-      + '<div><div style="font-size:10px;color:var(--muted)">MTD Actual</div><div style="font-size:16px;font-weight:700;font-family:var(--font-head);color:' + mtdColor + '">' + fmtK(teamMtdAct) + '</div></div>'
-      + '<div><div style="font-size:10px;color:var(--muted)">Achievement</div><div style="font-size:16px;font-weight:700;font-family:var(--font-head);color:' + mtdColor + '">' + fmtPct(mtdPct) + '</div></div>'
-      + '</div><div style="margin-top:10px;height:4px;background:var(--border);border-radius:2px"><div style="height:4px;border-radius:2px;background:' + mtdColor + ';width:' + Math.min(mtdPct*100,100) + '%;transition:width .4s"></div></div></div>'
-      + '</div>';
-  }
 
   // Monthly table
   const tbody = document.getElementById('team-monthly-body');
@@ -2225,7 +2208,57 @@ function refreshTeamView() {
   renderTeamNotes(teamNotesEl);
 }
 
-function filterTeamChart(mo) {}
+function filterTeamChart(mo) {
+  // Update button styles
+  const allBtn = document.getElementById('chart-all');
+  if (allBtn) {
+    allBtn.style.background = mo === 'all' ? 'var(--green)' : 'var(--surface2)';
+    allBtn.style.color = mo === 'all' ? '#fff' : 'var(--muted)';
+    allBtn.style.border = mo === 'all' ? 'none' : '1px solid var(--border)';
+  }
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  months.forEach(function(m, mi) {
+    var btn = document.getElementById('chart-mo-' + mi);
+    if (!btn) return;
+    var active = mo === m;
+    btn.style.background = active ? 'var(--green)' : 'var(--surface2)';
+    btn.style.color = active ? '#fff' : 'var(--muted)';
+    btn.style.border = active ? 'none' : '1px solid var(--border)';
+  });
+
+  var chart = charts['ch-team-main'];
+  if (!chart) return;
+
+  var labels = months;
+  var allTargets = months.map(function(_, mi) {
+    return Math.round(REPS_DATA.reduce(function(s,_,ri){ return s + getTarget(ri, mi); }, 0));
+  });
+  var allActuals = months.map(function(_, mi) {
+    var a = REPS_DATA.reduce(function(s,_,ri){ return s + getActual(ri, mi); }, 0);
+    return a > 0 ? Math.round(a) : null;
+  });
+  var allPrev = months.map(function(_, mi) {
+    return Math.round(REPS_DATA.reduce(function(s,_,ri){ return s + getRepPrev(ri, mi); }, 0));
+  });
+
+  if (mo === 'all') {
+    chart.data.labels = labels;
+    chart.data.datasets[0].data = allTargets;
+    chart.data.datasets[1].data = allPrev;
+    chart.data.datasets[2].data = allActuals;
+  } else {
+    var mi = months.indexOf(mo);
+    if (mi === -1) return;
+    // Show single month - bar style with all reps
+    var RN = REPS_DATA.map(function(r){ return r.shortName || r.name.split(' ')[0]; });
+    chart.data.labels = RN;
+    chart.data.datasets[0].data = REPS_DATA.map(function(_,ri){ return Math.round(getTarget(ri, mi)); });
+    chart.data.datasets[1].data = REPS_DATA.map(function(_,ri){ return Math.round(getRepPrev(ri, mi)); });
+    var acts = REPS_DATA.map(function(_,ri){ var a=getActual(ri,mi); return a>0?Math.round(a):null; });
+    chart.data.datasets[2].data = acts;
+  }
+  chart.update();
+}
 function filterClassChart(mo) {}
 
 // ══════════════════════════════════════════════════════════════
