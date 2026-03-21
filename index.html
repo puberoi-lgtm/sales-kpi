@@ -893,9 +893,13 @@ function enrichAcctsFrom2026() {
       }
     }
   });
-  // Mark accounts: active in Oct-Dec 2025 + rep has 2026 revenue = has2026
+  // Mark accounts as having 2026 activity only if:
+  // - They ordered in Dec 2025 (la=11) meaning they were active right at year end
+  // - AND their rep has 2026 revenue
+  // This is a proxy - accounts with la=9 or la=10 (Oct/Nov last order)
+  // cannot be confirmed as 2026 active without per-account 2026 invoice data
   ACCOUNTS_DATA.forEach(function(a) {
-    if (a.ri >= 0 && riHas2026[a.ri] && a.la >= 9) a.has2026 = true;
+    if (a.ri >= 0 && riHas2026[a.ri] && a.la === 11) a.has2026 = true;
   });
 }
 
