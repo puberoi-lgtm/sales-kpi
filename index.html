@@ -1393,7 +1393,25 @@ function buildRepView(repIdx) {
     </div>
   </div>
 
-  <div class="section-hdr">🤝 Meeting KRA — 7 Meetings per Working Day</div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+    <div class="section-hdr" style="margin-bottom:0">🤝 Meeting KRA — 7 Meetings per Working Day</div>
+    <select id="rep-mtg-month-${repIdx}" onchange="repMtgFilter(${repIdx},this.value)" style="padding:4px 10px;border-radius:12px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-size:10px;font-family:var(--font-mono);cursor:pointer">
+      <option value="week">This Week</option>
+      <option value="month" selected>This Month</option>
+      <option value="2026-01">Jan 2026</option>
+      <option value="2026-02">Feb 2026</option>
+      <option value="2026-03">Mar 2026</option>
+      <option value="2026-04">Apr 2026</option>
+      <option value="2026-05">May 2026</option>
+      <option value="2026-06">Jun 2026</option>
+      <option value="2026-07">Jul 2026</option>
+      <option value="2026-08">Aug 2026</option>
+      <option value="2026-09">Sep 2026</option>
+      <option value="2026-10">Oct 2026</option>
+      <option value="2026-11">Nov 2026</option>
+      <option value="2026-12">Dec 2026</option>
+    </select>
+  </div>
   <div id="meeting-kra-${repIdx}" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px">
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px">
       <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px">📅 This Week</div>
@@ -1805,12 +1823,26 @@ function buildTeamView() {
       </tr></tfoot>
     </table>
   </div>
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
     <div class="section-hdr" style="margin-bottom:0">🤝 Meeting KRA</div>
-    <div style="display:flex;gap:6px">
-      <button id="mtg-filter-week" onclick="setTeamMtgFilter('week')" style="padding:4px 12px;border-radius:12px;border:none;background:var(--green);color:#fff;font-size:10px;font-family:var(--font-mono);cursor:pointer">This Week</button>
-      <button id="mtg-filter-month" onclick="setTeamMtgFilter('month')" style="padding:4px 12px;border-radius:12px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:10px;font-family:var(--font-mono);cursor:pointer">This Month</button>
-      <button id="mtg-filter-prev" onclick="setTeamMtgFilter('prev')" style="padding:4px 12px;border-radius:12px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:10px;font-family:var(--font-mono);cursor:pointer">Last Month</button>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+      <button onclick="setTeamMtgFilter('week')" id="mtg-filter-week" style="padding:4px 12px;border-radius:12px;border:none;background:var(--green);color:#fff;font-size:10px;font-family:var(--font-mono);cursor:pointer">This Week</button>
+      <button onclick="setTeamMtgFilter('month')" id="mtg-filter-month" style="padding:4px 12px;border-radius:12px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:10px;font-family:var(--font-mono);cursor:pointer">This Month</button>
+      <select id="mtg-filter-month-sel" onchange="setTeamMtgFilter('custom',this.value)" style="padding:4px 10px;border-radius:12px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-size:10px;font-family:var(--font-mono);cursor:pointer">
+        <option value="">Pick Month…</option>
+        <option value="2026-01">Jan 2026</option>
+        <option value="2026-02">Feb 2026</option>
+        <option value="2026-03">Mar 2026</option>
+        <option value="2026-04">Apr 2026</option>
+        <option value="2026-05">May 2026</option>
+        <option value="2026-06">Jun 2026</option>
+        <option value="2026-07">Jul 2026</option>
+        <option value="2026-08">Aug 2026</option>
+        <option value="2026-09">Sep 2026</option>
+        <option value="2026-10">Oct 2026</option>
+        <option value="2026-11">Nov 2026</option>
+        <option value="2026-12">Dec 2026</option>
+      </select>
     </div>
   </div>
   <div id="team-meeting-kra" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px">
@@ -1839,9 +1871,11 @@ function buildTeamView() {
 
 
 var _teamMtgFilter = 'week';
-function setTeamMtgFilter(filter) {
+var _teamMtgCustomMonth = '';
+function setTeamMtgFilter(filter, customVal) {
   _teamMtgFilter = filter;
-  ['week','month','prev'].forEach(function(f) {
+  if (customVal) _teamMtgCustomMonth = customVal;
+  ['week','month'].forEach(function(f) {
     var btn = document.getElementById('mtg-filter-'+f);
     if (!btn) return;
     btn.style.background = f===filter ? 'var(--green)' : 'transparent';
@@ -1851,6 +1885,45 @@ function setTeamMtgFilter(filter) {
   updateTeamMtgKRA();
 }
 
+
+function repMtgFilter(repIdx, val) {
+  var now5 = new Date();
+  var range, label, tgt;
+  if (val === 'week') {
+    range = getWeekRange(0);
+    label = 'this week';
+    tgt = getMeetingTarget(repIdx, range.start, range.end);
+  } else if (val === 'month') {
+    range = { start: new Date(now5.getFullYear(), now5.getMonth(), 1),
+               end:   new Date(now5.getFullYear(), now5.getMonth()+1, 0) };
+    label = 'this month';
+    tgt = getMeetingTarget(repIdx, range.start, range.end);
+  } else {
+    var parts = val.split('-');
+    var yr = parseInt(parts[0]), mo = parseInt(parts[1])-1;
+    range = { start: new Date(yr, mo, 1), end: new Date(yr, mo+1, 0) };
+    label = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][mo]+' '+yr;
+    tgt = getMeetingTarget(repIdx, range.start, range.end);
+  }
+  var notes = getRepNotesInRange(repIdx, range.start, range.end);
+  var pct = tgt > 0 ? notes.length/tgt : 0;
+  var col = pct>=1?'var(--green)':pct>=0.7?'var(--amber)':'#e05252';
+
+  // Update week card (reuse for selected period)
+  var we = document.getElementById('mtg-week-'+repIdx);
+  var ws = document.getElementById('mtg-week-sub-'+repIdx);
+  var wb = document.getElementById('mtg-week-bar-'+repIdx);
+  if (we) { we.textContent = notes.length+' / '+tgt; we.style.color = notes.length>0?col:'var(--muted)'; }
+  if (ws) ws.textContent = label+' · '+(pct*100).toFixed(0)+'% of KRA';
+  if (wb) wb.innerHTML = '<div style="height:4px;border-radius:2px;background:'+col+';width:'+Math.min(pct*100,100)+'%;transition:width .4s"></div>';
+
+  // Update month card with YTD
+  var ytdNotes = getRepNotes(repIdx).filter(function(n){ return n.date && n.date.startsWith('2026'); });
+  var me2 = document.getElementById('mtg-month-'+repIdx);
+  var ms2 = document.getElementById('mtg-month-sub-'+repIdx);
+  if (me2) { me2.textContent = ytdNotes.length; me2.style.color = ytdNotes.length>0?'var(--green)':'var(--muted)'; }
+  if (ms2) ms2.textContent = 'total YTD 2026';
+}
 function updateTeamMtgKRA() {
   var now4 = new Date();
   var range;
@@ -1858,14 +1931,15 @@ function updateTeamMtgKRA() {
   if (_teamMtgFilter === 'week') {
     range = getWeekRange(0);
     label = 'this week';
-  } else if (_teamMtgFilter === 'month') {
+  } else if (_teamMtgFilter === 'custom' && _teamMtgCustomMonth) {
+    var parts = _teamMtgCustomMonth.split('-');
+    var yr = parseInt(parts[0]), mo = parseInt(parts[1])-1;
+    range = { start: new Date(yr, mo, 1), end: new Date(yr, mo+1, 0) };
+    label = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][mo]+' '+yr;
+  } else {
     range = { start: new Date(now4.getFullYear(), now4.getMonth(), 1),
                end:   new Date(now4.getFullYear(), now4.getMonth()+1, 0) };
     label = 'this month';
-  } else {
-    range = { start: new Date(now4.getFullYear(), now4.getMonth()-1, 1),
-               end:   new Date(now4.getFullYear(), now4.getMonth(), 0) };
-    label = 'last month';
   }
 
   for (var ri4=0; ri4<5; ri4++) {
