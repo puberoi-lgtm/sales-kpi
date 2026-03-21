@@ -1845,11 +1845,14 @@ function buildTeamView() {
   <div class="section-hdr">📊 Team Achievement — Target vs Actual vs 2025</div>
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:18px">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-      <button id="team-chart-all" onclick="filterTeamChart('all')" style="background:var(--green);color:#fff;border:none;border-radius:20px;padding:5px 14px;font-size:11px;font-family:var(--font-mono);cursor:pointer">All Year</button>
-      ${months.map(m => `<button onclick="filterTeamChart('${m}')" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:11px;font-family:var(--font-mono);cursor:pointer">${m}</button>`).join('')}
+      <button id="chart-all" onclick="filterTeamChart('all')" style="background:var(--green);color:#fff;border:none;border-radius:20px;padding:5px 14px;font-size:11px;font-family:var(--font-mono);cursor:pointer;font-weight:700">All Year</button>
+      ${months.map((m,mi) => `<button id="chart-mo-${mi}" onclick="filterTeamChart('${m}')" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:11px;font-family:var(--font-mono);cursor:pointer">${m}</button>`).join('')}
     </div>
-    <div style="height:260px"><canvas id="ch-team-main"></canvas></div>
-    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-size:10px;font-family:var(--font-mono);color:var(--muted)">
+    <div style="position:relative">
+      <div style="height:260px"><canvas id="ch-team-main"></canvas></div>
+      <div id="team-chart-summary" style="position:absolute;top:0;right:0;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;min-width:130px;text-align:right"></div>
+    </div>
+    <div style="display:flex;justify-content:center;gap:16px;flex-wrap:wrap;margin-top:8px;font-size:10px;font-family:var(--font-mono);color:var(--muted)">
       <span>— 2026 Target</span><span>- - 2025 Actual</span><span style="color:var(--invoiced)">▬ 2026 Invoiced</span>
     </div>
   </div>
