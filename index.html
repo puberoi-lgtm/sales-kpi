@@ -1343,13 +1343,21 @@ function buildRepView(repIdx) {
       <div class="chart-wrap tall"><canvas id="ch-rep-class-${repIdx}"></canvas></div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;padding:10px;background:var(--surface2);border-radius:6px;border:1px solid var(--border)">
         <div style="width:100%;font-size:9px;color:var(--muted);letter-spacing:.06em;margin-bottom:4px;font-family:var(--font-sec)">HOW TO READ THIS CHART</div>
-        <div style="display:flex;align-items:center;gap:6px"><span style="display:inline-block;width:18px;height:3px;background:#4472C4;border-radius:2px"></span><span style="font-size:11px;color:var(--text)">Server Racks</span></div>
-        <div style="display:flex;align-items:center;gap:6px"><span style="display:inline-block;width:18px;height:3px;background:#70AD47;border-radius:2px"></span><span style="font-size:11px;color:var(--text)">Data Products</span></div>
-        <div style="display:flex;align-items:center;gap:6px"><span style="display:inline-block;width:18px;height:3px;background:#ED7D31;border-radius:2px"></span><span style="font-size:11px;color:var(--text)">Cabling</span></div>
-        <div style="display:flex;align-items:center;gap:6px"><span style="display:inline-block;width:18px;height:3px;background:#9E480E;border-radius:2px"></span><span style="font-size:11px;color:var(--text)">Others</span></div>
-        <div style="width:100%;padding-top:6px;border-top:1px solid var(--border);display:flex;gap:16px">
-          <span style="font-size:10px;color:var(--muted);display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:16px;height:2px;background:#888;border-radius:2px"></span>Solid = Invoiced</span>
-          <span style="font-size:10px;color:var(--muted);display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:16px;border-top:2px dashed #888"></span>Dashed = Target</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="display:inline-block;width:18px;height:3px;background:#4472C4;border-radius:2px"></span>
+          <span style="font-size:11px;color:var(--text)">Established (Server Racks + Data Products + Cabling + Bulk Cables)</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+          <span style="display:inline-block;width:18px;height:3px;background:#9E480E;border-radius:2px"></span>
+          <span style="font-size:11px;color:var(--text)">Growth (Networking + Computer/Mobile Accessories + AV Products)</span>
+        </div>
+        <div style="width:100%;padding-top:6px;margin-top:6px;border-top:1px solid var(--border);display:flex;gap:16px">
+          <span style="font-size:10px;color:var(--muted);display:flex;align-items:center;gap:5px">
+            <span style="display:inline-block;width:16px;height:2px;background:#888;border-radius:2px"></span>Solid = Invoiced
+          </span>
+          <span style="font-size:10px;color:var(--muted);display:flex;align-items:center;gap:5px">
+            <span style="display:inline-block;width:16px;border-top:2px dashed #888"></span>Dashed = Target
+          </span>
         </div>
       </div>
     </div>
