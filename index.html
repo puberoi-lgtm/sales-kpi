@@ -2664,7 +2664,7 @@ function parseCsv(text){text=text.replace(/^\uFEFF/,'');var lines=text.split(/\r
 function applyCsvTotals(data){if(!state.classActuals)state.classActuals={};Object.keys(data).forEach(function(k){state.classActuals[k]=Math.round(data[k]*100)/100;});if(window._fbSet)window._fbSet('dashboard/classActuals',state.classActuals);REPS_DATA.forEach(function(_,ri){var rv=document.getElementById('view-rep-'+ri);if(rv&&rv.classList.contains('active')){populateTracker(ri);populateClassTrackers(ri);drawRepCharts(ri);}});refreshTeamView();}
 
 // ── Accounts tab helpers ──────────────────────────────────────
-function buildAcctTabs(){var tabs=[['heatmap','■ Heatmap'],['conversions','🔄 Conversions']];return'<div class="acct-tabs">'+tabs.map(function(t){return'<button class="acct-tab-btn'+(_acctState.tab===t[0]?' active':'')+'\" onclick="_acctState.tab=\''+t[0]+'\';renderAccountsTab()">'+t[1]+'</button>';}).join('')+'</div>';}
+function buildAcctTabs(){var tabs=[['heatmap','■ Heatmap'],['conversions','💤 Dormant Tracker']];return'<div class="acct-tabs">'+tabs.map(function(t){return'<button class="acct-tab-btn'+(_acctState.tab===t[0]?' active':'')+'\" onclick="_acctState.tab=\''+t[0]+'\';renderAccountsTab()">'+t[1]+'</button>';}).join('')+'</div>';}
 function renderAccountsTab(){var ct=document.getElementById('acct-tab-content');if(!ct)return;if(_acctState.tab==='conversions')renderConversions(ct);else renderHeatmap(ct);}
 function buildDormantAgeSelect(){if(_acctState.filter!=='dormant')return'';return'<select onchange="_acctState.dormantAge=this.value;_acctState.page=0;buildAccountsView()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:11px;border-radius:6px;padding:5px 8px"><option value="all"'+((_acctState.dormantAge==='all')?' selected':'')+'>All Dormant</option><option value="3"'+((_acctState.dormantAge==='3')?' selected':'')+'>3+ months</option><option value="6"'+((_acctState.dormantAge==='6')?' selected':'')+'>6+ months</option><option value="9"'+((_acctState.dormantAge==='9')?' selected':'')+'>9+ months</option><option value="12"'+((_acctState.dormantAge==='12')?' selected':'')+'>12+ months/Never</option></select>';}
 function getFilteredAccounts(){var accts=ACCOUNTS_DATA.filter(function(a){if(_acctState.rep!=='all'){if(_acctState.rep==='unassigned')return a.ri===-1;var RN=['Robert Schaffer','Andrew Mobilia','Alexander Poll','Stivi Maticevski','Melissa Goodridge'];if(RN.indexOf(_acctState.rep)!==-1&&a.ri!==RN.indexOf(_acctState.rep))return false;}if(_acctState.company!=='all'&&(a.p||'')!==_acctState.company)return false;if(_acctState.filter==='dormant'){if(!isAcctDormant(a))return false;if(_acctState.dormantAge&&_acctState.dormantAge!=='all'){var age=parseInt(_acctState.dormantAge);if(_acctState.dormantAge==='12'){if(a.la>=0&&a.la>=(12-age))return false;}else{var mo=new Date().getMonth();if(a.la>=0&&(mo-a.la+12)%12<age)return false;}}}if(_acctState.filter==='active'&&!isAcctActive(a))return false;if(_acctState.search&&!(a.n+' '+(a.p||'')).toLowerCase().includes(_acctState.search.toLowerCase()))return false;return true;});return accts;}
@@ -2675,107 +2675,6 @@ function heatColor(v,mx){if(!v||v<=0)return'transparent';var p=Math.min(v/mx,1);
 function renderHeatmap(ct){var accts=getFilteredAccounts();var MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];var PAGE=50;var total=Math.ceil(accts.length/PAGE);if(!window._hmPage)window._hmPage=0;if(window._hmPage>=total)window._hmPage=0;var page=accts.slice(window._hmPage*PAGE,(window._hmPage+1)*PAGE);var sorted=page.sort(function(a,b){return(b.s||0)-(a.s||0);});var maxRev=sorted.reduce(function(m,a){return Math.max(m,a.s||0);},0);var html='<div style="margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">';html+='<span style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">'+accts.length+' accounts · Page '+(window._hmPage+1)+' of '+total+'</span>';html+='<div style="display:flex;gap:6px">'+(window._hmPage>0?'<button onclick="window._hmPage--;renderAccountsTab()" style="padding:3px 10px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;font-size:11px">← Prev</button>':'')+(window._hmPage+1<total?'<button onclick="window._hmPage++;renderAccountsTab()" style="padding:3px 10px;border-radius:5px;border:none;background:var(--green);color:#fff;cursor:pointer;font-size:11px">Next →</button>':'')+'</div>';html+='</div><div class="heatmap-wrap"><table class="heatmap-table"><thead><tr><th>Account</th><th>Rep</th><th>Total</th>';MO.forEach(function(m){html+='<th>'+m+'</th>';});html+='</tr></thead><tbody>';var RC=['#4472C4','#70AD47','#ED7D31','#9E480E','#C00000'];var RN=['Robert','Andrew','Alexander','Stivi','Melissa'];sorted.forEach(function(a){html+='<tr><td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+a.n+'">'+a.n+'</td><td style="color:'+(a.ri>=0?RC[a.ri]:'#888')+';font-size:9px">'+(a.ri>=0?RN[a.ri]:'—')+'</td><td style="font-family:var(--font-mono);text-align:right">$'+Math.round(a.s||0).toLocaleString('en-AU')+'</td>';(a.m||Array(12).fill(0)).forEach(function(v){html+='<td><div class="hm-cell" style="background:'+heatColor(v,maxRev)+'">'+( v>0?'$'+(Math.round(v/1000))+'k':'')+'</div></td>';});html+='</tr>';});html+='</tbody></table></div>';ct.innerHTML=html;}
 
 // ── Conversions tab ───────────────────────────────────────────
-function renderConversions(ct) {
-  var RN=['Robert Schaffer','Andrew Mobilia','Alexander Poll','Stivi Maticevski','Melissa Goodridge'];
-  var RC=['#4472C4','#70AD47','#ED7D31','#9E480E','#C00000'];
-  var MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  var now = new Date();
-  var curMo = now.getMonth();
-
-  // Build dormancy info per account from 2025 data (monthly revenue array)
-  var dormAccts = ACCOUNTS_DATA.filter(function(a){ return a.ri >= 0; })
-    .map(function(a) {
-      // Find first and last active month from monthly data
-      var months = a.m || [];
-      var activeMonths = [];
-      months.forEach(function(v, i) { if (v > 0) activeMonths.push(i); });
-      var firstActive = activeMonths.length ? activeMonths[0] : -1;
-      var lastActive = a.la !== undefined ? a.la : (activeMonths.length ? activeMonths[activeMonths.length-1] : -1);
-      var isDormant = isAcctDormant(a);
-      // Gap months (months with no revenue between first and last active)
-      var gapMonths = [];
-      if (activeMonths.length >= 2) {
-        for (var m = activeMonths[0]; m <= lastActive; m++) {
-          if ((months[m] || 0) === 0) gapMonths.push(m);
-        }
-      }
-      return Object.assign({}, a, {
-        isDormant: isDormant,
-        firstActive: firstActive,
-        lastActive: lastActive,
-        gapMonths: gapMonths,
-        activeCount: activeMonths.length
-      });
-    });
-
-  // Filters
-  var filterState = window._convFilter || {rep:'all', status:'all', search:''};
-  var filtered = dormAccts.filter(function(a) {
-    if (filterState.rep !== 'all' && a.ri !== parseInt(filterState.rep)) return false;
-    if (filterState.status === 'dormant' && !a.isDormant) return false;
-    if (filterState.status === 'active' && a.isDormant) return false;
-    if (filterState.search && !(a.n + ' ' + (a.p||'')).toLowerCase().includes(filterState.search.toLowerCase())) return false;
-    return true;
-  }).sort(function(a,b) { return (b.s||0) - (a.s||0); });
-
-  var dormCount = dormAccts.filter(function(a){ return a.isDormant; }).length;
-  var activeCount = dormAccts.filter(function(a){ return !a.isDormant; }).length;
-
-  var html = '<div>';
-
-  // Summary KPIs
-  html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">'
-    + '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:4px">Total Accounts</div><div style="font-size:26px;font-weight:800;color:var(--text)">' + dormAccts.length + '</div></div>'
-    + '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:4px">Active</div><div style="font-size:26px;font-weight:800;color:var(--green)">' + activeCount + '</div></div>'
-    + '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:4px">Dormant</div><div style="font-size:26px;font-weight:800;color:#e05252">' + dormCount + '</div><div style="font-size:10px;color:var(--muted);margin-top:2px">' + (dormCount/(dormAccts.length||1)*100).toFixed(1) + '% of total</div></div>'
-    + '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:4px">Retention Rate</div><div style="font-size:26px;font-weight:800;color:var(--green)">' + (activeCount/(dormAccts.length||1)*100).toFixed(1) + '%</div></div>'
-    + '</div>';
-
-  // Filters
-  html += '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px">'
-    + '<select onchange="window._convFilter=window._convFilter||{};window._convFilter.rep=this.value;renderConversions(document.getElementById(\'acct-tab-content\'))" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:11px;border-radius:5px;padding:5px 8px">'
-    + '<option value="all"' + (filterState.rep==='all'?' selected':'') + '>All Reps</option>'
-    + RN.map(function(r,i){ return '<option value="'+i+'"'+(filterState.rep==i?' selected':'')+'>'+r+'</option>'; }).join('')
-    + '</select>'
-    + '<select onchange="window._convFilter=window._convFilter||{};window._convFilter.status=this.value;renderConversions(document.getElementById(\'acct-tab-content\'))" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:11px;border-radius:5px;padding:5px 8px">'
-    + '<option value="all"' + (filterState.status==='all'?' selected':'') + '>All Status</option>'
-    + '<option value="active"' + (filterState.status==='active'?' selected':'') + '>Active</option>'
-    + '<option value="dormant"' + (filterState.status==='dormant'?' selected':'') + '>Dormant</option>'
-    + '</select>'
-    + '<input type="text" placeholder="Search accounts..." onchange="window._convFilter=window._convFilter||{};window._convFilter.search=this.value;renderConversions(document.getElementById(\'acct-tab-content\'))" value="' + (filterState.search||'') + '" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 10px;font-family:var(--font-mono);font-size:11px;width:200px">'
-    + '<span style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">' + filtered.length + ' accounts</span>'
-    + '</div>';
-
-  // Account table
-  html += '<div class="loc-table-wrap"><table class="loc-table"><thead><tr>'
-    + '<th>Account</th><th>Rep</th><th style="text-align:right">2025 Rev</th>'
-    + '<th>Status</th><th>Last Active</th><th>First Active</th><th>Active Months</th><th>Gap Months (no orders)</th>'
-    + '</tr></thead><tbody>';
-
-  filtered.forEach(function(a) {
-    var rc = RC[a.ri] || '#888';
-    var rn = RN[a.ri] || '—';
-    var statusBadge = a.isDormant
-      ? '<span style="background:#e0525222;color:#e05252;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:600">Dormant</span>'
-      : '<span style="background:#27ae6022;color:#27ae60;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:600">Active</span>';
-    var lastMo = a.lastActive >= 0 ? MO[a.lastActive] + ' 2025' : '—';
-    var firstMo = a.firstActive >= 0 ? MO[a.firstActive] + ' 2025' : '—';
-    var gaps = a.gapMonths.length ? a.gapMonths.map(function(m){ return MO[m]; }).join(', ') : '—';
-    html += '<tr>'
-      + '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + a.n + '">' + a.n + '</td>'
-      + '<td style="color:' + rc + ';font-size:10px;white-space:nowrap">' + rn + '</td>'
-      + '<td style="font-family:var(--font-mono);text-align:right">' + (a.s ? '$' + Math.round(a.s).toLocaleString('en-AU') : '—') + '</td>'
-      + '<td>' + statusBadge + '</td>'
-      + '<td style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">' + lastMo + '</td>'
-      + '<td style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">' + firstMo + '</td>'
-      + '<td style="font-family:var(--font-mono);font-size:10px;text-align:center">' + a.activeCount + '/12</td>'
-      + '<td style="font-size:10px;color:var(--amber);max-width:180px">' + gaps + '</td>'
-      + '</tr>';
-  });
-
-  html += '</tbody></table></div></div>';
-  ct.innerHTML = html;
-}
 
 function renderAccountsTab(){var ct=document.getElementById('acct-tab-content');if(!ct)return;if(_acctState.tab==='conversions')renderConversions(ct);else renderHeatmap(ct);}
 function buildDormantAgeSelect(){if(_acctState.filter!=='dormant')return'';return'<select onchange="_acctState.dormantAge=this.value;_acctState.page=0;buildAccountsView()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:11px;border-radius:6px;padding:5px 8px"><option value="all"'+((_acctState.dormantAge==='all')?' selected':'')+'>All Dormant</option><option value="3"'+((_acctState.dormantAge==='3')?' selected':'')+'>3+ months</option><option value="6"'+((_acctState.dormantAge==='6')?' selected':'')+'>6+ months</option><option value="9"'+((_acctState.dormantAge==='9')?' selected':'')+'>9+ months</option><option value="12"'+((_acctState.dormantAge==='12')?' selected':'')+'>12+ months/Never</option></select>';}
