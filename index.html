@@ -500,9 +500,9 @@
   .loc-filter-btn.active{background:var(--green);color:#000;border-color:var(--green);font-weight:700}
   .loc-search{padding:7px 12px;font-size:11px;font-family:var(--font-mono);background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);width:200px}
   .loc-search:focus{outline:none;border-color:var(--green)}
-  .loc-table-wrap{overflow-x:auto;margin-top:4px}
+  .loc-table-wrap{overflow-x:auto;margin-top:4px}.loc-sticky th{position:sticky;top:0}
   .loc-table{width:100%;border-collapse:collapse;font-size:11px;font-family:var(--font-mono)}
-  .loc-table th{padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em;font-size:10px;white-space:nowrap;position:sticky;top:0;background:var(--surface)}
+  .loc-table th{padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em;font-size:10px;white-space:nowrap;background:var(--surface)}
   .loc-table td{padding:7px 10px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle}
   .loc-table tr:hover td{background:rgba(107,191,51,.05)}
   .cust-map{width:100%;height:420px;border-radius:10px;border:1px solid var(--border);z-index:1;}
@@ -2714,10 +2714,24 @@ function renderConversions(ct) {
   s+='<span style="font-size:11px;color:var(--muted)">'+filtered.length+' accounts</span>';
   s+='</div>';
 
+  // Pagination
+  var CONV_PAGE = 100;
+  var convPage = window._convPage || 0;
+  var totalPages = Math.ceil(filtered.length / CONV_PAGE);
+  if (convPage >= totalPages) convPage = 0;
+  var pageSlice = filtered.slice(convPage*CONV_PAGE, (convPage+1)*CONV_PAGE);
+
+  s += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">';
+  s += '<span style="font-size:11px;color:var(--muted)">Page '+(convPage+1)+' of '+(totalPages||1)+' · '+filtered.length+' accounts</span>';
+  s += '<div style="display:flex;gap:6px">';
+  if (convPage > 0) s += '<button onclick="window._convPage='+(convPage-1)+';renderConversions(document.getElementById(\'acct-tab-content\'))" style="padding:3px 10px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;font-size:11px">← Prev</button>';
+  if (convPage+1 < totalPages) s += '<button onclick="window._convPage='+(convPage+1)+';renderConversions(document.getElementById(\'acct-tab-content\'))" style="padding:3px 10px;border-radius:5px;border:none;background:var(--green);color:#fff;cursor:pointer;font-size:11px">Next →</button>';
+  s += '</div></div>';
+
   s+='<div class="loc-table-wrap"><table class="loc-table"><thead><tr>';
-  s+='<th>Account</th><th>Rep</th><th>2025 Rev</th><th>Status</th><th>Last Active</th><th>First Active</th><th>Active Months</th><th>Gaps in 2025</th>';
+  s+='<th style="min-width:200px">Account</th><th>Rep</th><th>2025 Rev</th><th style="min-width:80px">Status</th><th>Last Active</th><th>First Active</th><th style="text-align:center">Active /12</th><th>Gaps in 2025</th>';
   s+='</tr></thead><tbody>';
-  filtered.forEach(function(a){
+  pageSlice.forEach(function(a){
     var badge=a.isDormant
       ?'<span style="background:#e0525222;color:#e05252;padding:2px 8px;border-radius:8px;font-size:10px">Dormant</span>'
       :'<span style="background:#27ae6022;color:#27ae60;padding:2px 8px;border-radius:8px;font-size:10px">Active</span>';
@@ -2743,7 +2757,77 @@ function acctSearch(val){_acctState.search=val;_acctState.page=0;var inp=documen
 
 // ── Heatmap ───────────────────────────────────────────────────
 function heatColor(v,mx){if(!v||v<=0)return'transparent';var p=Math.min(v/mx,1);return'rgba(107,191,51,'+(0.15+p*0.70)+')';}
-function renderHeatmap(ct){var accts=getFilteredAccounts();var MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];var PAGE=50;var total=Math.ceil(accts.length/PAGE);if(!window._hmPage)window._hmPage=0;if(window._hmPage>=total)window._hmPage=0;var page=accts.slice(window._hmPage*PAGE,(window._hmPage+1)*PAGE);var sorted=page.sort(function(a,b){return(b.s||0)-(a.s||0);});var maxRev=sorted.reduce(function(m,a){return Math.max(m,a.s||0);},0);var html='<div style="margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">';html+='<span style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">'+accts.length+' accounts · Page '+(window._hmPage+1)+' of '+total+'</span>';html+='<div style="display:flex;gap:6px">'+(window._hmPage>0?'<button onclick="window._hmPage--;renderAccountsTab()" style="padding:3px 10px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;font-size:11px">← Prev</button>':'')+(window._hmPage+1<total?'<button onclick="window._hmPage++;renderAccountsTab()" style="padding:3px 10px;border-radius:5px;border:none;background:var(--green);color:#fff;cursor:pointer;font-size:11px">Next →</button>':'')+'</div>';html+='</div><div class="heatmap-wrap"><table class="heatmap-table"><thead><tr><th>Account</th><th>Rep</th><th>Total</th>';MO.forEach(function(m){html+='<th>'+m+'</th>';});html+='</tr></thead><tbody>';var RC=['#4472C4','#70AD47','#ED7D31','#9E480E','#C00000'];var RN=['Robert','Andrew','Alexander','Stivi','Melissa'];sorted.forEach(function(a){html+='<tr><td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+a.n+'">'+a.n+'</td><td style="color:'+(a.ri>=0?RC[a.ri]:'#888')+';font-size:9px">'+(a.ri>=0?RN[a.ri]:'—')+'</td><td style="font-family:var(--font-mono);text-align:right">$'+Math.round(a.s||0).toLocaleString('en-AU')+'</td>';(a.m||Array(12).fill(0)).forEach(function(v){html+='<td><div class="hm-cell" style="background:'+heatColor(v,maxRev)+'">'+( v>0?'$'+(Math.round(v/1000))+'k':'')+'</div></td>';});html+='</tr>';});html+='</tbody></table></div>';ct.innerHTML=html;}
+function renderHeatmap(ct) {
+  var accts = getFilteredAccounts();
+  // Rolling 12 months: Apr 2025 (m[3]) through Mar 2026
+  // 2025 data: months 3-11 (Apr-Dec) from a.m
+  // 2026 data: months 0-2 (Jan-Mar) from _preloadedActuals by account
+  var ROLL_MONTHS = ['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'];
+  var ROLL_YEARS  = [2025,2025,2025,2025,2025,2025,2025,2025,2025,2026,2026,2026];
+  var ROLL_IDX    = [3,4,5,6,7,8,9,10,11,0,1,2]; // index into a.m for 2025, or 2026 mo for Jan-Mar
+
+  // Build account ri lookup
+  var acctRiMap = {};
+  ACCOUNTS_DATA.forEach(function(a,i){ acctRiMap[a.n] = i; });
+
+  var PAGE = 50;
+  var total = Math.ceil(accts.length/PAGE);
+  if (!window._hmPage) window._hmPage = 0;
+  if (window._hmPage >= total) window._hmPage = 0;
+  var page = accts.slice(window._hmPage*PAGE, (window._hmPage+1)*PAGE)
+    .sort(function(a,b){ return (b.s||0)-(a.s||0); });
+
+  // For each account, build rolling 12-month revenue array
+  function getRollingRevenue(a) {
+    return ROLL_IDX.map(function(mi, i) {
+      if (ROLL_YEARS[i] === 2025) {
+        return (a.m || [])[mi] || 0;
+      } else {
+        // 2026: look up from _preloadedActuals via account's ri
+        // Sum all classes for this rep/month
+        var ri = a.ri;
+        if (ri < 0) return 0;
+        return [0,1,2,3,4].reduce(function(s,ci){
+          return s + (_preloadedActuals[ri+'-'+ci+'-'+mi] || 0);
+        }, 0);
+      }
+    });
+  }
+
+  var maxRev = page.reduce(function(mx, a) {
+    return Math.max(mx, Math.max.apply(null, getRollingRevenue(a)));
+  }, 0);
+
+  var RC = ['#4472C4','#70AD47','#ED7D31','#9E480E','#C00000'];
+  var RN = ['Robert','Andrew','Alexander','Stivi','Melissa'];
+
+  var html = '<div style="margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">';
+  html += '<span style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">'+accts.length+' accounts · Page '+(window._hmPage+1)+' of '+total+' · Showing Apr 2025 – Mar 2026</span>';
+  html += '<div style="display:flex;gap:6px">';
+  if (window._hmPage > 0) html += '<button onclick="window._hmPage--;renderAccountsTab()" style="padding:3px 10px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;font-size:11px">← Prev</button>';
+  if (window._hmPage+1 < total) html += '<button onclick="window._hmPage++;renderAccountsTab()" style="padding:3px 10px;border-radius:5px;border:none;background:var(--green);color:#fff;cursor:pointer;font-size:11px">Next →</button>';
+  html += '</div></div>';
+
+  html += '<div class="heatmap-wrap"><table class="heatmap-table"><thead><tr>';
+  html += '<th>Account</th><th>Rep</th><th>Total</th>';
+  ROLL_MONTHS.forEach(function(m,i){ html += '<th>'+m+'<br><span style="font-size:8px;opacity:.6">'+ROLL_YEARS[i]+'</span></th>'; });
+  html += '</tr></thead><tbody>';
+
+  page.forEach(function(a) {
+    var rev = getRollingRevenue(a);
+    var rowTotal = rev.reduce(function(s,v){ return s+v; }, 0);
+    html += '<tr><td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+a.n+'">'+a.n+'</td>';
+    html += '<td style="color:'+(a.ri>=0?RC[a.ri]:'#888')+';font-size:9px">'+(a.ri>=0?RN[a.ri]:'—')+'</td>';
+    html += '<td style="font-family:var(--font-mono);text-align:right">$'+Math.round(rowTotal).toLocaleString('en-AU')+'</td>';
+    rev.forEach(function(v) {
+      html += '<td><div class="hm-cell" style="background:'+heatColor(v,maxRev)+'">'+(v>0?'$'+Math.round(v/1000)+'k':'')+'</div></td>';
+    });
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div>';
+  ct.innerHTML = html;
+}
 
 // ── Conversions tab ───────────────────────────────────────────
 
@@ -2754,7 +2838,77 @@ function acctSearch(val){_acctState.search=val;_acctState.page=0;var inp=documen
 
 // ── Heatmap ───────────────────────────────────────────────────
 function heatColor(v,mx){if(!v||v<=0)return'transparent';var p=Math.min(v/mx,1);return'rgba(107,191,51,'+(0.15+p*0.70)+')';}
-function renderHeatmap(ct){var accts=getFilteredAccounts();var MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];var PAGE=50;var total=Math.ceil(accts.length/PAGE);if(!window._hmPage)window._hmPage=0;if(window._hmPage>=total)window._hmPage=0;var page=accts.slice(window._hmPage*PAGE,(window._hmPage+1)*PAGE);var sorted=page.sort(function(a,b){return(b.s||0)-(a.s||0);});var maxRev=sorted.reduce(function(m,a){return Math.max(m,a.s||0);},0);var html='<div style="margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">';html+='<span style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">'+accts.length+' accounts · Page '+(window._hmPage+1)+' of '+total+'</span>';html+='<div style="display:flex;gap:6px">'+(window._hmPage>0?'<button onclick="window._hmPage--;renderAccountsTab()" style="padding:3px 10px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;font-size:11px">← Prev</button>':'')+(window._hmPage+1<total?'<button onclick="window._hmPage++;renderAccountsTab()" style="padding:3px 10px;border-radius:5px;border:none;background:var(--green);color:#fff;cursor:pointer;font-size:11px">Next →</button>':'')+'</div>';html+='</div><div class="heatmap-wrap"><table class="heatmap-table"><thead><tr><th>Account</th><th>Rep</th><th>Total</th>';MO.forEach(function(m){html+='<th>'+m+'</th>';});html+='</tr></thead><tbody>';var RC=['#4472C4','#70AD47','#ED7D31','#9E480E','#C00000'];var RN=['Robert','Andrew','Alexander','Stivi','Melissa'];sorted.forEach(function(a){html+='<tr><td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+a.n+'">'+a.n+'</td><td style="color:'+(a.ri>=0?RC[a.ri]:'#888')+';font-size:9px">'+(a.ri>=0?RN[a.ri]:'—')+'</td><td style="font-family:var(--font-mono);text-align:right">$'+Math.round(a.s||0).toLocaleString('en-AU')+'</td>';(a.m||Array(12).fill(0)).forEach(function(v){html+='<td><div class="hm-cell" style="background:'+heatColor(v,maxRev)+'">'+( v>0?'$'+(Math.round(v/1000))+'k':'')+'</div></td>';});html+='</tr>';});html+='</tbody></table></div>';ct.innerHTML=html;}
+function renderHeatmap(ct) {
+  var accts = getFilteredAccounts();
+  // Rolling 12 months: Apr 2025 (m[3]) through Mar 2026
+  // 2025 data: months 3-11 (Apr-Dec) from a.m
+  // 2026 data: months 0-2 (Jan-Mar) from _preloadedActuals by account
+  var ROLL_MONTHS = ['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'];
+  var ROLL_YEARS  = [2025,2025,2025,2025,2025,2025,2025,2025,2025,2026,2026,2026];
+  var ROLL_IDX    = [3,4,5,6,7,8,9,10,11,0,1,2]; // index into a.m for 2025, or 2026 mo for Jan-Mar
+
+  // Build account ri lookup
+  var acctRiMap = {};
+  ACCOUNTS_DATA.forEach(function(a,i){ acctRiMap[a.n] = i; });
+
+  var PAGE = 50;
+  var total = Math.ceil(accts.length/PAGE);
+  if (!window._hmPage) window._hmPage = 0;
+  if (window._hmPage >= total) window._hmPage = 0;
+  var page = accts.slice(window._hmPage*PAGE, (window._hmPage+1)*PAGE)
+    .sort(function(a,b){ return (b.s||0)-(a.s||0); });
+
+  // For each account, build rolling 12-month revenue array
+  function getRollingRevenue(a) {
+    return ROLL_IDX.map(function(mi, i) {
+      if (ROLL_YEARS[i] === 2025) {
+        return (a.m || [])[mi] || 0;
+      } else {
+        // 2026: look up from _preloadedActuals via account's ri
+        // Sum all classes for this rep/month
+        var ri = a.ri;
+        if (ri < 0) return 0;
+        return [0,1,2,3,4].reduce(function(s,ci){
+          return s + (_preloadedActuals[ri+'-'+ci+'-'+mi] || 0);
+        }, 0);
+      }
+    });
+  }
+
+  var maxRev = page.reduce(function(mx, a) {
+    return Math.max(mx, Math.max.apply(null, getRollingRevenue(a)));
+  }, 0);
+
+  var RC = ['#4472C4','#70AD47','#ED7D31','#9E480E','#C00000'];
+  var RN = ['Robert','Andrew','Alexander','Stivi','Melissa'];
+
+  var html = '<div style="margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">';
+  html += '<span style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">'+accts.length+' accounts · Page '+(window._hmPage+1)+' of '+total+' · Showing Apr 2025 – Mar 2026</span>';
+  html += '<div style="display:flex;gap:6px">';
+  if (window._hmPage > 0) html += '<button onclick="window._hmPage--;renderAccountsTab()" style="padding:3px 10px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;font-size:11px">← Prev</button>';
+  if (window._hmPage+1 < total) html += '<button onclick="window._hmPage++;renderAccountsTab()" style="padding:3px 10px;border-radius:5px;border:none;background:var(--green);color:#fff;cursor:pointer;font-size:11px">Next →</button>';
+  html += '</div></div>';
+
+  html += '<div class="heatmap-wrap"><table class="heatmap-table"><thead><tr>';
+  html += '<th>Account</th><th>Rep</th><th>Total</th>';
+  ROLL_MONTHS.forEach(function(m,i){ html += '<th>'+m+'<br><span style="font-size:8px;opacity:.6">'+ROLL_YEARS[i]+'</span></th>'; });
+  html += '</tr></thead><tbody>';
+
+  page.forEach(function(a) {
+    var rev = getRollingRevenue(a);
+    var rowTotal = rev.reduce(function(s,v){ return s+v; }, 0);
+    html += '<tr><td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+a.n+'">'+a.n+'</td>';
+    html += '<td style="color:'+(a.ri>=0?RC[a.ri]:'#888')+';font-size:9px">'+(a.ri>=0?RN[a.ri]:'—')+'</td>';
+    html += '<td style="font-family:var(--font-mono);text-align:right">$'+Math.round(rowTotal).toLocaleString('en-AU')+'</td>';
+    rev.forEach(function(v) {
+      html += '<td><div class="hm-cell" style="background:'+heatColor(v,maxRev)+'">'+(v>0?'$'+Math.round(v/1000)+'k':'')+'</div></td>';
+    });
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div>';
+  ct.innerHTML = html;
+}
 
 // ── Conversions tab ───────────────────────────────────────────
 function init() {
