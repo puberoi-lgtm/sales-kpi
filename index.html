@@ -2816,32 +2816,21 @@ function renderTeamNotes(container,fromDate,toDate,filterRep){if(!container)retu
   +'<button onclick="(function(){var r=document.getElementById(\'team-notes-rep\').value;var f=document.getElementById(\'team-notes-from\').value;var t=document.getElementById(\'team-notes-to\').value;var c=document.getElementById(\'team-notes-panel\');if(c)renderTeamNotes(c,f||null,t||null,r)})()" style="background:var(--green);color:#fff;border:none;border-radius:5px;padding:5px 12px;font-size:11px;cursor:pointer">Apply</button>'
   +'<button onclick="var c=document.getElementById(\'team-notes-panel\');if(c)renderTeamNotes(c,null,null,\'all\')" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:5px 10px;font-size:11px;cursor:pointer">Clear</button>'
   +'<span style="font-size:10px;color:var(--muted);margin-left:4px">'+an.length+' of '+state.notes.length+' notes</span>'
-  +'</div>';html+='<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:20px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">🤖 Team Intelligence</div><button onclick="generateAndSaveTeamInsight()" style="background:var(--green);color:#fff;border:none;border-radius:5px;padding:5px 12px;font-size:11px;cursor:pointer">✨ Generate</button></div><div id="team-insights-panel">'+(ei?formatInsight(ei):'<span style="color:var(--muted);font-size:11px">Click Generate to analyse all team notes.</span>')+'</div></div>';// ── Notes Summary (not full list) ──
-  var noteSummary = an.length ? generateTeamInsights(an) : null;
+  +'</div>';  // ── Activity by rep (note counts) ──
   var repCounts = [0,0,0,0,0];
   an.forEach(function(n){ var ri2=parseInt(n.ri); if(ri2>=0&&ri2<5) repCounts[ri2]++; });
-  html+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:10px">📋 Notes Summary ('+an.length+' notes)</div>';
-  if(!an.length){
-    html+='<div style="padding:24px;text-align:center;color:var(--muted);font-family:var(--font-mono);font-size:11px;background:var(--surface);border:1px solid var(--border);border-radius:8px">No notes uploaded yet.</div>';
-  } else {
-    // Rep activity breakdown
-    html+='<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:16px">';
-    RN.forEach(function(r,ri2){
-      var rc2=RC[ri2];
-      html+='<div style="background:var(--surface);border:1px solid var(--border);border-top:2px solid '+rc2+';border-radius:8px;padding:10px 12px;text-align:center">'
-        +'<div style="font-size:10px;font-weight:700;color:'+rc2+';margin-bottom:4px">'+r+'</div>'
-        +'<div style="font-size:20px;font-weight:800;color:var(--text)">'+repCounts[ri2]+'</div>'
-        +'<div style="font-size:9px;color:var(--muted)">notes</div>'
-        +'</div>';
-    });
-    html+='</div>';
-    // Summary text
-    if(noteSummary){
-      html+='<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px">'
-        +'<pre style="font-family:var(--font-mono);font-size:11px;color:var(--text);line-height:1.7;margin:0;white-space:pre-wrap">'+noteSummary+'</pre>'
-        +'</div>';
-    }
-  }html+='</div>';container.innerHTML=html;}
+  html+='<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:16px">';
+  RN.forEach(function(r,ri2){
+    var rc2=RC[ri2];
+    html+='<div style="background:var(--surface);border:1px solid var(--border);border-top:2px solid '+rc2+';border-radius:8px;padding:10px 12px;text-align:center">'
+      +'<div style="font-size:10px;font-weight:700;color:'+rc2+';margin-bottom:4px">'+r+'</div>'
+      +'<div style="font-size:20px;font-weight:800;color:var(--text)">'+repCounts[ri2]+'</div>'
+      +'<div style="font-size:9px;color:var(--muted)">notes</div>'
+      +'</div>';
+  });
+  html+='</div>';
+  html+='<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:20px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">🤖 Team Intelligence</div><button onclick="generateAndSaveTeamInsight()" style="background:var(--green);color:#fff;border:none;border-radius:5px;padding:5px 12px;font-size:11px;cursor:pointer">✨ Generate</button></div><div id="team-insights-panel">'+(ei?formatInsight(ei):'<span style="color:var(--muted);font-size:11px">Click Generate to analyse all team notes.</span>')+'</div></div>';
+  html+='</div>';container.innerHTML=html;}
 
 function renderTeamLeave(container){if(!container)return;var RN=['Robert Schaffer','Andrew Mobilia','Alexander Poll','Stivi Maticevski','Melissa Goodridge'];var RC=['#4472C4','#70AD47','#ED7D31','#9E480E','#C00000'];var today=new Date();var todayStr=dateStr(today);var next30=new Date(today);next30.setDate(today.getDate()+30);var onToday=[];for(var ri=0;ri<5;ri++){if(isRepOnLeave(ri,todayStr))onToday.push(ri);}var upcoming=[];for(var ri=0;ri<5;ri++){var lv=getRepLeave(ri).filter(function(d){return d>todayStr&&d<=dateStr(next30);});if(lv.length)upcoming.push({ri:ri,leaves:lv.sort()});}var upHols=VIC_HOLIDAYS_2026.filter(function(d){return d>todayStr&&d<=dateStr(next30);});var html='<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:16px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:12px">🏖️ Leave & Holidays</div>';if(onToday.length){html+='<div style="margin-bottom:10px"><span style="font-size:11px;font-weight:600;color:#e05252">On Leave Today: </span>';onToday.forEach(function(ri){html+='<span style="display:inline-block;padding:2px 10px;border-radius:10px;background:'+RC[ri]+'22;color:'+RC[ri]+';font-size:10px;font-weight:600;margin-right:6px">'+RN[ri]+'</span>';});html+='</div>';}else{html+='<div style="font-size:11px;color:var(--muted);margin-bottom:10px">✅ No one on leave today</div>';}if(upHols.length){html+='<div style="margin-bottom:10px"><span style="font-size:11px;font-weight:600;color:var(--amber)">🇦🇺 Upcoming: </span>';upHols.forEach(function(d){var dt=new Date(d+'T00:00:00');html+='<span style="font-size:10px;color:var(--text);font-family:var(--font-mono);margin-right:12px">'+dt.toLocaleDateString('en-AU',{day:'2-digit',month:'short'})+' '+VIC_HOLIDAY_NAMES[d]+'</span>';});html+='</div>';}if(upcoming.length){html+='<div style="display:flex;flex-wrap:wrap;gap:8px">';upcoming.forEach(function(u){var rc=RC[u.ri];var fd=new Date(u.leaves[0]+'T00:00:00');var ld=new Date(u.leaves[u.leaves.length-1]+'T00:00:00');html+='<div style="background:'+rc+'11;border:1px solid '+rc+'44;border-radius:6px;padding:6px 10px"><div style="font-size:10px;font-weight:700;color:'+rc+'">'+RN[u.ri]+'</div><div style="font-size:9px;color:var(--muted);font-family:var(--font-mono)">'+fd.toLocaleDateString('en-AU',{day:'2-digit',month:'short'})+(u.leaves.length>1?' – '+ld.toLocaleDateString('en-AU',{day:'2-digit',month:'short'}):'')+'</div><div style="font-size:9px;color:var(--muted)">'+u.leaves.length+' day(s)</div></div>';});html+='</div>';}html+='</div>';container.innerHTML=html;}
 
