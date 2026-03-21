@@ -71,6 +71,7 @@
     --muted:     #888;
     --faint:     #444;
     --card:      #141414;
+    --invoiced:  #d4870a;
     --cls1:      #4472c4;
     --cls2:      #6bbf33;
     --cls3:      #ed7d31;
@@ -96,6 +97,7 @@
     --text:      #1a1a2e;
     --muted:     #6b7280;
     --faint:     #999;
+    --invoiced:  #b36b00;
     --faint:     #9ca3af;
   }
   body.light .topbar { 
@@ -300,7 +302,7 @@
   .prev-cell   { color: #6699cc; }
   .actual-input {
     background: rgba(255,240,0,.08); border: 1px solid rgba(255,240,0,.25);
-    color: #ffe566; border-radius: 4px; padding: 3px 6px;
+    color: var(--invoiced); border-radius: 4px; padding: 3px 6px;
     width: 100px; font-family: var(--font-mono); font-size: 12px; text-align: right;
     outline: none; transition: border-color .15s;
   }
@@ -348,7 +350,7 @@
   .target-editor-wrap td { padding: 7px 10px; border-bottom: 1px solid var(--border); }
   .target-input {
     background: var(--surface2); border: 1px solid var(--border); border-radius: 4px;
-    color: #ffe566; font-family: var(--font-mono); font-size: 12px;
+    color: var(--invoiced); font-family: var(--font-mono); font-size: 12px;
     padding: 4px 8px; width: 120px; outline: none; transition: border-color .15s;
   }
   .target-input:focus { border-color: var(--amber); }
@@ -1499,7 +1501,7 @@ function buildRepView(repIdx) {
   <div class="section-hdr">📋 Monthly Tracker — Auto-summed from class entries <span style="font-size:9px;font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0">(excludes freight, rebates &amp; credit notes)</span></div>
   ${repIdx === 4 ? `<div id="melissa-2026-ytd-banner" style="display:none;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.25);border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:11px;color:var(--muted)">
     <span style="color:#60a5fa;font-weight:600">ℹ 2026 YTD Sales (Jan–Feb context)</span>
-    &nbsp;&nbsp;<span style="font-family:var(--font-mono);font-size:12px;color:#ffe566" id="melissa-2026-ytd-amount"></span>
+    &nbsp;&nbsp;<span style="font-family:var(--font-mono);font-size:12px;color:var(--invoiced)" id="melissa-2026-ytd-amount"></span>
   </div>` : ''}
   <div class="tracker-wrap" style="margin-bottom:6px">
     <table>
@@ -1614,8 +1616,8 @@ function populateClassTrackers(repIdx) {
       :estAct>0?(kraScore!==null&&kraScore>=0.7?'<span class="status-on">\u2705 On Track</span>':'<span class="status-off">\u26a0\ufe0f Below</span>')
       :'<span class="status-pend">Pending</span>';
     tbody.innerHTML += '<tr class="'+(isCur?'current-month-row':'')+'"><td>'+months[mi]+' 2026'+(isCur?'<span class="current-month-badge">\u25b6 Now</span>':'')+'</td>'
-      +'<td class="target-cell">'+fmt(estTgt)+'</td><td><span style="color:#ffe566;font-family:var(--font-mono)">'+(estAct>0?fmt(estAct):'\u2014')+'</span></td><td>'+ac(estAch)+'</td>'
-      +'<td class="target-cell">'+fmt(grwTgt)+'</td><td><span style="color:#ffe566;font-family:var(--font-mono)">'+(grwAct>0?fmt(grwAct):'\u2014')+'</span></td><td>'+ac(grwAch)+'</td>'
+      +'<td class="target-cell">'+fmt(estTgt)+'</td><td><span style="color:var(--invoiced);font-family:var(--font-mono)">'+(estAct>0?fmt(estAct):'\u2014')+'</span></td><td>'+ac(estAch)+'</td>'
+      +'<td class="target-cell">'+fmt(grwTgt)+'</td><td><span style="color:var(--invoiced);font-family:var(--font-mono)">'+(grwAct>0?fmt(grwAct):'\u2014')+'</span></td><td>'+ac(grwAch)+'</td>'
       +'<td>'+(kraScore!==null?'<span style="color:'+(kraScore>=0.7?'var(--green)':kraScore>=0.5?'var(--amber)':'#e05252')+';font-weight:700">'+(kraScore*100).toFixed(1)+'%</span>':'\u2014')+'</td>'
       +'<td>'+status+'</td></tr>';
   }
@@ -1732,7 +1734,7 @@ function populateTracker(repIdx) {
       <td class="target-cell">${fmt(tgt)}</td>
       <td style="color:#a78bfa">${fmt(getRepAcctPrev(repIdx, mi))}</td>
       <td class="prev-cell">${fmt(getRepPrev(repIdx, mi))}</td>
-      <td><span class="actual-input" style="display:inline-block;width:110px;cursor:default;color:#ffe566">${act > 0 ? fmt(act) : '—'}</span></td>
+      <td><span class="actual-input" style="display:inline-block;width:110px;cursor:default;color:var(--invoiced)">${act > 0 ? fmt(act) : '—'}</span></td>
       <td>${achCell}</td>
       <td>${varCell}</td><td>${pctCell}</td><td>${status}</td>
     </tr>`;
@@ -1848,7 +1850,7 @@ function buildTeamView() {
     </div>
     <div style="height:260px"><canvas id="ch-team-main"></canvas></div>
     <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-size:10px;font-family:var(--font-mono);color:var(--muted)">
-      <span>— 2026 Target</span><span>- - 2025 Actual</span><span style="color:#ffe566">▬ 2026 Invoiced</span>
+      <span>— 2026 Target</span><span>- - 2025 Actual</span><span style="color:var(--invoiced)">▬ 2026 Invoiced</span>
     </div>
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px">
@@ -1856,7 +1858,7 @@ function buildTeamView() {
       <div class="section-hdr" style="margin-bottom:10px">Target vs Achievement by Associate</div>
       <div style="height:220px"><canvas id="ch-team-bar"></canvas></div>
       <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:10px;font-family:var(--font-mono);color:var(--muted)">
-        <span style="color:#4472C4">■ 2026 Target</span><span>■ FY2025 Actual</span><span style="color:#ffe566">■ 2026 Invoiced</span>
+        <span style="color:#4472C4">■ 2026 Target</span><span>■ FY2025 Actual</span><span style="color:var(--invoiced)">■ 2026 Invoiced</span>
       </div>
     </div>
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px">
@@ -2078,8 +2080,8 @@ function refreshTeamView() {
       const vari = teamAct > 0 ? teamAct - teamTgt : null;
       const isCur = mi === currentMi;
       tbody.innerHTML += '<tr class="'+(isCur?'current-month-row':'')+'"><td>'+mo+' 2026'+(isCur?'<span class="current-month-badge">▶ Now</span>':'')+'</td>'
-        + repActs.map((v,ri) => '<td style="color:'+REPS_DATA[ri].color+';font-family:var(--font-mono)">'+(v>0?fmt(v):'—')+'</td>').join('')
-        + '<td style="font-weight:600">'+(teamAct>0?fmt(teamAct):'—')+'</td>'
+        + repActs.map((v,ri) => '<td style="color:var(--text);font-family:var(--font-mono);font-weight:500">'+(v>0?'<span style="color:'+REPS_DATA[ri].color+'">'+fmt(v)+'</span>':'—')+'</td>').join('')
+        + '<td style="font-weight:700;color:'+(teamAct>0?'var(--text)':'var(--muted)')+'">'+(teamAct>0?fmt(teamAct):'—')+'</td>'
         + '<td style="color:#a78bfa;font-family:var(--font-mono)">'+fmt(teamPrevMo)+'</td>'
         + '<td>'+fmt(teamTgt)+'</td>'
         + '<td>'+(ach!==null?'<span style="color:'+(ach>=1?'var(--green)':ach>=0.8?'var(--amber)':'#e05252')+'">'+(ach*100).toFixed(1)+'%</span>':'—')+'</td>'
@@ -2114,7 +2116,7 @@ function refreshTeamView() {
       const isCur   = mi === curMi;
       teamClassBody.innerHTML += '<tr class="'+(isCur?'current-month-row':'')+'"><td>'+months[mi]+' 2026'+(isCur?'<span class="current-month-badge">▶ Now</span>':'')+'</td>'
         +'<td>'+fmt(totTgt)+'</td>'
-        +'<td>'+(totAct>0?'<span style="color:#ffe566">'+fmt(totAct)+'</span>':'—')+'</td>'
+        +'<td>'+(totAct>0?'<span style="color:var(--text);font-weight:600">'+fmt(totAct)+'</span>':'—')+'</td>'
         +'<td>'+(ach!==null?'<span style="color:'+(ach>=1?'var(--green)':ach>=0.8?'var(--amber)':'#e05252')+'">'+(ach*100).toFixed(1)+'%</span>':'—')+'</td></tr>';
     }
   }
@@ -2136,7 +2138,10 @@ function refreshTeamView() {
       {label:'2026 Invoiced',data:teamActuals,borderColor:'#ffe566',backgroundColor:'rgba(255,229,102,0.12)',borderWidth:2.5,tension:0.4,pointRadius:4,spanGaps:false,fill:false}
     ]},
     options:{...CHART_DEFAULTS,responsive:true,maintainAspectRatio:false,
-      plugins:{...CHART_DEFAULTS.plugins,legend:{display:false}}}
+      plugins:{...CHART_DEFAULTS.plugins,
+        legend:{display:true,position:'bottom',align:'center',
+          labels:{color:'#cccccc',font:{size:11},boxWidth:24,padding:16}}
+      }}
   });
 
   mkChart('ch-team-bar', {
@@ -2150,7 +2155,10 @@ function refreshTeamView() {
       ]
     },
     options:{...CHART_DEFAULTS,responsive:true,maintainAspectRatio:false,
-      plugins:{...CHART_DEFAULTS.plugins,legend:{display:false}}}
+      plugins:{...CHART_DEFAULTS.plugins,
+        legend:{display:true,position:'bottom',align:'center',
+          labels:{color:'#cccccc',font:{size:11},boxWidth:24,padding:16}}
+      }}
   });
 
   // Class mix pie — Established vs Growth only
@@ -2209,27 +2217,30 @@ function refreshTeamView() {
 }
 
 function filterTeamChart(mo) {
-  // Update button styles
-  const allBtn = document.getElementById('chart-all');
+  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  // ── Highlight active button ──
+  var allBtn = document.getElementById('chart-all');
   if (allBtn) {
-    allBtn.style.background = mo === 'all' ? 'var(--green)' : 'var(--surface2)';
-    allBtn.style.color = mo === 'all' ? '#fff' : 'var(--muted)';
-    allBtn.style.border = mo === 'all' ? 'none' : '1px solid var(--border)';
+    var isAll = mo === 'all';
+    allBtn.style.background = isAll ? 'var(--green)' : 'var(--surface2)';
+    allBtn.style.color = isAll ? '#fff' : 'var(--text)';
+    allBtn.style.border = isAll ? 'none' : '1px solid var(--border)';
+    allBtn.style.fontWeight = isAll ? '700' : '400';
   }
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   months.forEach(function(m, mi) {
     var btn = document.getElementById('chart-mo-' + mi);
     if (!btn) return;
     var active = mo === m;
     btn.style.background = active ? 'var(--green)' : 'var(--surface2)';
-    btn.style.color = active ? '#fff' : 'var(--muted)';
+    btn.style.color = active ? '#fff' : 'var(--text)';
     btn.style.border = active ? 'none' : '1px solid var(--border)';
+    btn.style.fontWeight = active ? '700' : '400';
   });
 
   var chart = charts['ch-team-main'];
   if (!chart) return;
 
-  var labels = months;
   var allTargets = months.map(function(_, mi) {
     return Math.round(REPS_DATA.reduce(function(s,_,ri){ return s + getTarget(ri, mi); }, 0));
   });
@@ -2242,23 +2253,56 @@ function filterTeamChart(mo) {
   });
 
   if (mo === 'all') {
-    chart.data.labels = labels;
+    chart.data.labels = months;
     chart.data.datasets[0].data = allTargets;
     chart.data.datasets[1].data = allPrev;
     chart.data.datasets[2].data = allActuals;
+    chart.options.scales.x.type = 'category';
   } else {
     var mi = months.indexOf(mo);
     if (mi === -1) return;
-    // Show single month - bar style with all reps
     var RN = REPS_DATA.map(function(r){ return r.shortName || r.name.split(' ')[0]; });
     chart.data.labels = RN;
     chart.data.datasets[0].data = REPS_DATA.map(function(_,ri){ return Math.round(getTarget(ri, mi)); });
     chart.data.datasets[1].data = REPS_DATA.map(function(_,ri){ return Math.round(getRepPrev(ri, mi)); });
-    var acts = REPS_DATA.map(function(_,ri){ var a=getActual(ri,mi); return a>0?Math.round(a):null; });
-    chart.data.datasets[2].data = acts;
+    chart.data.datasets[2].data = REPS_DATA.map(function(_,ri){ var a=getActual(ri,mi); return a>0?Math.round(a):null; });
   }
   chart.update();
+
+  // ── Update summary box ──
+  var summaryEl = document.getElementById('team-chart-summary');
+  if (!summaryEl) return;
+
+  if (mo === 'all') {
+    var ytdMi = new Date().getMonth();
+    var ytdTgt = allTargets.slice(0, ytdMi+1).reduce(function(s,v){return s+v;},0);
+    var ytdAct = allActuals.slice(0, ytdMi+1).reduce(function(s,v){return s+(v||0);},0);
+    var ytdPct = ytdTgt > 0 ? ytdAct/ytdTgt : 0;
+    var annTgt = allTargets.reduce(function(s,v){return s+v;},0);
+    var col = ytdPct>=1?'var(--green)':ytdPct>=0.8?'var(--amber)':'#e05252';
+    summaryEl.innerHTML =
+      '<div style="font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px">Full Year</div>'
+      +'<div style="font-size:11px;color:var(--muted)">Annual Target</div>'
+      +'<div style="font-size:15px;font-weight:800;color:var(--text)">'+fmtK(annTgt)+'</div>'
+      +'<div style="margin-top:6px;font-size:11px;color:var(--muted)">YTD Invoiced</div>'
+      +'<div style="font-size:15px;font-weight:800;color:'+col+'">'+fmtK(ytdAct)+'</div>'
+      +'<div style="font-size:12px;font-weight:700;color:'+col+';margin-top:4px">'+fmtPct(ytdPct)+'</div>';
+  } else {
+    var mi2 = months.indexOf(mo);
+    var moTgt = allTargets[mi2] || 0;
+    var moAct = (allActuals[mi2]||0);
+    var moPct = moTgt > 0 ? moAct/moTgt : 0;
+    var col2 = moPct>=1?'var(--green)':moPct>=0.8?'var(--amber)':moAct>0?'#e05252':'var(--muted)';
+    summaryEl.innerHTML =
+      '<div style="font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px">'+mo+' 2026</div>'
+      +'<div style="font-size:11px;color:var(--muted)">Target</div>'
+      +'<div style="font-size:15px;font-weight:800;color:var(--text)">'+fmtK(moTgt)+'</div>'
+      +'<div style="margin-top:6px;font-size:11px;color:var(--muted)">Invoiced</div>'
+      +'<div style="font-size:15px;font-weight:800;color:'+col2+'">'+fmtK(moAct)+'</div>'
+      +'<div style="font-size:12px;font-weight:700;color:'+col2+';margin-top:4px">'+(moAct>0?fmtPct(moPct):'—')+'</div>';
+  }
 }
+
 function filterClassChart(mo) {}
 
 // ══════════════════════════════════════════════════════════════
@@ -2769,7 +2813,32 @@ function renderTeamNotes(container,fromDate,toDate,filterRep){if(!container)retu
   +'<button onclick="(function(){var r=document.getElementById(\'team-notes-rep\').value;var f=document.getElementById(\'team-notes-from\').value;var t=document.getElementById(\'team-notes-to\').value;var c=document.getElementById(\'team-notes-panel\');if(c)renderTeamNotes(c,f||null,t||null,r)})()" style="background:var(--green);color:#fff;border:none;border-radius:5px;padding:5px 12px;font-size:11px;cursor:pointer">Apply</button>'
   +'<button onclick="var c=document.getElementById(\'team-notes-panel\');if(c)renderTeamNotes(c,null,null,\'all\')" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:5px 10px;font-size:11px;cursor:pointer">Clear</button>'
   +'<span style="font-size:10px;color:var(--muted);margin-left:4px">'+an.length+' of '+state.notes.length+' notes</span>'
-  +'</div>';html+='<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:20px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">🤖 Team Intelligence</div><button onclick="generateAndSaveTeamInsight()" style="background:var(--green);color:#fff;border:none;border-radius:5px;padding:5px 12px;font-size:11px;cursor:pointer">✨ Generate</button></div><div id="team-insights-panel">'+(ei?formatInsight(ei):'<span style="color:var(--muted);font-size:11px">Click Generate to analyse all team notes.</span>')+'</div></div>';html+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:10px">📋 Recent Activity ('+an.length+' notes)</div>';if(!an.length){html+='<div style="padding:24px;text-align:center;color:var(--muted);font-family:var(--font-mono);font-size:11px">No notes uploaded yet.</div>';}else{an.slice(0,30).forEach(function(n){var ri2=n.ri!==undefined?n.ri:-1;var rc=ri2>=0?RC[ri2]:'#888';var rn=ri2>=0?RN[ri2]:(n.rep||'');html+='<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid '+rc+';border-radius:8px;padding:10px 14px;margin-bottom:6px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="font-size:10px;font-weight:700;color:'+rc+'">'+rn+'</span><span style="font-size:10px;color:var(--muted);font-family:var(--font-mono)">'+n.date+'</span><span style="font-size:10px;font-weight:600;color:var(--text)">'+(n.company||'')+'</span>'+(n.title?'<span style="font-size:9px;padding:1px 6px;border-radius:8px;background:var(--green)22;color:var(--green)">'+n.title+'</span>':'')+'</div><div style="font-size:11px;color:var(--muted);line-height:1.4">'+(n.memo||'').slice(0,200)+'</div></div>';});}html+='</div>';container.innerHTML=html;}
+  +'</div>';html+='<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:20px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">🤖 Team Intelligence</div><button onclick="generateAndSaveTeamInsight()" style="background:var(--green);color:#fff;border:none;border-radius:5px;padding:5px 12px;font-size:11px;cursor:pointer">✨ Generate</button></div><div id="team-insights-panel">'+(ei?formatInsight(ei):'<span style="color:var(--muted);font-size:11px">Click Generate to analyse all team notes.</span>')+'</div></div>';// ── Notes Summary (not full list) ──
+  var noteSummary = an.length ? generateTeamInsights(an) : null;
+  var repCounts = [0,0,0,0,0];
+  an.forEach(function(n){ var ri2=parseInt(n.ri); if(ri2>=0&&ri2<5) repCounts[ri2]++; });
+  html+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:10px">📋 Notes Summary ('+an.length+' notes)</div>';
+  if(!an.length){
+    html+='<div style="padding:24px;text-align:center;color:var(--muted);font-family:var(--font-mono);font-size:11px;background:var(--surface);border:1px solid var(--border);border-radius:8px">No notes uploaded yet.</div>';
+  } else {
+    // Rep activity breakdown
+    html+='<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:16px">';
+    RN.forEach(function(r,ri2){
+      var rc2=RC[ri2];
+      html+='<div style="background:var(--surface);border:1px solid var(--border);border-top:2px solid '+rc2+';border-radius:8px;padding:10px 12px;text-align:center">'
+        +'<div style="font-size:10px;font-weight:700;color:'+rc2+';margin-bottom:4px">'+r+'</div>'
+        +'<div style="font-size:20px;font-weight:800;color:var(--text)">'+repCounts[ri2]+'</div>'
+        +'<div style="font-size:9px;color:var(--muted)">notes</div>'
+        +'</div>';
+    });
+    html+='</div>';
+    // Summary text
+    if(noteSummary){
+      html+='<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px">'
+        +'<pre style="font-family:var(--font-mono);font-size:11px;color:var(--text);line-height:1.7;margin:0;white-space:pre-wrap">'+noteSummary+'</pre>'
+        +'</div>';
+    }
+  }html+='</div>';container.innerHTML=html;}
 
 function renderTeamLeave(container){if(!container)return;var RN=['Robert Schaffer','Andrew Mobilia','Alexander Poll','Stivi Maticevski','Melissa Goodridge'];var RC=['#4472C4','#70AD47','#ED7D31','#9E480E','#C00000'];var today=new Date();var todayStr=dateStr(today);var next30=new Date(today);next30.setDate(today.getDate()+30);var onToday=[];for(var ri=0;ri<5;ri++){if(isRepOnLeave(ri,todayStr))onToday.push(ri);}var upcoming=[];for(var ri=0;ri<5;ri++){var lv=getRepLeave(ri).filter(function(d){return d>todayStr&&d<=dateStr(next30);});if(lv.length)upcoming.push({ri:ri,leaves:lv.sort()});}var upHols=VIC_HOLIDAYS_2026.filter(function(d){return d>todayStr&&d<=dateStr(next30);});var html='<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:16px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:12px">🏖️ Leave & Holidays</div>';if(onToday.length){html+='<div style="margin-bottom:10px"><span style="font-size:11px;font-weight:600;color:#e05252">On Leave Today: </span>';onToday.forEach(function(ri){html+='<span style="display:inline-block;padding:2px 10px;border-radius:10px;background:'+RC[ri]+'22;color:'+RC[ri]+';font-size:10px;font-weight:600;margin-right:6px">'+RN[ri]+'</span>';});html+='</div>';}else{html+='<div style="font-size:11px;color:var(--muted);margin-bottom:10px">✅ No one on leave today</div>';}if(upHols.length){html+='<div style="margin-bottom:10px"><span style="font-size:11px;font-weight:600;color:var(--amber)">🇦🇺 Upcoming: </span>';upHols.forEach(function(d){var dt=new Date(d+'T00:00:00');html+='<span style="font-size:10px;color:var(--text);font-family:var(--font-mono);margin-right:12px">'+dt.toLocaleDateString('en-AU',{day:'2-digit',month:'short'})+' '+VIC_HOLIDAY_NAMES[d]+'</span>';});html+='</div>';}if(upcoming.length){html+='<div style="display:flex;flex-wrap:wrap;gap:8px">';upcoming.forEach(function(u){var rc=RC[u.ri];var fd=new Date(u.leaves[0]+'T00:00:00');var ld=new Date(u.leaves[u.leaves.length-1]+'T00:00:00');html+='<div style="background:'+rc+'11;border:1px solid '+rc+'44;border-radius:6px;padding:6px 10px"><div style="font-size:10px;font-weight:700;color:'+rc+'">'+RN[u.ri]+'</div><div style="font-size:9px;color:var(--muted);font-family:var(--font-mono)">'+fd.toLocaleDateString('en-AU',{day:'2-digit',month:'short'})+(u.leaves.length>1?' – '+ld.toLocaleDateString('en-AU',{day:'2-digit',month:'short'}):'')+'</div><div style="font-size:9px;color:var(--muted)">'+u.leaves.length+' day(s)</div></div>';});html+='</div>';}html+='</div>';container.innerHTML=html;}
 
@@ -3132,7 +3201,7 @@ function init() {
   });
 
   // Populate team view (team is active so charts will render)
-  try { refreshTeamView(); } catch(e) { console.warn('refreshTeamView', e); }
+  try { refreshTeamView(); setTimeout(function(){ filterTeamChart('all'); }, 200); } catch(e) { console.warn('refreshTeamView', e); }
 }
 
 // ══════════════════════════════════════════════════════════════
