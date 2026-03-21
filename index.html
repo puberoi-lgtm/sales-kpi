@@ -1677,10 +1677,10 @@ function showView(id) {
   if (riMatch) {
     const ri = parseInt(riMatch[1]);
     setTimeout(function() {
-      try { populateTracker(ri); } catch(e) {}
-      try { populateClassTrackers(ri); } catch(e) {}
-      try { drawRepCharts(ri); } catch(e) {}
-    }, 50);
+      try { populateTracker(ri); } catch(e) { console.warn(e); }
+      try { populateClassTrackers(ri); } catch(e) { console.warn(e); }
+      try { drawRepCharts(ri); } catch(e) { console.warn(e); }
+    }, 100);
   }
 }
 
@@ -2676,7 +2676,8 @@ function init() {
   container.appendChild(raDiv);
 
   // Pre-load 2026 actuals so charts render immediately
-  state.classActuals = Object.assign({}, _preloadedActuals, state.classActuals || {});
+  // Preloaded Jan-Mar 2026 always takes priority
+  state.classActuals = Object.assign({}, state.classActuals || {}, _preloadedActuals);
 
   applyStoredTheme();
 
