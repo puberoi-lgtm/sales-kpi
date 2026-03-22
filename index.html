@@ -2635,6 +2635,8 @@ function buildLocationsPane(ri) {
   var active  = accts.filter(function(a){return isAcctActive(a);});
   var custState = window['_custState_'+ri] || (window['_custState_'+ri] = {page:0,company:'all',search:''});
   var companies = ['all'].concat(Array.from(new Set(accts.map(function(a){ return a.n.includes(' : ') ? a.n.split(' : ')[0] : (a.p||a.n); }).filter(Boolean))).sort());
+  // Reset if stored value no longer valid
+  if (custState.company !== 'all' && companies.indexOf(custState.company) === -1) custState.company = 'all';
   var filtered = accts.filter(function(a){
     var acctParent = a.n.includes(' : ') ? a.n.split(' : ')[0] : (a.p||a.n);
     if (custState.company !== 'all' && acctParent !== custState.company) return false;
@@ -2679,7 +2681,7 @@ function buildLocationsPane(ri) {
     + '</div>';
 
   o += '<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">'
-    + '<select onchange="locFilterCo('+ri+',this.value)" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:11px;border-radius:5px;padding:5px 10px;max-width:200px">'+coOpts+'</select>'
+    + '<select onchange="locFilterCo('+ri+',this.value)" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:11px;border-radius:5px;padding:5px 10px;max-width:280px">'+coOpts+'</select>'
     + '<input type="text" placeholder="Search…" value="'+custState.search+'" oninput="locFilterSearch('+ri+',this.value)" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 10px;font-family:var(--font-mono);font-size:11px;outline:none;width:180px"/>'
     + '</div>';
 
