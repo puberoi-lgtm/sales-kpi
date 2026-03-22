@@ -1179,7 +1179,15 @@ function fbStartListening() {
 // ── Formatting ──────────────────────────────────────────────
 const $ = (s, ctx = document) => ctx.querySelector(s);
 const $$ = (s, ctx = document) => [...ctx.querySelectorAll(s)];
-const fmt = v => v == null || isNaN(v) ? '—' : (v < 0 ? '(' : '') + '$' + Math.abs(Math.round(v)).toLocaleString('en-AU') + (v < 0 ? ')' : '');
+const fmt = function(v) {
+  if (v == null || isNaN(v)) return '—';
+  var neg = v < 0; var abs = Math.abs(Math.round(v));
+  var s = abs >= 1000000 ? '$' + (abs/1000000).toFixed(1) + 'M'
+        : abs >= 1000    ? '$' + Math.round(abs/1000) + 'k'
+        : '$' + abs;
+  return neg ? '(' + s + ')' : s;
+};
+const fmtFull = v => v == null || isNaN(v) ? '—' : (v < 0 ? '(' : '') + '$' + Math.abs(Math.round(v)).toLocaleString('en-AU') + (v < 0 ? ')' : '');
 const fmtK = v => v == null || isNaN(v) ? '—' : '$' + (Math.round(v / 1000)).toLocaleString('en-AU') + 'k';
 const fmtPct = v => isNaN(v) || !isFinite(v) ? '—' : (v * 100).toFixed(1) + '%';
 
@@ -2305,7 +2313,7 @@ function refreshTeamView() {
         legend:{display:true,position:'right',labels:{color:chartTextColor(),font:{size:11},boxWidth:14,padding:10}},
         tooltip:{callbacks:{label:function(ctx){
           var pct=(ctx.raw/grandTotal2025*100).toFixed(1);
-          return ctx.label+': $'+Math.round(ctx.raw).toLocaleString('en-AU')+' ('+pct+'%)';
+          return ctx.label+': '+fmt(ctx.raw)+' ('+pct+'%)';
         }}}
       },
       scales:{x:{display:false},y:{display:false}}}
@@ -2698,7 +2706,7 @@ function buildLocationsPane(ri) {
     o += '<tr>'
       + '<td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+parentName+'">'+parentName+'</td>'
       + '<td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;color:var(--muted)" title="'+branchName+'">'+branchName+'</td>'
-      + '<td style="font-family:var(--font-mono);text-align:right">'+(a.s?'$'+Math.round(a.s).toLocaleString('en-AU'):'—')+'</td>'
+      + '<td style="font-family:var(--font-mono);text-align:right">'+(a.s?fmt(a.s):'—')+'</td>'
       + '<td>'+badge+'</td>'
       + '<td style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">'+lastMo+'</td>'
       + '</tr>';
@@ -3097,7 +3105,7 @@ function renderConversions(ct) {
     s+='<tr>';
     s+='<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+a.n+'">'+a.n+'</td>';
     s+='<td style="color:'+(RC[a.ri]||'#888')+';font-size:10px">'+(RN[a.ri]||'—')+'</td>';
-    s+='<td style="font-family:var(--font-mono)">'+(a.s?'$'+Math.round(a.s).toLocaleString('en-AU'):'—')+'</td>';
+    s+='<td style="font-family:var(--font-mono)">'+(a.s?fmt(a.s):'—')+'</td>';
     s+='<td>'+badge+'</td>';
     s+='<td style="font-size:10px;color:var(--muted)">'+(a.lastActive>=0?MO[a.lastActive]+' 2025':'Never')+'</td>';
     s+='<td style="font-size:10px;color:var(--muted)">'+(a.firstActive>=0?MO[a.firstActive]+' 2025':'—')+'</td>';
@@ -3177,7 +3185,7 @@ function renderHeatmap(ct) {
     var rowTotal = rev.reduce(function(s,v){ return s+v; }, 0);
     html += '<tr><td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+a.n+'">'+a.n+'</td>';
     html += '<td style="color:'+(a.ri>=0?RC[a.ri]:'#888')+';font-size:9px">'+(a.ri>=0?RN[a.ri]:'—')+'</td>';
-    html += '<td style="font-family:var(--font-mono);text-align:right">$'+Math.round(rowTotal).toLocaleString('en-AU')+'</td>';
+    html += '<td style="font-family:var(--font-mono);text-align:right">'+fmt(rowTotal)+'</td>';
     rev.forEach(function(v) {
       html += '<td><div class="hm-cell" style="background:'+heatColor(v,maxRev)+'">'+(v>0?'$'+Math.round(v/1000)+'k':'')+'</div></td>';
     });
@@ -3258,7 +3266,7 @@ function renderHeatmap(ct) {
     var rowTotal = rev.reduce(function(s,v){ return s+v; }, 0);
     html += '<tr><td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+a.n+'">'+a.n+'</td>';
     html += '<td style="color:'+(a.ri>=0?RC[a.ri]:'#888')+';font-size:9px">'+(a.ri>=0?RN[a.ri]:'—')+'</td>';
-    html += '<td style="font-family:var(--font-mono);text-align:right">$'+Math.round(rowTotal).toLocaleString('en-AU')+'</td>';
+    html += '<td style="font-family:var(--font-mono);text-align:right">'+fmt(rowTotal)+'</td>';
     rev.forEach(function(v) {
       html += '<td><div class="hm-cell" style="background:'+heatColor(v,maxRev)+'">'+(v>0?'$'+Math.round(v/1000)+'k':'')+'</div></td>';
     });
