@@ -1587,7 +1587,7 @@ function buildRepView(repIdx) {
   <div class="section-hdr">📦 Performance by Class</div>
   <div style="font-size:10px;color:var(--muted);font-family:var(--font-mono);margin-bottom:8px">KRA = (Server Racks×40%) + (Data×25%) + (Cabling×15%) + (Bulk Cables×18%) + (Others×2%)</div>
   <div style="overflow-x:auto">
-    <table style="border-collapse:collapse;font-family:var(--font-mono);font-size:11px;width:100%;min-width:1050px;table-layout:fixed">
+    <table style="border-collapse:collapse;font-family:var(--font-mono);font-size:11px;width:100%;min-width:1050px;table-layout:auto">
       <colgroup>
         <col style="width:80px">
         <col style="width:62px"><col style="width:62px"><col style="width:52px">
@@ -2021,7 +2021,7 @@ function buildTeamView() {
 
   <div class="section-hdr">📊 Class Achievement — Team</div>
   <div style="overflow-x:auto;margin-bottom:6px">
-    <table style="border-collapse:collapse;font-family:var(--font-mono);font-size:11px;width:100%;min-width:1050px;table-layout:fixed">
+    <table style="border-collapse:collapse;font-family:var(--font-mono);font-size:11px;width:100%;min-width:1050px;table-layout:auto">
       <colgroup>
         <col style="width:80px">
         <col style="width:62px"><col style="width:62px"><col style="width:52px">
@@ -2446,7 +2446,7 @@ function buildAccountsView() {
   var el = document.getElementById('accounts-content'); if(!el) return;
   var RN=['Robert Schaffer','Andrew Mobilia','Alexander Poll','Stivi Maticevski','Melissa Goodridge'];
   var repOpts='<option value="all"'+('all'===_acctState.rep?' selected':'')+'>All Reps</option>'+RN.map(function(r){return '<option value="'+r+'"'+(r===_acctState.rep?' selected':'')+'>'+r+'</option>';}).join('')+'<option value="unassigned"'+('unassigned'===_acctState.rep?' selected':'')+'>Unassigned</option>';
-  var companies=['all'].concat(Array.from(new Set(ACCOUNTS_DATA.map(function(a){return a.p||'';}).filter(Boolean))).sort());
+  var companies=['all'].concat(Array.from(new Set(ACCOUNTS_DATA.map(function(a){return a.n.includes(' : ')?a.n.split(' : ')[0]:a.n;}).filter(Boolean))).sort());
   var coOpts=companies.map(function(c){return '<option value="'+c+'"'+(c===_acctState.company?' selected':'')+'>'+( c==='all'?'All Companies':c)+'</option>';}).join('');
   el.innerHTML='<div class="acct-toolbar">'
     +'<select onchange="_acctState.rep=this.value;_acctState.page=0;window._hmPage=0;buildAccountsView()">'+repOpts+'</select>'
@@ -2621,6 +2621,13 @@ function locPage(ri, dir) {
   var p = document.getElementById('rpane-loc-'+ri);
   if (p) p.innerHTML = buildLocationsPane(ri);
 }
+function locFilterStatus(ri, val) {
+  if (!window['_custState_'+ri]) window['_custState_'+ri] = {page:0,company:'all',search:'',filter:'all'};
+  window['_custState_'+ri].filter = val;
+  window['_custState_'+ri].page = 0;
+  var p = document.getElementById('rpane-loc-'+ri);
+  if (p) p.innerHTML = buildLocationsPane(ri);
+}
 function locFilterCo(ri, val) {
   if (!window['_custState_'+ri]) window['_custState_'+ri] = {page:0,company:'all',search:''};
   window['_custState_'+ri].company = val;
@@ -2642,13 +2649,16 @@ function buildLocationsPane(ri) {
   var MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   var dormant = accts.filter(function(a){return isAcctDormant(a);});
   var active  = accts.filter(function(a){return isAcctActive(a);});
-  var custState = window['_custState_'+ri] || (window['_custState_'+ri] = {page:0,company:'all',search:''});
+  var custState = window['_custState_'+ri] || (window['_custState_'+ri] = {page:0,company:'all',search:'',filter:'all'});
+  if (!custState.filter) custState.filter = 'all';
   var companies = ['all'].concat(Array.from(new Set(accts.map(function(a){ return a.n.includes(' : ') ? a.n.split(' : ')[0] : a.n; }).filter(Boolean))).sort());
   // Reset if stored value no longer valid
   if (custState.company !== 'all' && companies.indexOf(custState.company) === -1) custState.company = 'all';
   var filtered = accts.filter(function(a){
     var acctParent = a.n.includes(' : ') ? a.n.split(' : ')[0] : a.n;
     if (custState.company !== 'all' && acctParent !== custState.company) return false;
+    if (custState.filter === 'active' && !isAcctActive(a)) return false;
+    if (custState.filter === 'dormant' && !isAcctDormant(a)) return false;
     if (custState.search && !(a.n+' '+(a.p||'')).toLowerCase().includes(custState.search.toLowerCase())) return false;
     return true;
   });
@@ -2689,9 +2699,10 @@ function buildLocationsPane(ri) {
     + '<button onclick="openAddAccountModal('+ri+')" style="background:var(--green);color:#fff;border:none;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer">+ Add Account</button>'
     + '</div>';
 
-  o += '<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">'
+  o += '<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">'
     + '<select onchange="locFilterCo('+ri+',this.value)" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:11px;border-radius:5px;padding:5px 10px;max-width:280px">'+coOpts+'</select>'
-    + '<input type="text" placeholder="Search…" value="'+custState.search+'" oninput="locFilterSearch('+ri+',this.value)" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 10px;font-family:var(--font-mono);font-size:11px;outline:none;width:180px"/>'
+    + '<input type="text" placeholder="Search…" value="'+custState.search+'" oninput="locFilterSearch('+ri+',this.value)" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 10px;font-family:var(--font-mono);font-size:11px;outline:none;width:160px"/>'
+    + ['all','active','dormant'].map(function(f){ var labels={all:'All',active:'✅ Active',dormant:'💤 Dormant'}; return '<button onclick="locFilterStatus('+ri+',\''+f+'\')" style="padding:4px 12px;font-size:10px;font-family:var(--font-mono);border-radius:20px;border:1px solid var(--border);cursor:pointer;background:'+(custState.filter===f?'var(--green)':'transparent')+';color:'+(custState.filter===f?'#fff':'var(--muted)')+';font-weight:'+(custState.filter===f?'700':'400')+'">'+labels[f]+'</button>'; }).join('')
     + '</div>';
 
   o += '<div class="loc-table-wrap"><table class="loc-table">'
@@ -3079,10 +3090,28 @@ function renderConversions(ct) {
   s+='<option value="dormant"'+(fs.status==='dormant'?' selected':'')+'>Dormant</option>';
   s+='</select>';
   s+='<input type="text" placeholder="Search..." oninput="window._convFilter=window._convFilter||{};window._convFilter.search=this.value;renderConversions(document.getElementById(\'acct-tab-content\'))" value="'+(fs.search||'')+'" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 10px;font-size:11px;width:180px">';
+  s+='<select onchange="window._convSort=this.value;renderConversions(document.getElementById(\'acct-tab-content\'))" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:11px;border-radius:5px;padding:5px 8px">';
+  var sortVal = window._convSort||'name';
+  s+='<option value="name"'+(sortVal==='name'?' selected':'')+'>Sort: Name</option>';
+  s+='<option value="rev_desc"'+(sortVal==='rev_desc'?' selected':'')+'>Sort: Revenue ↓</option>';
+  s+='<option value="rev_asc"'+(sortVal==='rev_asc'?' selected':'')+'>Sort: Revenue ↑</option>';
+  s+='<option value="last_desc"'+(sortVal==='last_desc'?' selected':'')+'>Sort: Last Order ↓</option>';
+  s+='<option value="last_asc"'+(sortVal==='last_asc'?' selected':'')+'>Sort: Last Order ↑</option>';
+  s+='</select>';
   s+='<span style="font-size:11px;color:var(--muted)">'+filtered.length+' accounts</span>';
   s+='</div>';
 
   // Pagination
+  // Apply sort
+  var sortBy = window._convSort || 'name';
+  filtered.sort(function(a,b){
+    if(sortBy==='rev_desc') return (b.s||0)-(a.s||0);
+    if(sortBy==='rev_asc')  return (a.s||0)-(b.s||0);
+    if(sortBy==='last_desc') return (b.lastActive||0)-(a.lastActive||0);
+    if(sortBy==='last_asc')  return (a.lastActive||0)-(b.lastActive||0);
+    return a.n.localeCompare(b.n);
+  });
+
   var CONV_PAGE = 100;
   var convPage = window._convPage || 0;
   var totalPages = Math.ceil(filtered.length / CONV_PAGE);
@@ -3120,7 +3149,7 @@ function renderConversions(ct) {
 
 function renderAccountsTab(){var ct=document.getElementById('acct-tab-content');if(!ct)return;if(_acctState.tab==='conversions')renderConversions(ct);else renderHeatmap(ct);}
 function buildDormantAgeSelect(){if(_acctState.filter!=='dormant')return'';return'<select onchange="_acctState.dormantAge=this.value;_acctState.page=0;buildAccountsView()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:11px;border-radius:6px;padding:5px 8px"><option value="all"'+((_acctState.dormantAge==='all')?' selected':'')+'>All Dormant</option><option value="3"'+((_acctState.dormantAge==='3')?' selected':'')+'>3+ months</option><option value="6"'+((_acctState.dormantAge==='6')?' selected':'')+'>6+ months</option><option value="9"'+((_acctState.dormantAge==='9')?' selected':'')+'>9+ months</option><option value="12"'+((_acctState.dormantAge==='12')?' selected':'')+'>12+ months/Never</option></select>';}
-function getFilteredAccounts(){var accts=ACCOUNTS_DATA.filter(function(a){if(_acctState.rep!=='all'){if(_acctState.rep==='unassigned')return a.ri===-1;var RN=['Robert Schaffer','Andrew Mobilia','Alexander Poll','Stivi Maticevski','Melissa Goodridge'];if(RN.indexOf(_acctState.rep)!==-1&&a.ri!==RN.indexOf(_acctState.rep))return false;}if(_acctState.company!=='all'&&(a.p||'')!==_acctState.company)return false;if(_acctState.filter==='dormant'){if(!isAcctDormant(a))return false;if(_acctState.dormantAge&&_acctState.dormantAge!=='all'){var age=parseInt(_acctState.dormantAge);if(_acctState.dormantAge==='12'){if(a.la>=0&&a.la>=(12-age))return false;}else{var mo=new Date().getMonth();if(a.la>=0&&(mo-a.la+12)%12<age)return false;}}}if(_acctState.filter==='active'&&!isAcctActive(a))return false;if(_acctState.search&&!(a.n+' '+(a.p||'')).toLowerCase().includes(_acctState.search.toLowerCase()))return false;return true;});return accts;}
+function getFilteredAccounts(){var accts=ACCOUNTS_DATA.filter(function(a){if(_acctState.rep!=='all'){if(_acctState.rep==='unassigned')return a.ri===-1;var RN=['Robert Schaffer','Andrew Mobilia','Alexander Poll','Stivi Maticevski','Melissa Goodridge'];if(RN.indexOf(_acctState.rep)!==-1&&a.ri!==RN.indexOf(_acctState.rep))return false;}var _ap=a.n.includes(' : ')?a.n.split(' : ')[0]:a.n;if(_acctState.company!=='all'&&_ap!==_acctState.company)return false;if(_acctState.filter==='dormant'){if(!isAcctDormant(a))return false;if(_acctState.dormantAge&&_acctState.dormantAge!=='all'){var age=parseInt(_acctState.dormantAge);if(_acctState.dormantAge==='12'){if(a.la>=0&&a.la>=(12-age))return false;}else{var mo=new Date().getMonth();if(a.la>=0&&(mo-a.la+12)%12<age)return false;}}}if(_acctState.filter==='active'&&!isAcctActive(a))return false;if(_acctState.search&&!(a.n+' '+(a.p||'')).toLowerCase().includes(_acctState.search.toLowerCase()))return false;return true;});return accts;}
 function acctSearch(val){_acctState.search=val;_acctState.page=0;var inp=document.getElementById('acct-search-input');buildAccountsView();setTimeout(function(){var el=document.getElementById('acct-search-input');if(el){el.value=val;el.focus();}},50);}
 
 // ── Heatmap ───────────────────────────────────────────────────
@@ -3201,7 +3230,7 @@ function renderHeatmap(ct) {
 
 function renderAccountsTab(){var ct=document.getElementById('acct-tab-content');if(!ct)return;if(_acctState.tab==='conversions')renderConversions(ct);else renderHeatmap(ct);}
 function buildDormantAgeSelect(){if(_acctState.filter!=='dormant')return'';return'<select onchange="_acctState.dormantAge=this.value;_acctState.page=0;buildAccountsView()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:11px;border-radius:6px;padding:5px 8px"><option value="all"'+((_acctState.dormantAge==='all')?' selected':'')+'>All Dormant</option><option value="3"'+((_acctState.dormantAge==='3')?' selected':'')+'>3+ months</option><option value="6"'+((_acctState.dormantAge==='6')?' selected':'')+'>6+ months</option><option value="9"'+((_acctState.dormantAge==='9')?' selected':'')+'>9+ months</option><option value="12"'+((_acctState.dormantAge==='12')?' selected':'')+'>12+ months/Never</option></select>';}
-function getFilteredAccounts(){var accts=ACCOUNTS_DATA.filter(function(a){if(_acctState.rep!=='all'){if(_acctState.rep==='unassigned')return a.ri===-1;var RN=['Robert Schaffer','Andrew Mobilia','Alexander Poll','Stivi Maticevski','Melissa Goodridge'];if(RN.indexOf(_acctState.rep)!==-1&&a.ri!==RN.indexOf(_acctState.rep))return false;}if(_acctState.company!=='all'&&(a.p||'')!==_acctState.company)return false;if(_acctState.filter==='dormant'){if(!isAcctDormant(a))return false;if(_acctState.dormantAge&&_acctState.dormantAge!=='all'){var age=parseInt(_acctState.dormantAge);if(_acctState.dormantAge==='12'){if(a.la>=0&&a.la>=(12-age))return false;}else{var mo=new Date().getMonth();if(a.la>=0&&(mo-a.la+12)%12<age)return false;}}}if(_acctState.filter==='active'&&!isAcctActive(a))return false;if(_acctState.search&&!(a.n+' '+(a.p||'')).toLowerCase().includes(_acctState.search.toLowerCase()))return false;return true;});return accts;}
+function getFilteredAccounts(){var accts=ACCOUNTS_DATA.filter(function(a){if(_acctState.rep!=='all'){if(_acctState.rep==='unassigned')return a.ri===-1;var RN=['Robert Schaffer','Andrew Mobilia','Alexander Poll','Stivi Maticevski','Melissa Goodridge'];if(RN.indexOf(_acctState.rep)!==-1&&a.ri!==RN.indexOf(_acctState.rep))return false;}var _ap=a.n.includes(' : ')?a.n.split(' : ')[0]:a.n;if(_acctState.company!=='all'&&_ap!==_acctState.company)return false;if(_acctState.filter==='dormant'){if(!isAcctDormant(a))return false;if(_acctState.dormantAge&&_acctState.dormantAge!=='all'){var age=parseInt(_acctState.dormantAge);if(_acctState.dormantAge==='12'){if(a.la>=0&&a.la>=(12-age))return false;}else{var mo=new Date().getMonth();if(a.la>=0&&(mo-a.la+12)%12<age)return false;}}}if(_acctState.filter==='active'&&!isAcctActive(a))return false;if(_acctState.search&&!(a.n+' '+(a.p||'')).toLowerCase().includes(_acctState.search.toLowerCase()))return false;return true;});return accts;}
 function acctSearch(val){_acctState.search=val;_acctState.page=0;var inp=document.getElementById('acct-search-input');buildAccountsView();setTimeout(function(){var el=document.getElementById('acct-search-input');if(el){el.value=val;el.focus();}},50);}
 
 // ── Heatmap ───────────────────────────────────────────────────
