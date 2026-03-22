@@ -112,7 +112,7 @@
   body.light .tab-btn.active { color: #22863a; border-bottom-color: #22863a; }
   body.light .topbar-action-btn { color: #6b7280; border-color: #d1d5db; }
   body.light .topbar-action-btn:hover { border-color: #22863a; color: #22863a; }
-  body.light .login-card { position: relative; z-index: 1; backdrop-filter: blur(12px); background: rgba(15,15,15,0.85) !important; border: 1px solid rgba(107,191,51,0.3) !important; box-shadow: 0 4px 20px rgba(0,0,0,.12); }
+  body.light .login-card { position: relative; z-index: 1; backdrop-filter: blur(12px); background: rgba(255,255,255,0.95) !important; border: 1px solid rgba(107,191,51,0.4) !important; box-shadow: 0 4px 20px rgba(0,0,0,.12); }
   body.light .current-month-row td { background: rgba(212,135,10,.1) !important; }
   body.light .actual-input { color: #b06000 !important; }
   body.light .target-input { color: #b06000; }
@@ -152,7 +152,7 @@
   }
   .topbar-row2 {
     display: flex; align-items: center;
-    border-top: 1px solid rgba(255,255,255,.05);
+    border-top: 1px solid var(--border);
     height: 32px;
   }
   .topbar-logo {
@@ -292,7 +292,7 @@
     border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap;
   }
   .tracker-wrap td:first-child { text-align: left; font-weight: 500; color: var(--text); }
-  .tracker-wrap tr:nth-child(even) td { background: rgba(255,255,255,.018); }
+  .tracker-wrap tr:nth-child(even) td { background: rgba(128,128,128,.04); }
   .tracker-wrap tr:hover td { background: rgba(107,191,51,.06); }
   .tracker-wrap .total-row td {
     background: var(--green-dim) !important;
@@ -334,7 +334,7 @@
     transition: all .15s;
   }
   .month-filter-btn:hover { border-color: var(--green); color: var(--text); }
-  .month-filter-btn.active { background: var(--green); border-color: var(--green); color: #000; font-weight: 700; }
+  .month-filter-btn.active { background: var(--green); border-color: var(--green); color: #fff; font-weight: 700; }
 
   /* ── TARGET EDITOR ── */
   .target-editor-tabs { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
@@ -471,8 +471,8 @@
     font-family: var(--font-head); font-weight: 800; font-size: 20px;
     color: var(--green); margin-bottom: 28px;
   }
-  .login-title { font-family: var(--font-head); font-size: 20px; font-weight: 800; margin-bottom: 6px; color: #ffffff; text-shadow: 0 1px 8px rgba(0,0,0,0.8); }
-  .login-subtitle { font-size: 11px; color: rgba(255,255,255,0.75); margin-bottom: 28px; }
+  .login-title { font-family: var(--font-head); font-size: 20px; font-weight: 800; margin-bottom: 6px; color: var(--text); }
+  .login-subtitle { font-size: 11px; color: var(--muted); margin-bottom: 28px; }
   .login-field { margin-bottom: 16px; }
   .login-field label { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 6px; }
   .login-field input {
@@ -499,13 +499,13 @@
   .rep-tab-pane.active{display:block}
   .loc-filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
   .loc-filter-btn{padding:5px 12px;font-size:10px;font-family:var(--font-mono);border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all .2s}
-  .loc-filter-btn.active{background:var(--green);color:#000;border-color:var(--green);font-weight:700}
+  .loc-filter-btn.active{background:var(--green);color:#fff;border-color:var(--green);font-weight:700}
   .loc-search{padding:7px 12px;font-size:11px;font-family:var(--font-mono);background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);width:200px}
   .loc-search:focus{outline:none;border-color:var(--green)}
   .loc-table-wrap{overflow-x:auto;margin-top:4px}.loc-sticky th{position:sticky;top:0}
   .loc-table{width:100%;border-collapse:collapse;font-size:11px;font-family:var(--font-mono)}
   .loc-table th{padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em;font-size:10px;white-space:nowrap;background:var(--surface)}
-  .loc-table td{padding:7px 10px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle}
+  .loc-table td{padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
   .loc-table tr:hover td{background:rgba(107,191,51,.05)}
   .cust-map{width:100%;height:420px;border-radius:10px;border:1px solid var(--border);z-index:1;}
   .cust-split{display:grid;grid-template-columns:1fr;gap:20px;}
@@ -534,7 +534,7 @@
   .pri-low{color:var(--green)}
   .contact-btn{padding:3px 8px;font-size:9px;font-family:var(--font-mono);border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;text-decoration:none;display:inline-block}
   .contact-btn:hover{border-color:var(--green);color:var(--green)}
-.acct-toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px}.acct-toolbar select,.acct-toolbar input{background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;font-family:var(--font-mono);font-size:11px;outline:none}.acct-toolbar input{width:220px}.acct-filter-btn{background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:16px;padding:4px 12px;font-family:var(--font-mono);font-size:10px;cursor:pointer;transition:.15s}.acct-filter-btn.active{background:#17a589;border-color:#17a589;color:#fff}.acct-section-title{font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;margin:20px 0 10px}.heatmap-wrap{overflow-x:auto;margin-bottom:24px}.heatmap-table{border-collapse:collapse;font-family:var(--font-mono);font-size:10px;min-width:900px}.heatmap-table th{padding:4px 6px;color:var(--muted);font-weight:500;text-align:right;border-bottom:1px solid var(--border)}.heatmap-table th:first-child,.heatmap-table th:nth-child(2){text-align:left}.heatmap-table td{padding:3px 4px;text-align:right;border-bottom:1px solid rgba(255,255,255,.04);white-space:nowrap}.heatmap-table td:first-child{text-align:left;color:var(--text);max-width:200px;overflow:hidden;text-overflow:ellipsis}.heatmap-table td:nth-child(2){text-align:left}.hm-cell{display:inline-block;min-width:44px;padding:2px 3px;border-radius:3px;text-align:right}.planner-wrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}.planner-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px}.planner-card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}.planner-card-name{font-weight:600;font-size:12px;color:var(--text);margin-bottom:3px}.planner-card-parent{font-family:var(--font-mono);font-size:9px;padding:2px 8px;border-radius:10px;display:inline-block}.planner-card-stat{font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-bottom:4px}.planner-card-stat span{color:var(--text)}.planner-contact-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.planner-contact-btn{display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:5px;font-family:var(--font-mono);font-size:10px;text-decoration:none;border:1px solid var(--border);color:var(--muted);background:transparent;transition:.15s}.planner-contact-btn:hover{border-color:#17a589;color:#17a589}.dormant-badge{display:inline-block;padding:1px 7px;border-radius:8px;font-size:9px;font-family:var(--font-mono);font-weight:700;background:#e0525222;color:#e05252}.acct-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:20px}.acct-tab-btn{background:transparent;border:none;border-bottom:2px solid transparent;padding:8px 18px;font-family:var(--font-mono);font-size:11px;color:var(--muted);cursor:pointer;margin-bottom:-1px;transition:.15s}.acct-tab-btn.active{color:#17a589;border-bottom-color:#17a589}.acct-stat-row{display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap}.acct-stat{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 20px;min-width:110px}.acct-stat-val{font-size:22px;font-weight:700;font-family:var(--font-mono);color:var(--text)}.acct-stat-lbl{font-size:10px;color:var(--muted);font-family:var(--font-mono);margin-top:2px}
+.acct-toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px}.acct-toolbar select,.acct-toolbar input{background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;font-family:var(--font-mono);font-size:11px;outline:none}.acct-toolbar input{width:220px}.acct-filter-btn{background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:16px;padding:4px 12px;font-family:var(--font-mono);font-size:10px;cursor:pointer;transition:.15s}.acct-filter-btn.active{background:#17a589;border-color:#17a589;color:#fff}.acct-section-title{font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;margin:20px 0 10px}.heatmap-wrap{overflow-x:auto;margin-bottom:24px}.heatmap-table{border-collapse:collapse;font-family:var(--font-mono);font-size:10px;min-width:900px}.heatmap-table th{padding:4px 6px;color:var(--muted);font-weight:500;text-align:right;border-bottom:1px solid var(--border)}.heatmap-table th:first-child,.heatmap-table th:nth-child(2){text-align:left}.heatmap-table td{padding:3px 4px;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap}.heatmap-table td:first-child{text-align:left;color:var(--text);max-width:200px;overflow:hidden;text-overflow:ellipsis}.heatmap-table td:nth-child(2){text-align:left}.hm-cell{display:inline-block;min-width:44px;padding:2px 3px;border-radius:3px;text-align:right}.planner-wrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}.planner-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px}.planner-card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}.planner-card-name{font-weight:600;font-size:12px;color:var(--text);margin-bottom:3px}.planner-card-parent{font-family:var(--font-mono);font-size:9px;padding:2px 8px;border-radius:10px;display:inline-block}.planner-card-stat{font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-bottom:4px}.planner-card-stat span{color:var(--text)}.planner-contact-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.planner-contact-btn{display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:5px;font-family:var(--font-mono);font-size:10px;text-decoration:none;border:1px solid var(--border);color:var(--muted);background:transparent;transition:.15s}.planner-contact-btn:hover{border-color:#17a589;color:#17a589}.dormant-badge{display:inline-block;padding:1px 7px;border-radius:8px;font-size:9px;font-family:var(--font-mono);font-weight:700;background:#e0525222;color:#e05252}.acct-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:20px}.acct-tab-btn{background:transparent;border:none;border-bottom:2px solid transparent;padding:8px 18px;font-family:var(--font-mono);font-size:11px;color:var(--muted);cursor:pointer;margin-bottom:-1px;transition:.15s}.acct-tab-btn.active{color:#17a589;border-bottom-color:#17a589}.acct-stat-row{display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap}.acct-stat{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 20px;min-width:110px}.acct-stat-val{font-size:22px;font-weight:700;font-family:var(--font-mono);color:var(--text)}.acct-stat-lbl{font-size:10px;color:var(--muted);font-family:var(--font-mono);margin-top:2px}
   /* ═══════════════════════════════════════════════
      MOBILE / PWA STYLES
   ═══════════════════════════════════════════════ */
@@ -1282,6 +1282,10 @@ function mkChart(id, config) {
   return charts[id];
 }
 
+function chartTextColor() { return document.body.classList.contains('light') ? '#444444' : '#cccccc'; }
+function chartGridColor() { return document.body.classList.contains('light') ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,255,0.04)'; }
+function get2025LineColor() { return document.body.classList.contains('light') ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.3)'; }
+
 const CHART_DEFAULTS = {
   plugins: { legend: { labels: { color: '#cccccc', font: { family: 'Plus Jakarta Sans', size: 11 }, boxWidth: 12, padding: 10 } } },
   scales: {
@@ -1290,22 +1294,34 @@ const CHART_DEFAULTS = {
   }
 };
 
-// Call after theme switch to update chart legend colors
+// Call after theme switch (or on init) to update all chart colors
 function updateChartColors() {
-  var isLight = document.body.classList.contains('light');
-  var textCol = isLight ? '#333333' : '#cccccc';
-  var gridCol = isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.04)';
+  var textCol = chartTextColor();
+  var gridCol = chartGridColor();
+  // Update CHART_DEFAULTS so newly-built charts inherit current theme colours
+  CHART_DEFAULTS.plugins.legend.labels.color = textCol;
+  CHART_DEFAULTS.scales.x.ticks.color = textCol;
+  CHART_DEFAULTS.scales.x.grid.color  = gridCol;
+  CHART_DEFAULTS.scales.y.ticks.color = textCol;
+  CHART_DEFAULTS.scales.y.grid.color  = gridCol;
   Object.values(charts).forEach(function(chart) {
     if (!chart) return;
     try {
       if (chart.options.plugins && chart.options.plugins.legend)
         chart.options.plugins.legend.labels.color = textCol;
       if (chart.options.scales) {
-        ['x','y'].forEach(function(ax) {
+        ['x','y','x1','y1'].forEach(function(ax) {
           if (chart.options.scales[ax]) {
             if (chart.options.scales[ax].ticks) chart.options.scales[ax].ticks.color = textCol;
             if (chart.options.scales[ax].grid)  chart.options.scales[ax].grid.color  = gridCol;
           }
+        });
+      }
+      // Fix dataset line colors that are theme-dependent
+      if (chart.data && chart.data.datasets) {
+        chart.data.datasets.forEach(function(ds) {
+          if (ds._is2025line) ds.borderColor = get2025LineColor();
+          if (ds._isInvoicedBar) ds.backgroundColor = document.body.classList.contains('light') ? 'rgba(179,107,0,0.6)' : 'rgba(212,135,10,0.6)';
         });
       }
       chart.update('none');
@@ -1816,6 +1832,7 @@ function showView(id) {
       try { populateTracker(ri); } catch(e) { console.warn(e); }
       try { populateClassTrackers(ri); } catch(e) { console.warn(e); }
       try { drawRepCharts(ri); } catch(e) { console.warn(e); }
+      try { updateChartColors(); } catch(e) {}
     }, 100);
   }
 }
@@ -2137,8 +2154,8 @@ function refreshTeamView() {
     type:'line',
     data:{labels, datasets:[
       {label:'2026 Target',data:teamTargets,borderColor:'#6bbf33',backgroundColor:'rgba(107,191,51,0.08)',borderWidth:2.5,tension:0.4,pointRadius:3,fill:true},
-      {label:'2025 Actual',data:teamTrend,borderColor:'rgba(255,255,255,0.3)',backgroundColor:'transparent',borderWidth:1.5,borderDash:[5,4],tension:0.4,pointRadius:2,fill:false},
-      {label:'2026 Invoiced',data:teamActuals,borderColor:'#ffe566',backgroundColor:'rgba(255,229,102,0.12)',borderWidth:2.5,tension:0.4,pointRadius:4,spanGaps:false,fill:false}
+      {label:'2025 Actual',data:teamTrend,borderColor:get2025LineColor(),backgroundColor:'transparent',borderWidth:1.5,borderDash:[5,4],tension:0.4,pointRadius:2,fill:false,_is2025line:true},
+      {label:'2026 Invoiced',data:teamActuals,borderColor:'var(--invoiced)',backgroundColor:'rgba(212,135,10,0.12)',borderWidth:2.5,tension:0.4,pointRadius:4,spanGaps:false,fill:false,_isInvoicedLine:true}
     ]},
     options:{...CHART_DEFAULTS,responsive:true,maintainAspectRatio:false,
       plugins:{...CHART_DEFAULTS.plugins,
@@ -2154,7 +2171,7 @@ function refreshTeamView() {
       datasets:[
         {label:'2026 Target',data:REPS_DATA.map((_,ri)=>Math.round(REPS_DATA[ri].monthly.reduce((s,_,mi)=>s+getTarget(ri,mi),0))),backgroundColor:'#4472C4aa',borderRadius:3},
         {label:'FY2025 Actual',data:REPS_DATA.map((_,ri)=>Math.round(REPS_DATA[ri].monthly.reduce((s,m)=>s+(m.prev||0),0))),backgroundColor:'rgba(150,150,150,0.5)',borderRadius:3},
-        {label:'2026 Invoiced',data:REPS_DATA.map((_,ri)=>Math.round(REPS_DATA[ri].monthly.reduce((s,_,mi)=>s+getActual(ri,mi),0))||null),backgroundColor:'#ffe56688',borderRadius:3}
+        {label:'2026 Invoiced',data:REPS_DATA.map((_,ri)=>Math.round(REPS_DATA[ri].monthly.reduce((s,_,mi)=>s+getActual(ri,mi),0))||null),backgroundColor:'rgba(212,135,10,0.7)',borderRadius:3,_isInvoicedBar:true}
       ]
     },
     options:{...CHART_DEFAULTS,responsive:true,maintainAspectRatio:false,
@@ -3193,7 +3210,7 @@ function init() {
   });
 
   // Populate team view (team is active so charts will render)
-  try { refreshTeamView(); setTimeout(function(){ filterTeamChart('all'); }, 200); } catch(e) { console.warn('refreshTeamView', e); }
+  try { refreshTeamView(); setTimeout(function(){ filterTeamChart('all'); updateChartColors(); }, 250); } catch(e) { console.warn('refreshTeamView', e); }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -3251,11 +3268,11 @@ body.light .leaflet-tile { filter: none; }
 
 <!-- Change Password Modal -->
 <div id="change-pw-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10002;align-items:center;justify-content:center;flex-direction:column">
-  <div style="background:#1e1e1e;border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:28px 32px;width:380px;max-width:95vw">
-    <h3 style="margin:0 0 20px;font-family:var(--font-sec),sans-serif;font-size:16px;color:#f0f0f0">Change Password</h3>
-    <div style="margin-bottom:12px"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Current Password</label><input type="password" id="cp-current" style="width:100%;background:#2a2a2a;border:1px solid var(--border);color:#f0f0f0;border-radius:5px;padding:8px 10px;font-family:var(--font-sec),sans-serif;font-size:13px;box-sizing:border-box"></div>
-    <div style="margin-bottom:12px"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">New Password</label><input type="password" id="cp-new1" style="width:100%;background:#2a2a2a;border:1px solid var(--border);color:#f0f0f0;border-radius:5px;padding:8px 10px;font-family:var(--font-sec),sans-serif;font-size:13px;box-sizing:border-box"></div>
-    <div style="margin-bottom:16px"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Confirm New Password</label><input type="password" id="cp-new2" style="width:100%;background:#2a2a2a;border:1px solid var(--border);color:#f0f0f0;border-radius:5px;padding:8px 10px;font-family:var(--font-sec),sans-serif;font-size:13px;box-sizing:border-box"></div>
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px 32px;width:380px;max-width:95vw">
+    <h3 style="margin:0 0 20px;font-family:var(--font-sec),sans-serif;font-size:16px;color:var(--text)">Change Password</h3>
+    <div style="margin-bottom:12px"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Current Password</label><input type="password" id="cp-current" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:8px 10px;font-family:var(--font-sec),sans-serif;font-size:13px;box-sizing:border-box"></div>
+    <div style="margin-bottom:12px"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">New Password</label><input type="password" id="cp-new1" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:8px 10px;font-family:var(--font-sec),sans-serif;font-size:13px;box-sizing:border-box"></div>
+    <div style="margin-bottom:16px"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Confirm New Password</label><input type="password" id="cp-new2" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:8px 10px;font-family:var(--font-sec),sans-serif;font-size:13px;box-sizing:border-box"></div>
     <div id="cp-error" style="font-size:11px;color:#e05252;margin-bottom:12px;min-height:16px"></div>
     <div style="display:flex;gap:10px">
       <button onclick="doChangePw()" style="flex:1;background:var(--green);color:#fff;border:none;border-radius:6px;padding:9px;font-family:var(--font-sec),sans-serif;font-size:13px;font-weight:600;cursor:pointer">Change Password</button>
@@ -3266,15 +3283,15 @@ body.light .leaflet-tile { filter: none; }
 
 <!-- Add Account Modal -->
 <div id="add-account-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10001;align-items:center;justify-content:center;flex-direction:column">
-  <div style="background:#1e1e1e;border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:28px 32px;width:420px;max-width:95vw;box-shadow:0 8px 40px rgba(0,0,0,0.6)">
-    <h3 style="margin:0 0 20px;font-family:var(--font-sec),sans-serif;font-size:16px;color:#f0f0f0">Add New Account</h3>
-    <div style="margin-bottom:12px"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Account Name</label><input type="text" id="aa-name" placeholder="e.g. MM Electrical : Branch Name" style="width:100%;background:#2a2a2a;border:1px solid var(--border);color:#f0f0f0;border-radius:5px;padding:8px 10px;font-family:var(--font-sec),sans-serif;font-size:13px;box-sizing:border-box"></div>
-    <div style="margin-bottom:12px"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Parent Company</label><input type="text" id="aa-parent" placeholder="e.g. MM Electrical & Data Supplies" style="width:100%;background:#2a2a2a;border:1px solid var(--border);color:#f0f0f0;border-radius:5px;padding:8px 10px;font-family:var(--font-sec),sans-serif;font-size:13px;box-sizing:border-box"></div>
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px 32px;width:420px;max-width:95vw;box-shadow:0 8px 40px rgba(0,0,0,0.3)">
+    <h3 style="margin:0 0 20px;font-family:var(--font-sec),sans-serif;font-size:16px;color:var(--text)">Add New Account</h3>
+    <div style="margin-bottom:12px"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Account Name</label><input type="text" id="aa-name" placeholder="e.g. MM Electrical : Branch Name" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:8px 10px;font-family:var(--font-sec),sans-serif;font-size:13px;box-sizing:border-box"></div>
+    <div style="margin-bottom:12px"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Parent Company</label><input type="text" id="aa-parent" placeholder="e.g. MM Electrical & Data Supplies" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:8px 10px;font-family:var(--font-sec),sans-serif;font-size:13px;box-sizing:border-box"></div>
     <div style="margin-bottom:12px"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Assigned Rep</label>
-      <select id="aa-rep" style="width:100%;background:#2a2a2a;border:1px solid var(--border);color:#f0f0f0;border-radius:5px;padding:8px 10px;font-family:var(--font-sec),sans-serif;font-size:13px;box-sizing:border-box">
+      <select id="aa-rep" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:8px 10px;font-family:var(--font-sec),sans-serif;font-size:13px;box-sizing:border-box">
         <option value="0">Robert Schaffer</option><option value="1">Andrew Mobilia</option><option value="2">Alexander Poll</option><option value="3">Stivi Maticevski</option><option value="4">Melissa Goodridge</option>
       </select></div>
-    <div style="margin-bottom:16px"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Region</label><input type="text" id="aa-region" placeholder="e.g. VIC" style="width:100%;background:#2a2a2a;border:1px solid var(--border);color:#f0f0f0;border-radius:5px;padding:8px 10px;font-family:var(--font-sec),sans-serif;font-size:13px;box-sizing:border-box"></div>
+    <div style="margin-bottom:16px"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Region</label><input type="text" id="aa-region" placeholder="e.g. VIC" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:8px 10px;font-family:var(--font-sec),sans-serif;font-size:13px;box-sizing:border-box"></div>
     <div id="aa-error" style="font-size:11px;color:#e05252;margin-bottom:12px;min-height:16px;display:none"></div>
     <div style="display:flex;gap:10px">
       <button onclick="saveNewAccount()" style="flex:1;background:var(--green);color:#fff;border:none;border-radius:6px;padding:9px;font-family:var(--font-sec),sans-serif;font-size:13px;font-weight:600;cursor:pointer">Save Account</button>
