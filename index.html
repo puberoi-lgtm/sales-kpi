@@ -277,14 +277,14 @@
     overflow: hidden;
     margin-bottom: 18px;
   }
-  .tracker-wrap table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-  .tracker-wrap th:nth-child(1), .tracker-wrap td:nth-child(1) { width: 130px; }
-  .tracker-wrap th:not(:first-child), .tracker-wrap td:not(:first-child) { width: auto; min-width: 90px; }
+  .tracker-wrap table { width: 100%; border-collapse: collapse; }
+  .tracker-wrap th:nth-child(1), .tracker-wrap td:nth-child(1) { width: 100px; }
+  .tracker-wrap th:not(:first-child), .tracker-wrap td:not(:first-child) { width: auto; min-width: 70px; }
   .tracker-wrap th {
     background: var(--green-dk); color: #fff;
     font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
-    padding: 7px 10px; text-align: right; font-family: var(--font-sec); font-weight: 600;
-    white-space: nowrap;
+    padding: 6px 8px; text-align: right; font-family: var(--font-sec); font-weight: 600;
+    white-space: normal; line-height: 1.3; vertical-align: bottom;
   }
   .tracker-wrap th:first-child { text-align: left; }
   .tracker-wrap td {
@@ -1560,19 +1560,38 @@ function buildRepView(repIdx) {
     </table>
   </div>
 
-  <!-- 5-Class Performance Tracker -->
   <div class="section-hdr">📦 Performance by Class</div>
   <div style="font-size:10px;color:var(--muted);font-family:var(--font-mono);margin-bottom:8px">KRA = (Server Racks×40%) + (Data×25%) + (Cabling×15%) + (Bulk Cables×18%) + (Others×2%)</div>
-  <div class="tracker-wrap" style="overflow-x:auto">
-    <table style="min-width:900px">
-      <thead><tr>
-        <th>Month</th>
-        <th>SR Tgt</th><th>SR Inv</th><th>SR Ach%</th>
-        <th>Data Tgt</th><th>Data Inv</th><th>Data Ach%</th>
-        <th>Cabling Tgt</th><th>Cabling Inv</th><th>Cabling Ach%</th>
-        <th>Bulk Tgt</th><th>Bulk Inv</th><th>Bulk Ach%</th>
-        <th>Others Tgt</th><th>Others Inv</th><th>Others Ach%</th>
-        <th>KRA Score</th><th>Status</th>
+  <div style="overflow-x:auto">
+    <table style="border-collapse:collapse;font-family:var(--font-mono);font-size:11px;width:100%;min-width:1400px;table-layout:fixed">
+      <colgroup>
+        <col style="width:90px">
+        <col style="width:82px"><col style="width:82px"><col style="width:58px">
+        <col style="width:82px"><col style="width:82px"><col style="width:58px">
+        <col style="width:82px"><col style="width:82px"><col style="width:58px">
+        <col style="width:82px"><col style="width:82px"><col style="width:58px">
+        <col style="width:74px"><col style="width:74px"><col style="width:58px">
+        <col style="width:68px"><col style="width:78px">
+      </colgroup>
+      <thead><tr style="background:var(--green-dk);color:#fff;font-size:9px;text-transform:uppercase;letter-spacing:.05em">
+        <th style="padding:6px 6px;text-align:left;font-weight:600;vertical-align:bottom">Month</th>
+        <th style="padding:6px 4px;text-align:right;font-weight:600;vertical-align:bottom">Server<br>Racks Tgt</th>
+        <th style="padding:6px 4px;text-align:right;font-weight:600;vertical-align:bottom">Server<br>Racks Inv</th>
+        <th style="padding:6px 4px;text-align:right;font-weight:600;vertical-align:bottom">SR<br>Ach%</th>
+        <th style="padding:6px 4px;text-align:right;font-weight:600;vertical-align:bottom">Data<br>Target</th>
+        <th style="padding:6px 4px;text-align:right;font-weight:600;vertical-align:bottom">Data<br>Invoiced</th>
+        <th style="padding:6px 4px;text-align:right;font-weight:600;vertical-align:bottom">Data<br>Ach%</th>
+        <th style="padding:6px 4px;text-align:right;font-weight:600;vertical-align:bottom">Cabling<br>Target</th>
+        <th style="padding:6px 4px;text-align:right;font-weight:600;vertical-align:bottom">Cabling<br>Invoiced</th>
+        <th style="padding:6px 4px;text-align:right;font-weight:600;vertical-align:bottom">Cabling<br>Ach%</th>
+        <th style="padding:6px 4px;text-align:right;font-weight:600;vertical-align:bottom">Bulk<br>Target</th>
+        <th style="padding:6px 4px;text-align:right;font-weight:600;vertical-align:bottom">Bulk<br>Invoiced</th>
+        <th style="padding:6px 4px;text-align:right;font-weight:600;vertical-align:bottom">Bulk<br>Ach%</th>
+        <th style="padding:6px 4px;text-align:right;font-weight:600;vertical-align:bottom">Others<br>Target</th>
+        <th style="padding:6px 4px;text-align:right;font-weight:600;vertical-align:bottom">Others<br>Invoiced</th>
+        <th style="padding:6px 4px;text-align:right;font-weight:600;vertical-align:bottom">Others<br>Ach%</th>
+        <th style="padding:6px 4px;text-align:right;font-weight:600;vertical-align:bottom">KRA<br>Score</th>
+        <th style="padding:6px 4px;text-align:right;font-weight:600;vertical-align:bottom">Status</th>
       </tr></thead>
       <tbody id="cls-body-${repIdx}-combined"></tbody>
       <tfoot><tr class="total-row">
@@ -1977,16 +1996,35 @@ function buildTeamView() {
   </div>
 
   <div class="section-hdr">📊 Class Achievement — Team</div>
-  <div class="tracker-wrap" style="margin-bottom:6px;overflow-x:auto">
-    <table style="min-width:900px">
-      <thead><tr>
-        <th>Month</th>
-        <th>SR Target</th><th>SR Invoiced</th><th>SR Ach%</th>
-        <th>Data Target</th><th>Data Invoiced</th><th>Data Ach%</th>
-        <th>Cabling Target</th><th>Cabling Invoiced</th><th>Cabling Ach%</th>
-        <th>Bulk Target</th><th>Bulk Invoiced</th><th>Bulk Ach%</th>
-        <th>Others Target</th><th>Others Invoiced</th><th>Others Ach%</th>
-        <th>KRA Score</th>
+  <div style="overflow-x:auto;margin-bottom:6px">
+    <table style="border-collapse:collapse;font-family:var(--font-mono);font-size:11px;width:100%;min-width:1400px;table-layout:fixed">
+      <colgroup>
+        <col style="width:90px">
+        <col style="width:82px"><col style="width:82px"><col style="width:58px">
+        <col style="width:82px"><col style="width:82px"><col style="width:58px">
+        <col style="width:82px"><col style="width:82px"><col style="width:58px">
+        <col style="width:82px"><col style="width:82px"><col style="width:58px">
+        <col style="width:74px"><col style="width:74px"><col style="width:58px">
+        <col style="width:68px">
+      </colgroup>
+      <thead><tr style="background:var(--green-dk);color:#fff;font-size:9px;text-transform:uppercase;letter-spacing:.05em">
+        <th style="padding:6px 6px;text-align:left;font-weight:600;vertical-align:bottom">Month</th>
+        <th style="padding:6px 4px;text-align:right;font-weight:600;vertical-align:bottom">Server<br>Racks Tgt</th>
+        <th style="padding:6px 4px;text-align:right;font-weight:600;vertical-align:bottom">Server<br>Racks Inv</th>
+        <th style="padding:6px 4px;text-align:right;font-weight:600;vertical-align:bottom">SR<br>Ach%</th>
+        <th style="padding:6px 4px;text-align:right;font-weight:600;vertical-align:bottom">Data<br>Target</th>
+        <th style="padding:6px 4px;text-align:right;font-weight:600;vertical-align:bottom">Data<br>Invoiced</th>
+        <th style="padding:6px 4px;text-align:right;font-weight:600;vertical-align:bottom">Data<br>Ach%</th>
+        <th style="padding:6px 4px;text-align:right;font-weight:600;vertical-align:bottom">Cabling<br>Target</th>
+        <th style="padding:6px 4px;text-align:right;font-weight:600;vertical-align:bottom">Cabling<br>Invoiced</th>
+        <th style="padding:6px 4px;text-align:right;font-weight:600;vertical-align:bottom">Cabling<br>Ach%</th>
+        <th style="padding:6px 4px;text-align:right;font-weight:600;vertical-align:bottom">Bulk<br>Target</th>
+        <th style="padding:6px 4px;text-align:right;font-weight:600;vertical-align:bottom">Bulk<br>Invoiced</th>
+        <th style="padding:6px 4px;text-align:right;font-weight:600;vertical-align:bottom">Bulk<br>Ach%</th>
+        <th style="padding:6px 4px;text-align:right;font-weight:600;vertical-align:bottom">Others<br>Target</th>
+        <th style="padding:6px 4px;text-align:right;font-weight:600;vertical-align:bottom">Others<br>Invoiced</th>
+        <th style="padding:6px 4px;text-align:right;font-weight:600;vertical-align:bottom">Others<br>Ach%</th>
+        <th style="padding:6px 4px;text-align:right;font-weight:600;vertical-align:bottom">KRA<br>Score</th>
       </tr></thead>
       <tbody id="team-class-body"></tbody>
     </table>
