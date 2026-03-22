@@ -1294,7 +1294,18 @@ function chartGridColor() { return document.body.classList.contains('light') ? '
 function get2025LineColor() { return document.body.classList.contains('light') ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.3)'; }
 
 const CHART_DEFAULTS = {
-  plugins: { legend: { labels: { color: '#cccccc', font: { family: 'Plus Jakarta Sans', size: 11 }, boxWidth: 12, padding: 10 } } },
+  plugins: {
+    legend: { labels: { color: '#cccccc', font: { family: 'Plus Jakarta Sans', size: 11 }, boxWidth: 12, padding: 10 } },
+    tooltip: { callbacks: { label: function(ctx) {
+      var v = ctx.raw;
+      if (v == null) return ctx.dataset.label + ': —';
+      var abs = Math.abs(v);
+      var str = abs >= 1000000 ? '$' + (abs/1000000).toFixed(1) + 'M'
+              : abs >= 1000    ? '$' + (abs/1000).toFixed(0) + 'k'
+              : '$' + abs.toFixed(0);
+      return ctx.dataset.label + ': ' + (v < 0 ? '(' + str + ')' : str);
+    }}}
+  },
   scales: {
     x: { ticks: { color: '#aaaaaa', font: { family: 'Plus Jakarta Sans', size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false } },
     y: { ticks: { color: '#aaaaaa', font: { family: 'Plus Jakarta Sans', size: 10 }, callback: v => '$' + (v/1000).toFixed(0) + 'k' }, grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false } }
@@ -2623,9 +2634,10 @@ function buildLocationsPane(ri) {
   var dormant = accts.filter(function(a){return isAcctDormant(a);});
   var active  = accts.filter(function(a){return isAcctActive(a);});
   var custState = window['_custState_'+ri] || (window['_custState_'+ri] = {page:0,company:'all',search:''});
-  var companies = ['all'].concat(Array.from(new Set(accts.map(function(a){return a.p||'';}).filter(Boolean))).sort());
+  var companies = ['all'].concat(Array.from(new Set(accts.map(function(a){ return a.n.includes(' : ') ? a.n.split(' : ')[0] : (a.p||a.n); }).filter(Boolean))).sort());
   var filtered = accts.filter(function(a){
-    if (custState.company !== 'all' && (a.p||'') !== custState.company) return false;
+    var acctParent = a.n.includes(' : ') ? a.n.split(' : ')[0] : (a.p||a.n);
+    if (custState.company !== 'all' && acctParent !== custState.company) return false;
     if (custState.search && !(a.n+' '+(a.p||'')).toLowerCase().includes(custState.search.toLowerCase())) return false;
     return true;
   });
@@ -2672,15 +2684,18 @@ function buildLocationsPane(ri) {
     + '</div>';
 
   o += '<div class="loc-table-wrap"><table class="loc-table">'
-    + '<thead><tr><th>Customer</th><th>Parent</th><th style="text-align:right">2025 Rev</th><th>Status</th><th>Last Order</th></tr></thead><tbody>';
+    + '<thead><tr><th>Parent Company</th><th>Branch</th><th style="text-align:right">2025 Rev</th><th>Status</th><th>Last Order</th></tr></thead><tbody>';
   pageAccts.forEach(function(a){
     var dorm = isAcctDormant(a);
     var lastMo = (a.la>=0&&a.la<12) ? MO[a.la] : '—';
     var badge = dorm ? '<span style="background:#e0525222;color:#e05252;padding:1px 7px;border-radius:8px;font-size:9px">Dormant</span>'
                      : '<span style="background:#27ae6022;color:#27ae60;padding:1px 7px;border-radius:8px;font-size:9px">Active</span>';
+    var nameParts = a.n.split(' : ');
+    var parentName = nameParts[0];
+    var branchName = nameParts.length > 1 ? nameParts.slice(1).join(' : ') : '—';
     o += '<tr>'
-      + '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+a.n+'">'+a.n+'</td>'
-      + '<td style="font-size:10px;color:var(--muted)">'+(a.p||'—')+'</td>'
+      + '<td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+parentName+'">'+parentName+'</td>'
+      + '<td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;color:var(--muted)" title="'+branchName+'">'+branchName+'</td>'
       + '<td style="font-family:var(--font-mono);text-align:right">'+(a.s?'$'+Math.round(a.s).toLocaleString('en-AU'):'—')+'</td>'
       + '<td>'+badge+'</td>'
       + '<td style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">'+lastMo+'</td>'
