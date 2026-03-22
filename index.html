@@ -1491,11 +1491,11 @@ function buildRepView(repIdx) {
         <div style="width:100%;font-size:9px;color:var(--muted);letter-spacing:.06em;margin-bottom:4px;font-family:var(--font-sec)">HOW TO READ THIS CHART</div>
         <div style="display:flex;align-items:center;gap:6px">
           <span style="display:inline-block;width:18px;height:3px;background:#4472C4;border-radius:2px"></span>
-          <span style="font-size:11px;color:var(--text)">Established (Server Racks + Data Products + Cabling + Bulk Cables)</span>
+          <span style="font-size:11px;color:var(--text)">Server Racks + Data Products + Cabling + Bulk Cables</span>
         </div>
         <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
           <span style="display:inline-block;width:18px;height:3px;background:#9E480E;border-radius:2px"></span>
-          <span style="font-size:11px;color:var(--text)">Growth (Networking + Computer/Mobile Accessories + AV Products)</span>
+          <span style="font-size:11px;color:var(--text)">Others (Networking + AV + Computer/Mobile)</span>
         </div>
         <div style="width:100%;padding-top:6px;margin-top:6px;border-top:1px solid var(--border);display:flex;gap:16px">
           <span style="font-size:10px;color:var(--muted);display:flex;align-items:center;gap:5px">
@@ -1615,7 +1615,7 @@ function buildRepView(repIdx) {
         <th style="padding:6px 4px;text-align:right;font-weight:600;vertical-align:bottom">Others<br>Invoiced</th>
         <th style="padding:6px 4px;text-align:right;font-weight:600;vertical-align:bottom">Others<br>Ach%</th>
         <th style="padding:6px 4px;text-align:right;font-weight:600;vertical-align:bottom">KRA<br>Score</th>
-        <th style="padding:6px 4px;text-align:right;font-weight:600;vertical-align:bottom">Status</th>
+        <th style="padding:6px 4px;text-align:center;font-weight:600;vertical-align:bottom">Status</th>
       </tr></thead>
       <tbody id="cls-body-${repIdx}-combined"></tbody>
       <tfoot><tr class="total-row">
@@ -1625,7 +1625,7 @@ function buildRepView(repIdx) {
         <td id="cls-tot-ci2-tgt-${repIdx}"></td><td id="cls-tot-ci2-act-${repIdx}"></td><td id="cls-tot-ci2-ach-${repIdx}"></td>
         <td id="cls-tot-ci3-tgt-${repIdx}"></td><td id="cls-tot-ci3-act-${repIdx}"></td><td id="cls-tot-ci3-ach-${repIdx}"></td>
         <td id="cls-tot-ci4-tgt-${repIdx}"></td><td id="cls-tot-ci4-act-${repIdx}"></td><td id="cls-tot-ci4-ach-${repIdx}"></td>
-        <td id="cls-tot-kra-${repIdx}"></td><td id="cls-tot-kra-stat-${repIdx}"></td>
+        <td id="cls-tot-kra-${repIdx}"></td><td id="cls-tot-kra-stat-${repIdx}" style="text-align:center"></td>
       </tr></tfoot>
     </table>
   </div>
@@ -1711,7 +1711,7 @@ function populateClassTrackers(repIdx) {
            + '<td '+tdR+'>'+ac(clsAchs[ci])+'</td>';
     }
     row += '<td '+tdR+'>'+(kraScore!==null?'<span style="color:'+(kraScore>=0.7?'var(--green)':kraScore>=0.5?'var(--amber)':'#e05252')+';font-weight:700">'+(kraScore*100).toFixed(1)+'%</span>':'—')+'</td>'
-         + '<td style="padding:5px 4px;border-bottom:1px solid var(--border);font-size:11px">'+status+'</td></tr>';
+         + '<td style="padding:5px 4px;text-align:center;border-bottom:1px solid var(--border);font-size:11px">'+status+'</td></tr>';
     tbody.innerHTML += row;
   }
 
@@ -1873,10 +1873,10 @@ function drawRepCharts(repIdx) {
   const grwTgtData = months.map((_, mi) => Math.round(getClassTarget(repIdx,4,mi)));
   const grwActData = months.map((_, mi) => { const a = getClassActual(repIdx,4,mi); return a>0?Math.round(a):null; });
   const clsDatasets = [
-    { label: 'Established ╌ Target', data: estTgtData, borderColor:'#4472C4aa', backgroundColor:'transparent', borderWidth:1.5, borderDash:[4,3], tension:0.4, pointRadius:2, fill:false },
-    { label: 'Established — Invoiced', data: estActData, borderColor:'#4472C4', backgroundColor:'rgba(68,114,196,0.08)', borderWidth:2.5, tension:0.4, pointRadius:3, fill:true, spanGaps:false },
-    { label: 'Growth ╌ Target', data: grwTgtData, borderColor:'#9E480Eaa', backgroundColor:'transparent', borderWidth:1.5, borderDash:[4,3], tension:0.4, pointRadius:2, fill:false },
-    { label: 'Growth — Invoiced', data: grwActData, borderColor:'#9E480E', backgroundColor:'transparent', borderWidth:2, tension:0.4, pointRadius:3, fill:false, spanGaps:false },
+    { label: 'SR + Data + Cabling + Bulk ╌ Target', data: estTgtData, borderColor:'#4472C4aa', backgroundColor:'transparent', borderWidth:1.5, borderDash:[4,3], tension:0.4, pointRadius:2, fill:false },
+    { label: 'SR + Data + Cabling + Bulk — Invoiced', data: estActData, borderColor:'#4472C4', backgroundColor:'rgba(68,114,196,0.08)', borderWidth:2.5, tension:0.4, pointRadius:3, fill:true, spanGaps:false },
+    { label: 'Others (Networking + AV + Computer) ╌ Target', data: grwTgtData, borderColor:'#9E480Eaa', backgroundColor:'transparent', borderWidth:1.5, borderDash:[4,3], tension:0.4, pointRadius:2, fill:false },
+    { label: 'Others (Networking + AV + Computer) — Invoiced', data: grwActData, borderColor:'#9E480E', backgroundColor:'transparent', borderWidth:2, tension:0.4, pointRadius:3, fill:false, spanGaps:false },
   ];
 
   mkChart(`ch-rep-class-${repIdx}`, {
