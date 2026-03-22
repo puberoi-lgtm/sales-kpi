@@ -1488,16 +1488,15 @@ function buildRepView(repIdx) {
       <div class="chart-title">Target vs Actual by Class</div>
       <div class="chart-wrap tall"><canvas id="ch-rep-class-${repIdx}"></canvas></div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;padding:10px;background:var(--surface2);border-radius:6px;border:1px solid var(--border)">
-        <div style="width:100%;font-size:9px;color:var(--muted);letter-spacing:.06em;margin-bottom:4px;font-family:var(--font-sec)">HOW TO READ THIS CHART</div>
-        <div style="display:flex;align-items:center;gap:6px">
-          <span style="display:inline-block;width:18px;height:3px;background:#4472C4;border-radius:2px"></span>
-          <span style="font-size:11px;color:var(--text)">Server Racks + Data Products + Cabling + Bulk Cables</span>
+        <div style="width:100%;font-size:9px;color:var(--muted);letter-spacing:.06em;margin-bottom:6px;font-family:var(--font-sec)">HOW TO READ THIS CHART</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px 16px;margin-bottom:6px">
+          <div style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:16px;height:3px;background:#4472C4;border-radius:2px"></span><span style="font-size:10px;color:var(--text)">Server Racks</span></div>
+          <div style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:16px;height:3px;background:#70AD47;border-radius:2px"></span><span style="font-size:10px;color:var(--text)">Data Products</span></div>
+          <div style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:16px;height:3px;background:#ED7D31;border-radius:2px"></span><span style="font-size:10px;color:var(--text)">Cabling</span></div>
+          <div style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:16px;height:3px;background:#9E480E;border-radius:2px"></span><span style="font-size:10px;color:var(--text)">Bulk Cables</span></div>
+          <div style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:16px;height:3px;background:#808080;border-radius:2px"></span><span style="font-size:10px;color:var(--text)">Others</span></div>
         </div>
-        <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
-          <span style="display:inline-block;width:18px;height:3px;background:#9E480E;border-radius:2px"></span>
-          <span style="font-size:11px;color:var(--text)">Others (Networking + AV + Computer/Mobile)</span>
-        </div>
-        <div style="width:100%;padding-top:6px;margin-top:6px;border-top:1px solid var(--border);display:flex;gap:16px">
+        <div style="width:100%;padding-top:6px;margin-top:4px;border-top:1px solid var(--border);display:flex;gap:16px">
           <span style="font-size:10px;color:var(--muted);display:flex;align-items:center;gap:5px">
             <span style="display:inline-block;width:16px;height:2px;background:#888;border-radius:2px"></span>Solid = Invoiced
           </span>
@@ -1867,23 +1866,25 @@ function drawRepCharts(repIdx) {
     }
   });
 
-  // Core (ci 0-3) vs Growth (ci 4) datasets
-  const estTgtData = months.map((_, mi) => Math.round([0,1,2,3].reduce((s,ci) => s+getClassTarget(repIdx,ci,mi), 0)));
-  const estActData = months.map((_, mi) => { const a = [0,1,2,3].reduce((s,ci)=>s+getClassActual(repIdx,ci,mi),0); return a>0?Math.round(a):null; });
-  const grwTgtData = months.map((_, mi) => Math.round(getClassTarget(repIdx,4,mi)));
-  const grwActData = months.map((_, mi) => { const a = getClassActual(repIdx,4,mi); return a>0?Math.round(a):null; });
-  const clsDatasets = [
-    { label: 'SR + Data + Cabling + Bulk ╌ Target', data: estTgtData, borderColor:'#4472C4aa', backgroundColor:'transparent', borderWidth:1.5, borderDash:[4,3], tension:0.4, pointRadius:2, fill:false },
-    { label: 'SR + Data + Cabling + Bulk — Invoiced', data: estActData, borderColor:'#4472C4', backgroundColor:'rgba(68,114,196,0.08)', borderWidth:2.5, tension:0.4, pointRadius:3, fill:true, spanGaps:false },
-    { label: 'Others (Networking + AV + Computer) ╌ Target', data: grwTgtData, borderColor:'#9E480Eaa', backgroundColor:'transparent', borderWidth:1.5, borderDash:[4,3], tension:0.4, pointRadius:2, fill:false },
-    { label: 'Others (Networking + AV + Computer) — Invoiced', data: grwActData, borderColor:'#9E480E', backgroundColor:'transparent', borderWidth:2, tension:0.4, pointRadius:3, fill:false, spanGaps:false },
-  ];
+  // 5 individual class datasets — target (dashed) + invoiced (solid) per class
+  const CLS_COLORS = ['#4472C4','#70AD47','#ED7D31','#9E480E','#808080'];
+  const CLS_NAMES  = ['Server Racks','Data Products','Cabling','Bulk Cables','Others'];
+  const clsDatasets = [];
+  for (var ci = 0; ci < 5; ci++) {
+    const c = ci; // capture
+    const tgtData = months.map((_, mi) => Math.round(getClassTarget(repIdx, c, mi)));
+    const actData = months.map((_, mi) => { const a = getClassActual(repIdx, c, mi); return a > 0 ? Math.round(a) : null; });
+    clsDatasets.push({ label: CLS_NAMES[c] + ' ╌ Target', data: tgtData, borderColor: CLS_COLORS[c]+'88', backgroundColor: 'transparent', borderWidth: 1.5, borderDash: [4,3], tension: 0.4, pointRadius: 2, fill: false });
+    clsDatasets.push({ label: CLS_NAMES[c] + ' — Invoiced', data: actData, borderColor: CLS_COLORS[c], backgroundColor: CLS_COLORS[c]+'18', borderWidth: 2, tension: 0.4, pointRadius: 3, fill: false, spanGaps: false });
+  }
 
   mkChart(`ch-rep-class-${repIdx}`, {
     type: 'line',
     data: { labels: months, datasets: clsDatasets },
     options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false,
-      plugins: { ...CHART_DEFAULTS.plugins, legend: { display: true, position: 'bottom', labels: { color: 'var(--muted)', font:{size:10}, boxWidth:24 } } }
+      plugins: { ...CHART_DEFAULTS.plugins, legend: { display: true, position: 'bottom', labels: { color: chartTextColor(), font:{size:10}, boxWidth:16, padding: 8,
+        filter: function(item) { return !item.text.includes('╌'); } // only show invoiced lines in legend, keep cleaner
+      } } }
     }
   });
 }
