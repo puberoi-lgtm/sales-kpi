@@ -381,7 +381,8 @@
     overflow: hidden;
   }
   .eoy-item:last-child { border-right: none; }
-  div.eoy-card { display: grid !important; width: 100% !important; box-sizing: border-box !important; }
+  div.eoy-card:not([style*="display: none"]) { width: 100% !important; box-sizing: border-box !important; }
+  .admin-visible div.eoy-card, div.eoy-card.admin-shown { display: grid !important; }
   .eoy-item .eoy-label { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 6px; font-family: var(--font-sec); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .eoy-item .eoy-val { font-family: var(--font-head); font-size: 22px; font-weight: 800; line-height: 1; white-space: nowrap; }
   .eoy-item .eoy-sub { font-size: 10px; color: var(--muted); margin-top: 5px; white-space: normal; word-wrap: break-word; line-height: 1.4; }
@@ -952,9 +953,13 @@ function applyAccessControl() {
   var isAdmin = role.role === 'admin';
   window._isAdmin = isAdmin;
 
-  // Show/hide admin-only elements
+  // Show/hide admin-only elements — use setProperty with !important to override any CSS
   document.querySelectorAll('.admin-only').forEach(function(el) {
-    el.style.display = isAdmin ? '' : 'none';
+    if (isAdmin) {
+      el.style.removeProperty('display');
+    } else {
+      el.style.setProperty('display', 'none', 'important');
+    }
   });
 
   if (isAdmin) {
@@ -1835,7 +1840,6 @@ function drawRepCharts(repIdx) {
     type: 'line',
     data: { labels: months, datasets: [
       { label: '2026 Target', data: targets, borderColor: rep.color, backgroundColor: rep.color+'18', borderWidth: 2.5, tension: 0.4, pointRadius: 4, fill: true },
-      { label: 'Predicted (3yr trend +10%)', data: trend, borderColor: '#a78bfa', backgroundColor: 'transparent', borderWidth: 1.5, borderDash: [5,4], tension: 0.4, pointRadius: 2, fill: false },
       { label: 'Invoiced', data: actuals, borderColor: '#f5a623', backgroundColor: '#f5a62322', borderWidth: 2.5, tension: 0.4, pointRadius: 4, spanGaps: false, fill: false }
     ]},
     options: { ...CHART_DEFAULTS, responsive: true, maintainAspectRatio: false,
@@ -2214,13 +2218,15 @@ function refreshTeamView() {
       var kraScore = clsAchs.some(function(a){return a!==null;})
         ? KRA_WEIGHTS.reduce(function(s,w,ci){ return s + w*(clsAchs[ci]||0); }, 0) : null;
       const isCur = mi === curMi;
-      var row = '<tr class="'+(isCur?'current-month-row':'')+'"><td>'+ months[mi] +' 2026'+(isCur?'<span class="current-month-badge">▶ Now</span>':'')+'</td>';
+      var tdR = 'style="padding:5px 4px;text-align:right;border-bottom:1px solid var(--border);font-size:11px;font-family:var(--font-mono);white-space:nowrap"';
+      var tdL = 'style="padding:5px 6px;text-align:left;border-bottom:1px solid var(--border);font-size:11px;font-family:var(--font-mono)"';
+      var row = '<tr class="'+(isCur?'current-month-row':'')+'">'+'<td '+tdL+'>'+ months[mi] +' 2026'+(isCur?'<span class="current-month-badge">\u25b6 Now</span>':'')+'</td>';
       for (var ci2 = 0; ci2 < 5; ci2++) {
-        row += '<td class="target-cell">'+fmt(clsTgts[ci2])+'</td>'
-             + '<td>'+(clsActs[ci2]>0?'<span style="color:var(--invoiced);font-weight:600">'+fmt(clsActs[ci2])+'</span>':'—')+'</td>'
-             + '<td>'+acPct(clsAchs[ci2])+'</td>';
+        row += '<td '+tdR+'>'+fmt(clsTgts[ci2])+'</td>'
+             + '<td '+tdR+'>'+(clsActs[ci2]>0?'<span style="color:var(--invoiced);font-weight:600">'+fmt(clsActs[ci2])+'</span>':'\u2014')+'</td>'
+             + '<td '+tdR+'>'+acPct(clsAchs[ci2])+'</td>';
       }
-      row += '<td>'+(kraScore!==null?'<span style="color:'+(kraScore>=0.7?'var(--green)':kraScore>=0.5?'var(--amber)':'#e05252')+'">'+(kraScore*100).toFixed(1)+'%</span>':'—')+'</td></tr>';
+      row += '<td '+tdR+'>'+(kraScore!==null?'<span style="color:'+(kraScore>=0.7?'var(--green)':kraScore>=0.5?'var(--amber)':'#e05252')+'">'+(kraScore*100).toFixed(1)+'%</span>':'\u2014')+'</td></tr>';
       teamClassBody.innerHTML += row;
     }
   }
@@ -2243,7 +2249,7 @@ function refreshTeamView() {
     options:{...CHART_DEFAULTS,responsive:true,maintainAspectRatio:false,
       plugins:{...CHART_DEFAULTS.plugins,
         legend:{display:true,position:'bottom',align:'center',
-          labels:{color:'#cccccc',font:{size:11},boxWidth:24,padding:16}}
+          labels:{color:chartTextColor(),font:{size:11},boxWidth:24,padding:16}}
       }}
   });
 
@@ -2260,7 +2266,7 @@ function refreshTeamView() {
     options:{...CHART_DEFAULTS,responsive:true,maintainAspectRatio:false,
       plugins:{...CHART_DEFAULTS.plugins,
         legend:{display:true,position:'bottom',align:'center',
-          labels:{color:'#cccccc',font:{size:11},boxWidth:24,padding:16}}
+          labels:{color:chartTextColor(),font:{size:11},boxWidth:24,padding:16}}
       }}
   });
 
