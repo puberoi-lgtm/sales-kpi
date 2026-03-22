@@ -1587,15 +1587,15 @@ function buildRepView(repIdx) {
   <div class="section-hdr">📦 Performance by Class</div>
   <div style="font-size:10px;color:var(--muted);font-family:var(--font-mono);margin-bottom:8px">KRA = (Server Racks×40%) + (Data×25%) + (Cabling×15%) + (Bulk Cables×18%) + (Others×2%)</div>
   <div style="overflow-x:auto">
-    <table style="border-collapse:collapse;font-family:var(--font-mono);font-size:11px;width:100%;min-width:1400px;table-layout:fixed">
+    <table style="border-collapse:collapse;font-family:var(--font-mono);font-size:11px;width:100%;min-width:1050px;table-layout:fixed">
       <colgroup>
-        <col style="width:90px">
-        <col style="width:82px"><col style="width:82px"><col style="width:58px">
-        <col style="width:82px"><col style="width:82px"><col style="width:58px">
-        <col style="width:82px"><col style="width:82px"><col style="width:58px">
-        <col style="width:82px"><col style="width:82px"><col style="width:58px">
-        <col style="width:74px"><col style="width:74px"><col style="width:58px">
-        <col style="width:68px"><col style="width:78px">
+        <col style="width:80px">
+        <col style="width:62px"><col style="width:62px"><col style="width:52px">
+        <col style="width:62px"><col style="width:62px"><col style="width:52px">
+        <col style="width:62px"><col style="width:62px"><col style="width:52px">
+        <col style="width:62px"><col style="width:62px"><col style="width:52px">
+        <col style="width:56px"><col style="width:56px"><col style="width:52px">
+        <col style="width:58px"><col style="width:70px">
       </colgroup>
       <thead><tr style="background:var(--green-dk);color:#fff;font-size:9px;text-transform:uppercase;letter-spacing:.05em">
         <th style="padding:6px 6px;text-align:left;font-weight:600;vertical-align:bottom">Month</th>
@@ -1703,14 +1703,15 @@ function populateClassTrackers(repIdx) {
       : hasAct ? (kraScore!==null&&kraScore>=0.7?'<span class="status-on">✅ On Track</span>':'<span class="status-off">⚠️ Below</span>')
       : '<span class="status-pend">Pending</span>';
 
-    var row = '<tr class="'+(isCur?'current-month-row':'')+'"><td>'+months[mi]+' 2026'+(isCur?'<span class="current-month-badge">▶ Now</span>':'')+'</td>';
+    var row = '<tr class="'+(isCur?'current-month-row':'')+'"><td style="padding:5px 6px;border-bottom:1px solid var(--border);font-size:11px;font-family:var(--font-mono)">'+months[mi]+' 2026'+(isCur?'<span class="current-month-badge">▶ Now</span>':'')+'</td>';
+    var tdR = 'style="padding:5px 4px;text-align:right;border-bottom:1px solid var(--border);font-size:11px;font-family:var(--font-mono);white-space:nowrap"';
     for (var ci=0; ci<5; ci++) {
-      row += '<td class="target-cell">'+fmt(clsTgts[ci])+'</td>'
-           + '<td><span style="color:var(--invoiced);font-family:var(--font-mono)">'+(clsActs[ci]>0?fmt(clsActs[ci]):'—')+'</span></td>'
-           + '<td>'+ac(clsAchs[ci])+'</td>';
+      row += '<td '+tdR+'>'+fmt(clsTgts[ci])+'</td>'
+           + '<td '+tdR+'><span style="color:var(--invoiced)">'+(clsActs[ci]>0?fmt(clsActs[ci]):'—')+'</span></td>'
+           + '<td '+tdR+'>'+ac(clsAchs[ci])+'</td>';
     }
-    row += '<td>'+(kraScore!==null?'<span style="color:'+(kraScore>=0.7?'var(--green)':kraScore>=0.5?'var(--amber)':'#e05252')+';font-weight:700">'+(kraScore*100).toFixed(1)+'%</span>':'—')+'</td>'
-         + '<td>'+status+'</td></tr>';
+    row += '<td '+tdR+'>'+(kraScore!==null?'<span style="color:'+(kraScore>=0.7?'var(--green)':kraScore>=0.5?'var(--amber)':'#e05252')+';font-weight:700">'+(kraScore*100).toFixed(1)+'%</span>':'—')+'</td>'
+         + '<td style="padding:5px 4px;border-bottom:1px solid var(--border);font-size:11px">'+status+'</td></tr>';
     tbody.innerHTML += row;
   }
 
@@ -2020,15 +2021,15 @@ function buildTeamView() {
 
   <div class="section-hdr">📊 Class Achievement — Team</div>
   <div style="overflow-x:auto;margin-bottom:6px">
-    <table style="border-collapse:collapse;font-family:var(--font-mono);font-size:11px;width:100%;min-width:1400px;table-layout:fixed">
+    <table style="border-collapse:collapse;font-family:var(--font-mono);font-size:11px;width:100%;min-width:1050px;table-layout:fixed">
       <colgroup>
-        <col style="width:90px">
-        <col style="width:82px"><col style="width:82px"><col style="width:58px">
-        <col style="width:82px"><col style="width:82px"><col style="width:58px">
-        <col style="width:82px"><col style="width:82px"><col style="width:58px">
-        <col style="width:82px"><col style="width:82px"><col style="width:58px">
-        <col style="width:74px"><col style="width:74px"><col style="width:58px">
-        <col style="width:68px">
+        <col style="width:80px">
+        <col style="width:62px"><col style="width:62px"><col style="width:52px">
+        <col style="width:62px"><col style="width:62px"><col style="width:52px">
+        <col style="width:62px"><col style="width:62px"><col style="width:52px">
+        <col style="width:62px"><col style="width:62px"><col style="width:52px">
+        <col style="width:56px"><col style="width:56px"><col style="width:52px">
+        <col style="width:58px">
       </colgroup>
       <thead><tr style="background:var(--green-dk);color:#fff;font-size:9px;text-transform:uppercase;letter-spacing:.05em">
         <th style="padding:6px 6px;text-align:left;font-weight:600;vertical-align:bottom">Month</th>
