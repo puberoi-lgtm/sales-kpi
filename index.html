@@ -2616,6 +2616,7 @@ function locFilterCo(ri, val) {
   if (!window['_custState_'+ri]) window['_custState_'+ri] = {page:0,company:'all',search:''};
   window['_custState_'+ri].company = val;
   window['_custState_'+ri].page = 0;
+  console.log('locFilterCo ri='+ri+' val='+val+' element='+document.getElementById('rpane-loc-'+ri));
   var p = document.getElementById('rpane-loc-'+ri);
   if (p) p.innerHTML = buildLocationsPane(ri);
 }
