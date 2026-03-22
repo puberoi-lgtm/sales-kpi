@@ -2616,7 +2616,6 @@ function locFilterCo(ri, val) {
   if (!window['_custState_'+ri]) window['_custState_'+ri] = {page:0,company:'all',search:''};
   window['_custState_'+ri].company = val;
   window['_custState_'+ri].page = 0;
-  console.log('locFilterCo ri='+ri+' val='+val+' element='+document.getElementById('rpane-loc-'+ri));
   var p = document.getElementById('rpane-loc-'+ri);
   if (p) p.innerHTML = buildLocationsPane(ri);
 }
@@ -2635,11 +2634,11 @@ function buildLocationsPane(ri) {
   var dormant = accts.filter(function(a){return isAcctDormant(a);});
   var active  = accts.filter(function(a){return isAcctActive(a);});
   var custState = window['_custState_'+ri] || (window['_custState_'+ri] = {page:0,company:'all',search:''});
-  var companies = ['all'].concat(Array.from(new Set(accts.map(function(a){ return a.n.includes(' : ') ? a.n.split(' : ')[0] : (a.p||a.n); }).filter(Boolean))).sort());
+  var companies = ['all'].concat(Array.from(new Set(accts.map(function(a){ return a.n.includes(' : ') ? a.n.split(' : ')[0] : a.n; }).filter(Boolean))).sort());
   // Reset if stored value no longer valid
   if (custState.company !== 'all' && companies.indexOf(custState.company) === -1) custState.company = 'all';
   var filtered = accts.filter(function(a){
-    var acctParent = a.n.includes(' : ') ? a.n.split(' : ')[0] : (a.p||a.n);
+    var acctParent = a.n.includes(' : ') ? a.n.split(' : ')[0] : a.n;
     if (custState.company !== 'all' && acctParent !== custState.company) return false;
     if (custState.search && !(a.n+' '+(a.p||'')).toLowerCase().includes(custState.search.toLowerCase())) return false;
     return true;
