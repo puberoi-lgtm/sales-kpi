@@ -1917,7 +1917,7 @@ function buildTeamView() {
     </div>
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <div class="section-hdr">Class Mix — 2025 Achievement</div>
+        <div class="section-hdr">Class Mix — 2025 Achievement by Product Class</div>
         <select onchange="filterClassChart(this.value)" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-family:var(--font-mono);font-size:10px;border-radius:4px;padding:3px 6px">
           <option value="ytd">Full Year</option>
           ${months.map(m => `<option value="${m}">${m}</option>`).join('')}
@@ -1977,10 +1977,16 @@ function buildTeamView() {
   </div>
 
   <div class="section-hdr">📊 Class Achievement — Team</div>
-  <div class="tracker-wrap" style="margin-bottom:6px">
-    <table>
+  <div class="tracker-wrap" style="margin-bottom:6px;overflow-x:auto">
+    <table style="min-width:900px">
       <thead><tr>
-        <th>Month</th><th>Team Target</th><th>Team Invoiced</th><th>Achiev %</th>
+        <th>Month</th>
+        <th>SR Target</th><th>SR Invoiced</th><th>SR Ach%</th>
+        <th>Data Target</th><th>Data Invoiced</th><th>Data Ach%</th>
+        <th>Cabling Target</th><th>Cabling Invoiced</th><th>Cabling Ach%</th>
+        <th>Bulk Target</th><th>Bulk Invoiced</th><th>Bulk Ach%</th>
+        <th>Others Target</th><th>Others Invoiced</th><th>Others Ach%</th>
+        <th>KRA Score</th>
       </tr></thead>
       <tbody id="team-class-body"></tbody>
     </table>
@@ -2152,29 +2158,34 @@ function refreshTeamView() {
     if(el('team-tot-var'))  el('team-tot-var').innerHTML    = totAct>0?'<span class="'+(totAct-totTgts>=0?'variance-pos':'variance-neg')+'">'+fmt(totAct-totTgts)+'</span>':'—';
   }
 
-  // Populate team class achievement table
+  // Populate team class achievement table — 5 classes
   const teamClassBody = document.getElementById('team-class-body');
   if (teamClassBody) {
     teamClassBody.innerHTML = '';
     const now2 = new Date();
     const curMi = now2.getMonth();
+    const acPct = (p) => p!==null&&p>0 ? '<span style="color:'+(p>=1?'var(--green)':p>=0.8?'var(--amber)':'#e05252')+'">'+(p*100).toFixed(1)+'%</span>' : '—';
     for (let mi = 0; mi < 12; mi++) {
-      // Core = ci 0-3, displayed as Established; ci 4 = Growth
-      const coreTgt = REPS_DATA.reduce((s,_,ri) => s + [0,1,2,3].reduce((s2,ci) => s2 + getClassTarget(ri,ci,mi), 0), 0);
-      const coreAct = REPS_DATA.reduce((s,_,ri) => s + [0,1,2,3].reduce((s2,ci) => s2 + getClassActual(ri,ci,mi), 0), 0);
-      const ncTgt   = REPS_DATA.reduce((s,_,ri) => s + getClassTarget(ri,4,mi), 0);
-      const ncAct   = REPS_DATA.reduce((s,_,ri) => s + getClassActual(ri,4,mi), 0);
-      const totTgt  = coreTgt + ncTgt;
-      const totAct  = coreAct + ncAct;
-      const ach     = totTgt > 0 && totAct > 0 ? totAct/totTgt : null;
-      const isCur   = mi === curMi;
-      teamClassBody.innerHTML += '<tr class="'+(isCur?'current-month-row':'')+'"><td>'+months[mi]+' 2026'+(isCur?'<span class="current-month-badge">▶ Now</span>':'')+'</td>'
-        +'<td>'+fmt(totTgt)+'</td>'
-        +'<td>'+(totAct>0?'<span style="color:var(--text);font-weight:600">'+fmt(totAct)+'</span>':'—')+'</td>'
-        +'<td>'+(ach!==null?'<span style="color:'+(ach>=1?'var(--green)':ach>=0.8?'var(--amber)':'#e05252')+'">'+(ach*100).toFixed(1)+'%</span>':'—')+'</td></tr>';
+      var clsTgts = [], clsActs = [], clsAchs = [];
+      for (var ci = 0; ci < 5; ci++) {
+        var t = REPS_DATA.reduce(function(s,_,ri){ return s + getClassTarget(ri,ci,mi); }, 0);
+        var a = REPS_DATA.reduce(function(s,_,ri){ return s + getClassActual(ri,ci,mi); }, 0);
+        clsTgts.push(Math.round(t)); clsActs.push(Math.round(a));
+        clsAchs.push(t>0&&a>0 ? a/t : null);
+      }
+      var kraScore = clsAchs.some(function(a){return a!==null;})
+        ? KRA_WEIGHTS.reduce(function(s,w,ci){ return s + w*(clsAchs[ci]||0); }, 0) : null;
+      const isCur = mi === curMi;
+      var row = '<tr class="'+(isCur?'current-month-row':'')+'"><td>'+ months[mi] +' 2026'+(isCur?'<span class="current-month-badge">▶ Now</span>':'')+'</td>';
+      for (var ci2 = 0; ci2 < 5; ci2++) {
+        row += '<td class="target-cell">'+fmt(clsTgts[ci2])+'</td>'
+             + '<td>'+(clsActs[ci2]>0?'<span style="color:var(--invoiced);font-weight:600">'+fmt(clsActs[ci2])+'</span>':'—')+'</td>'
+             + '<td>'+acPct(clsAchs[ci2])+'</td>';
+      }
+      row += '<td>'+(kraScore!==null?'<span style="color:'+(kraScore>=0.7?'var(--green)':kraScore>=0.5?'var(--amber)':'#e05252')+'">'+(kraScore*100).toFixed(1)+'%</span>':'—')+'</td></tr>';
+      teamClassBody.innerHTML += row;
     }
   }
-
   // Update team meeting KRA
   setTimeout(updateTeamMtgKRA, 100);
 
@@ -2215,30 +2226,30 @@ function refreshTeamView() {
       }}
   });
 
-  // Class mix pie — Established vs Growth only
-  const estTotal2025 = REPS_DATA.reduce((s,_,ri) =>
-    s + [0,1,2,3].reduce((s2,ci) =>
-      s2 + REPS_DATA[ri].monthly.reduce((s3,_,mi) => s3 + (REPS_DATA[ri].classes[ci]?.monthly[mi]?.prev||0), 0)
-    , 0)
-  , 0);
-  const grwTotal2025 = REPS_DATA.reduce((s,_,ri) =>
-    s + REPS_DATA[ri].monthly.reduce((s2,_,mi) => s2 + (REPS_DATA[ri].classes[4]?.monthly[mi]?.prev||0), 0)
-  , 0);
+  // Class mix doughnut — 5 classes, 2025 actuals
+  const clsColors5 = ['#4472C4','#70AD47','#ED7D31','#9E480E','#808080'];
+  const clsNames5  = ['Server Racks & Acc','Data Products','Cabling & Adapters','Bulk Cables','Others'];
+  const clsTotals2025 = [0,1,2,3,4].map(function(ci) {
+    return Math.round(REPS_DATA.reduce(function(s,_,ri) {
+      return s + REPS_DATA[ri].classes[ci].monthly.reduce(function(s2,m) { return s2 + (m.prev||0); }, 0);
+    }, 0));
+  });
+  const grandTotal2025 = clsTotals2025.reduce(function(s,v){return s+v;},0);
   mkChart('ch-team-class', {
     type:'doughnut',
     data:{
-      labels:['Established (Server Racks, Data, Cabling, Bulk Cables)','Growth (Others)'],
+      labels: clsNames5,
       datasets:[{
-        data:[Math.round(estTotal2025), Math.round(grwTotal2025)],
-        backgroundColor:['#4472C4','#9E480E'],
-        borderWidth:0
+        data: clsTotals2025,
+        backgroundColor: clsColors5,
+        borderWidth: 0
       }]
     },
     options:{responsive:true,maintainAspectRatio:false,cutout:'60%',
       plugins:{
-        legend:{display:true,position:'right',labels:{color:'#cccccc',font:{size:11},boxWidth:14,padding:12}},
+        legend:{display:true,position:'right',labels:{color:chartTextColor(),font:{size:11},boxWidth:14,padding:10}},
         tooltip:{callbacks:{label:function(ctx){
-          var pct=(ctx.raw/(estTotal2025+grwTotal2025)*100).toFixed(1);
+          var pct=(ctx.raw/grandTotal2025*100).toFixed(1);
           return ctx.label+': $'+Math.round(ctx.raw).toLocaleString('en-AU')+' ('+pct+'%)';
         }}}
       },
