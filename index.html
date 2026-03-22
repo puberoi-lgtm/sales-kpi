@@ -2609,21 +2609,21 @@ function renderReassignLog(){
 function locPage(ri, dir) {
   if (!window['_custState_'+ri]) window['_custState_'+ri] = {page:0,company:'all',search:''};
   window['_custState_'+ri].page += dir;
-  var p = document.getElementById('loc-pane-'+ri);
+  var p = document.getElementById('rpane-loc-'+ri);
   if (p) p.innerHTML = buildLocationsPane(ri);
 }
 function locFilterCo(ri, val) {
   if (!window['_custState_'+ri]) window['_custState_'+ri] = {page:0,company:'all',search:''};
   window['_custState_'+ri].company = val;
   window['_custState_'+ri].page = 0;
-  var p = document.getElementById('loc-pane-'+ri);
+  var p = document.getElementById('rpane-loc-'+ri);
   if (p) p.innerHTML = buildLocationsPane(ri);
 }
 function locFilterSearch(ri, val) {
   if (!window['_custState_'+ri]) window['_custState_'+ri] = {page:0,company:'all',search:''};
   window['_custState_'+ri].search = val;
   window['_custState_'+ri].page = 0;
-  var p = document.getElementById('loc-pane-'+ri);
+  var p = document.getElementById('rpane-loc-'+ri);
   if (p) p.innerHTML = buildLocationsPane(ri);
 }
 
